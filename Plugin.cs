@@ -1,9 +1,13 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using GameNetcodeStuff;
 using HarmonyLib;
 using LC_API;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
@@ -24,42 +28,58 @@ namespace Wendigos
             }
         }
 
-        public static List<FakePlayer> fakePlayers = new List<FakePlayer>();
+        public static List<PlayerControllerB> fakePlayers = new List<PlayerControllerB>();
+        Harmony harmonyInstance = new Harmony("my-instance");
 
         private void Awake()
         {
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+            Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+            Logger.LogWarning(fakePlayers.ToString());
 
-            StartOfRound startOfRound = StartOfRound.Instance;
+            harmonyInstance.PatchAll();
 
-            var currentLevel = RoundManager.Instance.currentLevel;
+            //StartOfRound startOfRound = StartOfRound.Instance;
+
+            //var currentLevel = RoundManager.Instance.currentLevel;
 
             //RoundManager.Instance.currentLevel.Enemies.Add(new SpawnableEnemyWithRarity());
 
-            Logger.LogInfo($"");
+        }
 
+        private void Update()
+        {
+            if (fakePlayers != null)
+            {
+                File.WriteAllText(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\output.txt", fakePlayers.ToString());
+                Logger.LogWarning("Wrote fakeplayers list");
+            }
         }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Update))]
         class MaskedPlayerEnemyPatch
         {
-            static void Postfix()
+            static void Prefix()
             {
+                Console.WriteLine("Patch!");
                 StartOfRound startOfRound = StartOfRound.Instance;
                 var currentLevel = RoundManager.Instance.currentLevel;
 
                 var players = startOfRound.allPlayerScripts;
                 foreach (var player in players)
                 {
-                    if (player.isPlayerDead)
+                    if (player.isPlayerDead && !fakePlayers.Contains(player))
                     {
-                        fakePlayers.Add(new FakePlayer(player));
+                        fakePlayers.Add(player);
+                        File.WriteAllText("output.txt", fakePlayers.ToString());
                     }
                 }
 
 
             }
         }
+
+
     }
 }
