@@ -28,7 +28,7 @@ namespace Wendigos
             }
         }
 
-        public static List<PlayerControllerB> fakePlayers = new List<PlayerControllerB>();
+        public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
 
         private void Awake()
@@ -36,46 +36,33 @@ namespace Wendigos
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
             Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-            Logger.LogWarning(fakePlayers.ToString());
 
             harmonyInstance.PatchAll();
 
-            //StartOfRound startOfRound = StartOfRound.Instance;
-
-            //var currentLevel = RoundManager.Instance.currentLevel;
-
-            //RoundManager.Instance.currentLevel.Enemies.Add(new SpawnableEnemyWithRarity());
-
-        }
-
-        private void Update()
-        {
-            if (fakePlayers != null)
-            {
-                File.WriteAllText(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\output.txt", fakePlayers.ToString());
-                Logger.LogWarning("Wrote fakeplayers list");
-            }
         }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Update))]
-        class MaskedPlayerEnemyPatch
+        class MaskedPlayerEnemyUpdatePatch
         {
             static void Prefix()
             {
-                Console.WriteLine("Patch!");
                 StartOfRound startOfRound = StartOfRound.Instance;
-                var currentLevel = RoundManager.Instance.currentLevel;
+
+                //var currentLevel = RoundManager.Instance.currentLevel;
+
+                //RoundManager.Instance.currentLevel.Enemies.Add(new SpawnableEnemyWithRarity());
 
                 var players = startOfRound.allPlayerScripts;
+
+                // Get all dead players
                 foreach (var player in players)
                 {
-                    if (player.isPlayerDead && !fakePlayers.Contains(player))
+                    if (!deadPlayers.Contains(player) && player.isPlayerDead)
                     {
-                        fakePlayers.Add(player);
-                        File.WriteAllText("output.txt", fakePlayers.ToString());
+                        deadPlayers.Add(player);
+                        Console.WriteLine("player died -- ID: " + player.playerSteamId + " -- name: " + player.name);
                     }
                 }
-
 
             }
         }
