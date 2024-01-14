@@ -58,6 +58,7 @@ namespace Wendigos
                 //var currentLevel = RoundManager.Instance.currentLevel;
 
                 //RoundManager.Instance.currentLevel.Enemies.Add(new SpawnableEnemyWithRarity());
+                
 
                 var players = startOfRound.allPlayerScripts;
 
@@ -106,10 +107,9 @@ namespace Wendigos
             return null;
         }
 
-        [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.DoAIInterval))]
+        [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
         class MaskedPlayerEnemyAIPatch
         {
-
             static void Prefix(EnemyAI __instance)
             {
                 var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\name0.wav";
