@@ -38,11 +38,9 @@ namespace Wendigos
 
         private void Awake()
         {
-            var path = System.AppDomain.CurrentDomain.BaseDirectory + "name.wav";
-            Console.WriteLine(path);
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-            Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+            //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 
             harmonyInstance.PatchAll();
 
@@ -114,14 +112,16 @@ namespace Wendigos
 
             static void Prefix(EnemyAI __instance)
             {
-                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\name.wav";
+                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\name0.wav";
                 try
-                {                   
-                    if (!__instance.creatureVoice.isPlaying)
-                        __instance.creatureVoice.PlayOneShot(LoadWavFile(path));
+                {
+                    // Sandworm bug? Avoid sandworm if necessary
+                    AudioClip clip = LoadWavFile(path);
+                    if (clip && !__instance.creatureVoice.isPlaying)
+                        __instance.creatureVoice.PlayOneShot(clip);
                 }
                 catch(Exception e) {
-                    Console.WriteLine("Playing audio failed: " + e.Message);
+                    Console.WriteLine("Playing audio failed: " + e.Message + ": " + e.Source);
                 }
             }
         }
