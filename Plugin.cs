@@ -4,16 +4,20 @@ using GameNetcodeStuff;
 using HarmonyLib;
 using LC_API;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Networking;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
 namespace Wendigos
 {
+
+
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
     {
@@ -30,14 +34,19 @@ namespace Wendigos
 
         public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
+        public static List<MaskedPlayerEnemy> maskedEnemies;
 
         private void Awake()
         {
+            var path = System.AppDomain.CurrentDomain.BaseDirectory + "name.wav";
+            Console.WriteLine(path);
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
             Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 
             harmonyInstance.PatchAll();
+
+            maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
 
         }
 
@@ -54,6 +63,8 @@ namespace Wendigos
 
                 var players = startOfRound.allPlayerScripts;
 
+                //AudioSource voice = MaskedPlayerEnemy.voice;
+
                 // Get all dead players
                 foreach (var player in players)
                 {
@@ -64,6 +75,54 @@ namespace Wendigos
                     }
                 }
 
+            }
+        }
+
+        static AudioClip LoadWavFile(string audioFilePath)
+        {
+            if (File.Exists(audioFilePath))
+            {
+
+                using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.WAV))
+                {
+                    request.SendWebRequest();
+
+                    while (request.result == UnityWebRequest.Result.InProgress)
+                        continue;
+                    if (request.result != UnityWebRequest.Result.Success)
+                    {
+                        Debug.Log("www.error " + request.error);
+                        Debug.Log(" www.uri " + request.uri);
+                        Debug.Log(" www.url " + request.url);
+                        Debug.Log(" www.result " + request.result);
+                        return null;
+                    }
+                    else
+                    {
+                        AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
+                        return myClip;
+                    }
+                }
+            }
+            Console.WriteLine("AUDIO FILE NOT FOUND");
+            return null;
+        }
+
+        [HarmonyPatch(typeof(EnemyAI), nameof(EnemyAI.DoAIInterval))]
+        class MaskedPlayerEnemyAIPatch
+        {
+
+            static void Prefix(EnemyAI __instance)
+            {
+                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\name.wav";
+                try
+                {                   
+                    if (!__instance.creatureVoice.isPlaying)
+                        __instance.creatureVoice.PlayOneShot(LoadWavFile(path));
+                }
+                catch(Exception e) {
+                    Console.WriteLine("Playing audio failed: " + e.Message);
+                }
             }
         }
 
