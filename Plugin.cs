@@ -17,7 +17,6 @@ using UnityEngine.Networking;
 namespace Wendigos
 {
 
-
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
     {
@@ -43,6 +42,30 @@ namespace Wendigos
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 
             harmonyInstance.PatchAll();
+
+            Console.WriteLine(Config.ConfigFilePath.Replace("Wendigos.cfg", ""));
+
+            string config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
+
+            System.IO.Directory.CreateDirectory(config_path + "Wendigos\\player_sentences");
+
+            File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt",
+                "Help me\n" +
+                "Stop Sign Over Here\n" +
+                "Where is everyone?"
+                );
+
+            File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt",
+                "Help me\n" +
+                "Stop Sign Over Here\n" +
+                "Where is everyone?"
+                );
+
+            File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt",
+                "Help me\n" +
+                "Stop Sign Over Here\n" +
+                "Where is everyone?"
+                );
 
             maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
 
@@ -110,7 +133,7 @@ namespace Wendigos
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
         class MaskedPlayerEnemyAIPatch
         {
-            static void Prefix(EnemyAI __instance)
+            static void Prefix(MaskedPlayerEnemy __instance)
             {
                 var rand = new System.Random();
                 var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\audio_output" + "\\output0_line" + rand.Next(0,3) + ".wav";
