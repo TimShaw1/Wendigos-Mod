@@ -112,7 +112,8 @@ namespace Wendigos
         {
             static void Prefix(EnemyAI __instance)
             {
-                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\name0.wav";
+                var rand = new System.Random();
+                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\audio_output" + "\\output0_line" + rand.Next(0,3) + ".wav";
                 try
                 {
                     // Sandworm bug? Avoid sandworm if necessary
