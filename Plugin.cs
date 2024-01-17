@@ -3,6 +3,7 @@ using BepInEx.Configuration;
 using GameNetcodeStuff;
 using HarmonyLib;
 using LC_API;
+using MonoMod.RuntimeDetour;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -25,10 +26,13 @@ namespace Wendigos
         {
             public PlayerControllerB playerControllerB;
             public bool isControlled = false;
+            public int playerSuitID;
+
 
             public FakePlayer(PlayerControllerB pcB)
             {
                 playerControllerB = pcB;
+                playerSuitID = playerControllerB.currentSuitID;
             }
         }
 
@@ -84,7 +88,7 @@ namespace Wendigos
                     exeProcess.ErrorDataReceived += (sender, args) => Console.WriteLine(args.Data);
                     exeProcess.BeginOutputReadLine();
                     exeProcess.BeginErrorReadLine();
-                    Console.WriteLine("reading process");
+                    Console.WriteLine("LOADING MODEL...");
                     exeProcess.WaitForExit();
                 }
             }
@@ -187,7 +191,7 @@ namespace Wendigos
                 Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: generated chasing sentences");
             }
 
-            maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
+            //maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
 
         }
 
@@ -256,7 +260,7 @@ namespace Wendigos
             static void Prefix(MaskedPlayerEnemy __instance)
             {
                 var rand = new System.Random();
-                string[] types = { "idle", "nearby", "chasing"};
+                string[] types = ["idle", "nearby", "chasing"];
                 string type = types[rand.Next(types.Length)];
 
                 if (rand.Next(10) % 10 == 0)
@@ -274,6 +278,28 @@ namespace Wendigos
                         Console.WriteLine("Playing audio failed: " + e.Message + ": " + e.Source);
                     }
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.SetVisibilityOfMaskedEnemy))]
+        class MaskedPlayerEnemyKillPatch
+        {
+            static void Postfix(MaskedPlayerEnemy __instance)
+            {
+                if ((bool)Traverse.Create(__instance).Field("enemyEnabled").GetValue())
+                {
+                    __instance.gameObject.transform.Find("ScavengerModel/metarig/spine/spine.001/spine.002/spine.003/spine.004/HeadMaskComedy").gameObject.SetActive(false);
+                    __instance.gameObject.transform.Find("ScavengerModel/metarig/spine/spine.001/spine.002/spine.003/spine.004/HeadMaskTragedy").gameObject.SetActive(false);
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.SetHandsOutClientRpc))]
+        class MaskedPlayerEnemyRemoveHands
+        {
+            static void Prefix(ref bool setOut)
+            {
+                setOut = false;
             }
         }
 
