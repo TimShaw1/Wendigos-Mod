@@ -286,6 +286,7 @@ namespace Wendigos
         {
             static void Postfix(MaskedPlayerEnemy __instance)
             {
+                // Hide mask
                 if ((bool)Traverse.Create(__instance).Field("enemyEnabled").GetValue())
                 {
                     __instance.gameObject.transform.Find("ScavengerModel/metarig/spine/spine.001/spine.002/spine.003/spine.004/HeadMaskComedy").gameObject.SetActive(false);
@@ -297,6 +298,7 @@ namespace Wendigos
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.SetHandsOutClientRpc))]
         class MaskedPlayerEnemyRemoveHands
         {
+            // Hide arms going out
             static void Prefix(ref bool setOut)
             {
                 setOut = false;
