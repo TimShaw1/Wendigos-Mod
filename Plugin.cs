@@ -62,6 +62,7 @@ namespace Wendigos
             startInfo.Arguments = $"/C (set PYTORCH_JIT=0)&(main.exe {file_name})";
             startInfo.RedirectStandardOutput = true;
             startInfo.RedirectStandardError = true;
+            startInfo.RedirectStandardInput = true;
 
             try
             {
@@ -70,7 +71,16 @@ namespace Wendigos
                 using (Process exeProcess = Process.Start(startInfo))
                 {
                     Console.WriteLine("started process");
-                    exeProcess.OutputDataReceived += (sender, args) => Console.WriteLine($"received output: {args.Data}");
+                    exeProcess.OutputDataReceived += (sender, args) =>
+                    {
+                        Console.WriteLine($"received output: {args.Data}");
+                        if (args.Data.Contains("[y/n]"))
+                        {
+                            Console.WriteLine("WAITING FOR MODEL DOWNLOAD ... (1.75gb)");
+
+                            exeProcess.StandardInput.WriteLine("y");
+                        }
+                    };
                     exeProcess.ErrorDataReceived += (sender, args) => Console.WriteLine(args.Data);
                     exeProcess.BeginOutputReadLine();
                     exeProcess.BeginErrorReadLine();
@@ -246,16 +256,23 @@ namespace Wendigos
             static void Prefix(MaskedPlayerEnemy __instance)
             {
                 var rand = new System.Random();
-                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\audio_output" + "\\output0_line" + rand.Next(0,3) + ".wav";
-                try
+                string[] types = { "idle", "nearby", "chasing"};
+                string type = types[rand.Next(types.Length)];
+
+                if (rand.Next(10) % 10 == 0)
                 {
-                    // Sandworm bug? Avoid sandworm if necessary
-                    AudioClip clip = LoadWavFile(path);
-                    if (clip && !__instance.creatureVoice.isPlaying)
-                        __instance.creatureVoice.PlayOneShot(clip);
-                }
-                catch(Exception e) {
-                    Console.WriteLine("Playing audio failed: " + e.Message + ": " + e.Source);
+                    var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\audio_output" + $"\\player0\\{type}\\{type}0_line" + rand.Next(0, 3) + ".wav";
+                    try
+                    {
+                        // Sandworm bug? Avoid sandworm if necessary
+                        AudioClip clip = LoadWavFile(path);
+                        if (clip && !__instance.creatureVoice.isPlaying)
+                            __instance.creatureVoice.PlayOneShot(clip);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Playing audio failed: " + e.Message + ": " + e.Source);
+                    }
                 }
             }
         }
