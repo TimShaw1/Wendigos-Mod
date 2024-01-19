@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.XR;
+using static System.Net.Mime.MediaTypeNames;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -138,6 +139,8 @@ namespace Wendigos
 
         // used to track if we need to generate new audio files
         private static DateTime main_last_accessed = File.GetLastAccessTime(assembly_path + "\\main.exe");
+
+        internal static string mic_name;
 
         private void Awake()
         {
@@ -372,6 +375,28 @@ namespace Wendigos
                 
                 TryToPlayAudio(type, __instance);
 
+            }
+
+        }
+
+        [HarmonyPatch(typeof(IngamePlayerSettings), nameof(IngamePlayerSettings.LoadSettingsFromPrefs))]
+        class IngamePlayerSettingsLoadPatch
+        {
+            static void Postfix(IngamePlayerSettings __instance)
+            {
+                mic_name = IngamePlayerSettings.Instance.settings.micDevice;
+                WriteToConsole(mic_name);
+            }
+        }
+
+        [HarmonyPatch(typeof(IngamePlayerSettings), nameof(IngamePlayerSettings.SaveChangedSettings))]
+        class IngamePlayerSettingsMicSavePatch
+        {
+            static void Postfix(IngamePlayerSettings __instance)
+            {
+                // changes mic to primary mic
+                mic_name = IngamePlayerSettings.Instance.settings.micDevice;
+                WriteToConsole("Set to " + mic_name);
             }
         }
 
