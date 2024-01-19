@@ -420,6 +420,7 @@ namespace Wendigos
         }
 
         static AudioClip ac;
+        static System.Random rand1 = new System.Random();
         static string[] lines_to_read = """
             Prosecutors have opened a massive investigation into allegations of fixing games and illegal betting.
             Different telescope designs perform differently and have different strengths and weaknesses.
@@ -445,11 +446,12 @@ namespace Wendigos
             Funding is always an issue after the fact.
             Let us encourage each other.
             Subscribe to @Tim-Shaw on YouTube
-            """.Split('\n');
+            """.Split('\n').OrderBy(a => rand1.Next()).ToArray();
 
         [HarmonyPatch(typeof(MenuManager), "Update")]
         class MenuManagerUpdatePatch
         {
+            static int index = 0;
             static void Postfix(MenuManager __instance)
             {
                 if (__instance.isInitScene) { return; }
@@ -465,9 +467,7 @@ namespace Wendigos
 
                         ac = Microphone.Start(mic_name, false, 100, maxfreq);
                         __instance.menuNotificationButtonText.text = "[ Recording ]";
-
-                        System.Random rand = new System.Random();
-                        __instance.menuNotificationText.text = lines_to_read[rand.Next(lines_to_read.Length)];
+                        __instance.menuNotificationText.text = lines_to_read[index];
                     }
                 }
                 else
@@ -482,8 +482,19 @@ namespace Wendigos
                     }
                     else if (UnityInput.Current.GetKeyUp("N"))
                     {
-                        System.Random rand = new System.Random();
-                        __instance.menuNotificationText.text = lines_to_read[rand.Next(lines_to_read.Length)];
+                        if (index + 1 < lines_to_read.Length)
+                        {
+                            index++;
+                            __instance.menuNotificationText.text = lines_to_read[index];
+                        }
+                        else 
+                        {
+                            Microphone.End(mic_name);
+                            __instance.menuNotificationButtonText.text = "[ done ]";
+                            __instance.menuNotificationText.text = "Recording stopped";
+                            ac = SavWav.TrimSilence(ac, 0.01f);
+                            SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav", ac);
+                        }
                     }
                 }
             }
