@@ -348,7 +348,7 @@ namespace Wendigos
         }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.SetVisibilityOfMaskedEnemy))]
-        class MaskedPlayerEnemyKillPatch
+        class MaskedPlayerEnemyVisibilityPatch
         {
             static void Postfix(MaskedPlayerEnemy __instance)
             {
