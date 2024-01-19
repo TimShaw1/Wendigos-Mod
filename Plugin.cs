@@ -7,6 +7,7 @@ using MonoMod.RuntimeDetour;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -14,6 +15,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
+using TMPro;
+using UnityEngine.UIElements;
 using UnityEngine.XR;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -399,6 +402,93 @@ namespace Wendigos
                 WriteToConsole("Set to " + mic_name);
             }
         }
+
+        [HarmonyPatch(typeof(MenuManager), "Start")]
+        class MenuManagerPatch
+        {
+            static void Postfix(MenuManager __instance)
+            {
+                if (__instance.isInitScene) 
+                {
+                    return;
+                }
+
+                __instance.NewsPanel.SetActive(false);
+                __instance.DisplayMenuNotification("Press 'r' to record some voice lines", "[ Done ]");
+                __instance.menuNotification.transform.Find("ResponseButton").gameObject.SetActive(false);
+            }
+        }
+
+        static AudioClip ac;
+        static string[] lines_to_read = """
+            Prosecutors have opened a massive investigation into allegations of fixing games and illegal betting.
+            Different telescope designs perform differently and have different strengths and weaknesses.
+            We can continue to strengthen the education of good lawyers.
+            Feedback must be timely and accurate throughout the project.
+            Humans also judge distance by using the relative sizes of objects.
+            Churches should not encourage it or make it look harmless.
+            Learn about setting up wireless network configuration.
+            You can eat them fresh, cooked or fermented.
+            If this is true then those who tend to think creatively really are somehow different.
+            She will likely jump for joy and want to skip straight to the honeymoon.
+            The sugar syrup should create very fine strands of sugar that drape over the handles.
+            But really in the grand scheme of things, this information is insignificant.
+            I let the positive overrule the negative.
+            He wiped his brow with his forearm.
+            Instead of fixing it, they give it a nickname.
+            About half the people who are infected also lose weight.
+            The second half of the book focuses on argument and essay writing.
+            We have the means to help ourselves.
+            The large items are put into containers for disposal.
+            He loves to watch me drink this stuff.
+            Still, it is an odd fashion choice.
+            Funding is always an issue after the fact.
+            Let us encourage each other.
+            Subscribe to @Tim-Shaw on YouTube
+            """.Split('\n');
+
+        [HarmonyPatch(typeof(MenuManager), "Update")]
+        class MenuManagerUpdatePatch
+        {
+            static void Postfix(MenuManager __instance)
+            {
+                if (__instance.isInitScene) { return; }
+
+                if (!Microphone.IsRecording(mic_name))
+                {
+                    if (UnityInput.Current.GetKeyDown("R"))
+                    {
+                        // Get max frequency of mic device
+                        int minfreq;
+                        int maxfreq;
+                        Microphone.GetDeviceCaps(mic_name, out minfreq, out maxfreq);
+
+                        ac = Microphone.Start(mic_name, false, 100, maxfreq);
+                        __instance.menuNotificationButtonText.text = "[ Recording ]";
+
+                        System.Random rand = new System.Random();
+                        __instance.menuNotificationText.text = lines_to_read[rand.Next(lines_to_read.Length)];
+                    }
+                }
+                else
+                {
+                    if (UnityInput.Current.GetKeyUp("R"))
+                    {
+                        Microphone.End(mic_name);
+                        __instance.menuNotificationButtonText.text = "[ done ]";
+                        __instance.menuNotificationText.text = "Recording stopped";
+                        ac = SavWav.TrimSilence(ac, 0.01f);
+                        SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav", ac);
+                    }
+                    else if (UnityInput.Current.GetKeyUp("N"))
+                    {
+                        System.Random rand = new System.Random();
+                        __instance.menuNotificationText.text = lines_to_read[rand.Next(lines_to_read.Length)];
+                    }
+                }
+            }
+        }
+
 
 
     }

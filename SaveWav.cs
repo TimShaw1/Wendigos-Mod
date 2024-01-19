@@ -40,14 +40,17 @@ namespace Wendigos
 
         const int HEADER_SIZE = 44;
 
-        public static bool Save(string filename, AudioClip clip)
+        public static bool Save(string filename, AudioClip clip, string filepath = "")
         {
             if (!filename.ToLower().EndsWith(".wav"))
             {
                 filename += ".wav";
             }
 
-            var filepath = Path.Combine(Application.persistentDataPath, filename);
+            if (filepath.Length > 0)
+                filepath = Path.Combine(Application.persistentDataPath, filename);
+            else
+                filepath = Path.Combine(filepath, filename);
 
             Debug.Log(filepath);
 
