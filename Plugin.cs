@@ -317,6 +317,7 @@ namespace Wendigos
             {
                 if (__instance.isEnemyDead)
                 {
+                    __instance.agent.speed = 0f;
                     return;
                 }
 
