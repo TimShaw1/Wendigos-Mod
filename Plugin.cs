@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.XR;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -37,6 +38,11 @@ namespace Wendigos
             }
         }
 
+        static void WriteToConsole(string output)
+        {
+            Console.WriteLine("Wendigos: " + output);
+        }
+
         /// <summary>
         /// Launch main.exe with args.
         /// This will DELETE any pre-existing folder \\audio_output\\player0\\{file_name}.
@@ -45,16 +51,16 @@ namespace Wendigos
         {
             // Player0 only for now
             File.WriteAllText(assembly_path + "\\player_sentences\\player0_sentences.txt", File.ReadAllText(sentences_file_path));
-            Console.WriteLine("wrote to sentences text file");
+            WriteToConsole("wrote to sentences text file");
 
 
             if (Directory.Exists(assembly_path + $"\\audio_output\\player0\\{file_name}"))
             {
                 Directory.Delete(assembly_path + $"\\audio_output\\player0\\{file_name}", true);
-                Console.WriteLine($"deleted old wav files for {file_name}");
+                WriteToConsole($"deleted old wav files for {file_name}");
             }
             Directory.CreateDirectory(assembly_path + $"\\audio_output\\player0\\{file_name}");
-            Console.WriteLine($"created directory \\audio_output\\player0\\{file_name}");
+            WriteToConsole($"created directory \\audio_output\\player0\\{file_name}");
 
 
             // Use ProcessStartInfo class
@@ -75,21 +81,21 @@ namespace Wendigos
                 // Call WaitForExit and then the using statement will close.
                 using (Process exeProcess = Process.Start(startInfo))
                 {
-                    Console.WriteLine("started process");
+                    WriteToConsole("started process");
                     exeProcess.OutputDataReceived += (sender, args) =>
                     {
-                        Console.WriteLine($"received output: {args.Data}");
+                        WriteToConsole($"received output: {args.Data}");
                         if (args.Data.Contains("[y/n]"))
                         {
-                            Console.WriteLine("WAITING FOR MODEL DOWNLOAD ... (1.75gb)");
+                            WriteToConsole("WAITING FOR MODEL DOWNLOAD ... (1.75gb)");
 
                             exeProcess.StandardInput.WriteLine("y");
                         }
                     };
-                    exeProcess.ErrorDataReceived += (sender, args) => Console.WriteLine(args.Data);
+                    exeProcess.ErrorDataReceived += (sender, args) => WriteToConsole(args.Data);
                     exeProcess.BeginOutputReadLine();
                     exeProcess.BeginErrorReadLine();
-                    Console.WriteLine("LOADING MODEL...");
+                    WriteToConsole("LOADING MODEL...");
                     exeProcess.WaitForExit();
                 }
             }
@@ -99,7 +105,7 @@ namespace Wendigos
             }
 
             File.Delete(assembly_path + "\\player_sentences\\player0_sentences.txt");
-            Console.WriteLine("deleted temporary sentences text file");
+            WriteToConsole("deleted temporary sentences text file");
         }
 
         static void GenerateAllPlayerSentences(bool new_idle, bool new_nearby, bool new_chasing)
@@ -112,6 +118,8 @@ namespace Wendigos
 
             if (new_chasing)
                 GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
+
+            WriteToConsole("Finished generating voice lines.");
         }
 
         private bool isFileChanged(string path)
@@ -139,7 +147,7 @@ namespace Wendigos
 
             harmonyInstance.PatchAll();
 
-            Console.WriteLine(Config.ConfigFilePath.Replace("Wendigos.cfg", ""));
+            WriteToConsole(Config.ConfigFilePath.Replace("Wendigos.cfg", ""));
 
             config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
 
@@ -229,7 +237,7 @@ namespace Wendigos
                     if (!deadPlayers.Contains(player) && player.isPlayerDead)
                     {
                         deadPlayers.Add(player);
-                        Console.WriteLine("player died -- ID: " + player.playerSteamId + " -- name: " + player.name);
+                        WriteToConsole("player died -- ID: " + player.playerSteamId + " -- name: " + player.name);
                     }
                 }
 
@@ -249,10 +257,10 @@ namespace Wendigos
                         continue;
                     if (request.result != UnityWebRequest.Result.Success)
                     {
-                        Console.WriteLine("www.error " + request.error);
-                        Console.WriteLine(" www.uri " + request.uri);
-                        Console.WriteLine(" www.url " + request.url);
-                        Console.WriteLine(" www.result " + request.result);
+                        WriteToConsole("www.error " + request.error);
+                        WriteToConsole(" www.uri " + request.uri);
+                        WriteToConsole(" www.url " + request.url);
+                        WriteToConsole(" www.result " + request.result);
                         return null;
                     }
                     else
@@ -262,8 +270,44 @@ namespace Wendigos
                     }
                 }
             }
-            Console.WriteLine("AUDIO FILE NOT FOUND");
+            WriteToConsole("AUDIO FILE NOT FOUND");
             return null;
+        }
+
+        static void TryToPlayAudio(string type, MaskedPlayerEnemy __instance)
+        {
+            try
+            {
+                string path = GetPathOfWav(type);
+                // Sandworm bug? Avoid sandworm if necessary
+                AudioClip clip = LoadWavFile(path);
+                if (clip && !__instance.creatureVoice.isPlaying)
+                    __instance.creatureVoice.PlayOneShot(clip);
+            }
+            catch (Exception e)
+            {
+                WriteToConsole("Playing audio failed: " + e.Message + ": " + e.Source);
+            }
+        }
+
+        static string GetPathOfWav(string type, int lineNum = -1)
+        {
+            if (lineNum < 0)
+            {
+                System.Random random = new System.Random();
+                lineNum = random.Next(CountFilesInDir(GetPathOfType(type)));
+            }
+            return assembly_path + "\\audio_output" + $"\\player0\\{type}\\{type}0_line" + lineNum + ".wav";
+        }
+
+        static string GetPathOfType(string type)
+        {
+            return assembly_path + "\\audio_output" + $"\\player0\\{type}";
+        }
+
+        static int CountFilesInDir(string path)
+        {
+            return Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly).Length;
         }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
@@ -271,24 +315,33 @@ namespace Wendigos
         {
             static void Prefix(MaskedPlayerEnemy __instance)
             {
+                if (__instance.isEnemyDead)
+                {
+                    return;
+                }
+
                 var rand = new System.Random();
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[rand.Next(types.Length)];
 
-                if (rand.Next(10) % 10 == 0)
+
+                switch (__instance.currentBehaviourStateIndex)
                 {
-                    var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\audio_output" + $"\\player0\\{type}\\{type}0_line" + rand.Next(0, 3) + ".wav";
-                    try
-                    {
-                        // Sandworm bug? Avoid sandworm if necessary
-                        AudioClip clip = LoadWavFile(path);
-                        if (clip && !__instance.creatureVoice.isPlaying)
-                            __instance.creatureVoice.PlayOneShot(clip);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Playing audio failed: " + e.Message + ": " + e.Source);
-                    }
+                    case 0:
+                        if (__instance.CheckLineOfSightForClosestPlayer() != null)
+                        {
+                            TryToPlayAudio("nearby", __instance);
+                        }
+                        else
+                        {
+                            TryToPlayAudio("idle", __instance);
+                        }
+
+                        break;
+                    case 1:
+                        break;
+                    case 2:
+                        break;
                 }
             }
         }
@@ -311,9 +364,13 @@ namespace Wendigos
         class MaskedPlayerEnemyRemoveHands
         {
             // Hide arms going out
-            static void Prefix(ref bool setOut)
+            static void Prefix(ref bool setOut, MaskedPlayerEnemy __instance)
             {
                 setOut = false;
+                string type = "chasing";
+                
+                TryToPlayAudio(type, __instance);
+
             }
         }
 
