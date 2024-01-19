@@ -11,6 +11,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -101,11 +102,16 @@ namespace Wendigos
             Console.WriteLine("deleted temporary sentences text file");
         }
 
-        static void GenerateAllPlayerSentences()
+        static void GenerateAllPlayerSentences(bool new_idle, bool new_nearby, bool new_chasing)
         {
-            GeneratePlayerSentences("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
-            GeneratePlayerSentences("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
-            GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
+            if (new_idle) 
+                GeneratePlayerSentences("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
+
+            if (new_nearby)
+                GeneratePlayerSentences("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
+
+            if (new_chasing)
+                GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
         }
 
         private bool isFileChanged(string path)
@@ -146,6 +152,9 @@ namespace Wendigos
             bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
             Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: {(found_sample_audio ? "found" : "didn't find")} player sample audio");
 
+            bool new_idle, new_nearby, new_chasing;
+            new_idle = new_nearby = new_chasing = false;
+
             if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
             {
                 File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt",
@@ -157,22 +166,22 @@ namespace Wendigos
 
             if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
             {
-                GeneratePlayerSentences("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
+                new_idle = true;
                 Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: generated idle sentences");
             }
 
             if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt"))
             {
                 File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt",
-                "What's up?\n" +
-                "Find anything?\n" +
-                "haha yeah"
+                    "What's up?\n" +
+                    "Find anything?\n" +
+                    "haha yeah"
                 );
             }
 
             if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt"))
             {
-                GeneratePlayerSentences("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
+                new_nearby = true;
                 Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: generated nearby sentences");
             }
 
@@ -187,9 +196,12 @@ namespace Wendigos
 
             if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt"))
             {
-                GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
+                new_chasing=true;
                 Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: generated chasing sentences");
             }
+
+            // start generating voice lines async
+            Task.Factory.StartNew(() => GenerateAllPlayerSentences(new_idle, new_nearby, new_chasing));
 
             //maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
 
