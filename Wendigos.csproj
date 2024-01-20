@@ -41,6 +41,7 @@
     </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+      <HintPath Condition="Exists('C:\projects\LethalCompanyMod\Wendigos\bin\Debug\netstandard2.1\Unity.TextMeshPro.dll')">C:\projects\LethalCompanyMod\Wendigos\bin\Debug\netstandard2.1\Unity.TextMeshPro.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
