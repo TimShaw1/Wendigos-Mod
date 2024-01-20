@@ -133,6 +133,8 @@ namespace Wendigos
             return timestamp > main_last_accessed;
         }
 
+        private static ConfigEntry<bool> need_new_player_audio;
+
         public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
         public static List<MaskedPlayerEnemy> maskedEnemies;
@@ -153,7 +155,12 @@ namespace Wendigos
 
             harmonyInstance.PatchAll();
 
-            WriteToConsole(Config.ConfigFilePath.Replace("Wendigos.cfg", ""));
+            need_new_player_audio = Config.Bind<bool>(
+                "General",
+                "Record new player sample audio?",
+                true,
+                "Whether the record audio prompt should show up"
+                );
 
             config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
 
@@ -414,8 +421,8 @@ namespace Wendigos
                 }
 
                 __instance.NewsPanel.SetActive(false);
-                __instance.DisplayMenuNotification("Press 'r' to record some voice lines", "[ Done ]");
-                __instance.menuNotification.transform.Find("ResponseButton").gameObject.SetActive(false);
+                if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
+                    __instance.DisplayMenuNotification($"Press 'r' to record some voice lines. Selected Mic is {mic_name}", "[ Done ]");
             }
         }
 
@@ -455,6 +462,7 @@ namespace Wendigos
             static void Postfix(MenuManager __instance)
             {
                 if (__instance.isInitScene) { return; }
+                if (!__instance.menuNotification.activeInHierarchy) { return; }
 
                 if (!Microphone.IsRecording(mic_name))
                 {
@@ -466,7 +474,7 @@ namespace Wendigos
                         Microphone.GetDeviceCaps(mic_name, out minfreq, out maxfreq);
 
                         ac = Microphone.Start(mic_name, false, 100, maxfreq);
-                        __instance.menuNotificationButtonText.text = "[ Recording ]";
+                        __instance.menuNotificationButtonText.text = "Recording...";
                         __instance.menuNotificationText.text = lines_to_read[index];
                     }
                 }
@@ -478,6 +486,7 @@ namespace Wendigos
                         __instance.menuNotificationButtonText.text = "[ done ]";
                         __instance.menuNotificationText.text = "Recording stopped";
                         ac = SavWav.TrimSilence(ac, 0.01f);
+                        need_new_player_audio.Value = false;
                         SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav", ac);
                     }
                     else if (UnityInput.Current.GetKeyUp("N"))
