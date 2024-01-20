@@ -421,7 +421,7 @@ namespace Wendigos
                 }
 
                 __instance.NewsPanel.SetActive(false);
-                if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
+                if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav") || need_new_player_audio.Value)
                     __instance.DisplayMenuNotification($"Press 'r' to record some voice lines. Selected Mic is {mic_name}", "[ Done ]");
             }
         }
@@ -466,7 +466,7 @@ namespace Wendigos
 
                 if (!Microphone.IsRecording(mic_name))
                 {
-                    if (UnityInput.Current.GetKeyDown("R"))
+                    if (UnityInput.Current.GetKeyUp("R"))
                     {
                         // Get max frequency of mic device
                         int minfreq;
@@ -475,12 +475,12 @@ namespace Wendigos
 
                         ac = Microphone.Start(mic_name, false, 100, maxfreq);
                         __instance.menuNotificationButtonText.text = "Recording...";
-                        __instance.menuNotificationText.text = lines_to_read[index];
+                        __instance.menuNotificationText.text = "Press S to stop recording\n" + lines_to_read[index];
                     }
                 }
                 else
                 {
-                    if (UnityInput.Current.GetKeyUp("R"))
+                    if (UnityInput.Current.GetKeyUp("S"))
                     {
                         Microphone.End(mic_name);
                         __instance.menuNotificationButtonText.text = "[ done ]";
