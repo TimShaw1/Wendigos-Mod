@@ -47,6 +47,11 @@ namespace Wendigos
             Console.WriteLine("Wendigos: " + output);
         }
 
+        private void Open_YT_URL()
+        {
+            UnityEngine.Application.OpenURL("https://www.youtube.com/@Tim-Shaw");
+        }
+
         /// <summary>
         /// Launch main.exe with args.
         /// This will DELETE any pre-existing folder \\audio_output\\player0\\{file_name}.
@@ -344,11 +349,13 @@ namespace Wendigos
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            TryToPlayAudio("nearby", __instance);
+                            if (rand.Next() % 10 == 0)
+                                TryToPlayAudio("nearby", __instance);
                         }
                         else
                         {
-                            TryToPlayAudio("idle", __instance);
+                            if (rand.Next() % 20 == 0)
+                                TryToPlayAudio("idle", __instance);
                         }
 
                         break;
@@ -383,7 +390,8 @@ namespace Wendigos
                 setOut = false;
                 string type = "chasing";
                 
-                TryToPlayAudio(type, __instance);
+                if (rand1.Next() % 10 == 0)
+                    TryToPlayAudio(type, __instance);
 
             }
 
@@ -407,22 +415,6 @@ namespace Wendigos
                 // changes mic to primary mic
                 mic_name = IngamePlayerSettings.Instance.settings.micDevice;
                 WriteToConsole("Set to " + mic_name);
-            }
-        }
-
-        [HarmonyPatch(typeof(MenuManager), "Start")]
-        class MenuManagerPatch
-        {
-            static void Postfix(MenuManager __instance)
-            {
-                if (__instance.isInitScene) 
-                {
-                    return;
-                }
-
-                __instance.NewsPanel.SetActive(false);
-                if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav") || need_new_player_audio.Value)
-                    __instance.DisplayMenuNotification($"Press 'r' to record some voice lines. Selected Mic is {mic_name}", "[ Done ]");
             }
         }
 
@@ -455,6 +447,30 @@ namespace Wendigos
             Subscribe to @Tim-Shaw on YouTube
             """.Split('\n').OrderBy(a => rand1.Next()).ToArray();
 
+        [HarmonyPatch(typeof(MenuManager), "Start")]
+        class MenuManagerPatch
+        {
+            static void Postfix(MenuManager __instance)
+            {
+                if (__instance.isInitScene)
+                {
+                    return;
+                }
+
+                __instance.NewsPanel.SetActive(false);
+                if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav") || need_new_player_audio.Value)
+                {
+                    __instance.DisplayMenuNotification($"Press R to record some voice lines.\nSelected Mic is {mic_name}", "[ Done ]");
+                    foreach (Transform t in __instance.menuNotification.transform.Find("Panel"))
+                    {
+                        WriteToConsole(t.name);
+                    }
+                    Transform responseButton = __instance.menuNotification.transform.Find("Panel").Find("ResponseButton");
+                    responseButton.transform.position = new Vector3(responseButton.transform.position.x, responseButton.transform.position.y - 10, responseButton.transform.position.z);
+                }
+            }
+        }
+
         [HarmonyPatch(typeof(MenuManager), "Update")]
         class MenuManagerUpdatePatch
         {
@@ -475,7 +491,7 @@ namespace Wendigos
 
                         ac = Microphone.Start(mic_name, false, 100, maxfreq);
                         __instance.menuNotificationButtonText.text = "Recording...";
-                        __instance.menuNotificationText.text = "Press S to stop recording\n" + lines_to_read[index];
+                        __instance.menuNotificationText.text = "Press S to finish recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
                     }
                 }
                 else
@@ -494,13 +510,14 @@ namespace Wendigos
                         if (index + 1 < lines_to_read.Length)
                         {
                             index++;
-                            __instance.menuNotificationText.text = lines_to_read[index];
+                            __instance.menuNotificationText.text = "Press S to finish recording\n- - - - -\n" + lines_to_read[index] + "\n- - - - -\nPress N for next line";
                         }
                         else 
                         {
                             Microphone.End(mic_name);
                             __instance.menuNotificationButtonText.text = "[ done ]";
                             __instance.menuNotificationText.text = "Recording stopped";
+                            need_new_player_audio.Value = false;
                             ac = SavWav.TrimSilence(ac, 0.01f);
                             SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav", ac);
                         }
