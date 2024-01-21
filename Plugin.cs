@@ -458,7 +458,7 @@ namespace Wendigos
                 }
 
                 __instance.NewsPanel.SetActive(false);
-                if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav") || need_new_player_audio.Value)
+                if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
                 {
                     __instance.DisplayMenuNotification($"Press R to record some voice lines.\nSelected Mic is {mic_name}", "[ Done ]");
                     foreach (Transform t in __instance.menuNotification.transform.Find("Panel"))
@@ -503,7 +503,7 @@ namespace Wendigos
                         __instance.menuNotificationText.text = "Recording stopped";
                         ac = SavWav.TrimSilence(ac, 0.01f);
                         need_new_player_audio.Value = false;
-                        SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav", ac);
+                        SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", ac);
                     }
                     else if (UnityInput.Current.GetKeyUp("N"))
                     {
@@ -519,7 +519,7 @@ namespace Wendigos
                             __instance.menuNotificationText.text = "Recording stopped";
                             need_new_player_audio.Value = false;
                             ac = SavWav.TrimSilence(ac, 0.01f);
-                            SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player1_audio.wav", ac);
+                            SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", ac);
                         }
                     }
                 }
