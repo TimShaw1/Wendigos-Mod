@@ -510,7 +510,7 @@ namespace Wendigos
                         if (index + 1 < lines_to_read.Length)
                         {
                             index++;
-                            __instance.menuNotificationText.text = "Press S to finish recording\n- - - - -\n" + lines_to_read[index] + "\n- - - - -\nPress N for next line";
+                            __instance.menuNotificationText.text = "Press S to finish recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
                         }
                         else 
                         {
