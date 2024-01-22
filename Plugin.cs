@@ -547,7 +547,7 @@ namespace Wendigos
         {
             static void Postfix()
             {
-                RoundManager.Instance.playersManager.localPlayerController;
+                //SteamCLient assembly?
                 PlayerControllerB player = StartOfRound.Instance.localPlayerController;
 
                 // bad
