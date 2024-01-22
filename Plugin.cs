@@ -19,6 +19,9 @@ using TMPro;
 using UnityEngine.UIElements;
 using UnityEngine.XR;
 using static System.Net.Mime.MediaTypeNames;
+using Unity.Netcode;
+using LC_API.GameInterfaceAPI.Features;
+using LC_API.GameInterfaceAPI.Events.Handlers;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -152,6 +155,12 @@ namespace Wendigos
 
         internal static string mic_name;
 
+        // Mapped <steamID, <lineType, audioclips>>
+        static NetworkVariable<Dictionary<ulong, Dictionary<string, List<AudioClip>>>> player_lines_dict { get; } = new NetworkVariable<
+                Dictionary<ulong, Dictionary<string, List<AudioClip>>>
+            >(new Dictionary<ulong, Dictionary<string, List<AudioClip>>>()); 
+        static List<AudioClip> local_player_lines = new List<AudioClip>();
+
         private void Awake()
         {
             // Plugin startup logic
@@ -228,6 +237,12 @@ namespace Wendigos
 
             // start generating voice lines async
             Task.Factory.StartNew(() => GenerateAllPlayerSentences(new_idle, new_nearby, new_chasing));
+
+            foreach (string file in Directory.GetFiles(assembly_path + "\\player_sentences"))
+            {
+                local_player_lines.Append(LoadWavFile(file));
+            }
+            WriteToConsole("Loaded player lines");
 
             //maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
 
@@ -333,6 +348,7 @@ namespace Wendigos
         {
             static void Prefix(MaskedPlayerEnemy __instance)
             {
+                WriteToConsole(player_lines_dict.Value.ToString());
                 if (__instance.isEnemyDead)
                 {
                     __instance.agent.speed = 0f;
@@ -523,6 +539,31 @@ namespace Wendigos
                         }
                     }
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(StartOfRound), "Start")]
+        class StartOfRoundAwakePatch
+        {
+            static void Postfix()
+            {
+                RoundManager.Instance.playersManager.localPlayerController;
+                PlayerControllerB player = StartOfRound.Instance.localPlayerController;
+
+                // bad
+                //player_lines_dict.Value[player.playerSteamId] = new Dictionary<string, List<AudioClip>>();
+
+                foreach (string idle_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
+                    player_lines_dict.Value[player.playerSteamId]["idle"].Append(LoadWavFile(idle_line));
+
+                foreach (string nearby_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
+                    player_lines_dict.Value[player.playerSteamId]["nearby"].Append(LoadWavFile(nearby_line));
+
+                foreach (string chasing_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
+                    player_lines_dict.Value[player.playerSteamId]["chasing"].Append(LoadWavFile(chasing_line));
+
+                WriteToConsole("Loaded Player Lines into network dict");
+
             }
         }
 
