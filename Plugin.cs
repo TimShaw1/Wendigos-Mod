@@ -155,11 +155,12 @@ namespace Wendigos
 
         internal static string mic_name;
 
+        internal static ulong steamID;
+
         // Mapped <steamID, <lineType, audioclips>>
         static NetworkVariable<Dictionary<ulong, Dictionary<string, List<AudioClip>>>> player_lines_dict { get; } = new NetworkVariable<
                 Dictionary<ulong, Dictionary<string, List<AudioClip>>>
             >(new Dictionary<ulong, Dictionary<string, List<AudioClip>>>()); 
-        static List<AudioClip> local_player_lines = new List<AudioClip>();
 
         private void Awake()
         {
@@ -237,12 +238,6 @@ namespace Wendigos
 
             // start generating voice lines async
             Task.Factory.StartNew(() => GenerateAllPlayerSentences(new_idle, new_nearby, new_chasing));
-
-            foreach (string file in Directory.GetFiles(assembly_path + "\\player_sentences"))
-            {
-                local_player_lines.Append(LoadWavFile(file));
-            }
-            WriteToConsole("Loaded player lines");
 
             //maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
 
@@ -472,15 +467,43 @@ namespace Wendigos
                 {
                     return;
                 }
+                steamID = Steamworks.SteamClient.SteamId.Value;
 
+                WriteToConsole(steamID.ToString());
+
+                // Init steamID dict
+                player_lines_dict.Value.Add(steamID, new Dictionary<string, List<AudioClip>>());
+
+                // Init audioclip dicts
+                player_lines_dict.Value[steamID].Add("idle", new List<AudioClip>());
+                player_lines_dict.Value[steamID].Add("nearby", new List<AudioClip>());
+                player_lines_dict.Value[steamID].Add("chasing", new List<AudioClip>());
+
+
+                // Add idle audioclips
+                foreach (string idle_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
+                    player_lines_dict.Value[steamID]["idle"].Add(LoadWavFile(idle_line));
+
+                foreach (string nearby_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
+                    player_lines_dict.Value[steamID]["nearby"].Add(LoadWavFile(nearby_line));
+
+                foreach (string chasing_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
+                    player_lines_dict.Value[steamID]["chasing"].Add(LoadWavFile(chasing_line));
+
+                WriteToConsole("Loaded Player Lines into network dict");
+                foreach (var key in player_lines_dict.Value.Keys)
+                {
+                    foreach (var key2 in player_lines_dict.Value[key].Keys)
+                    {
+                        WriteToConsole(key + " : " + key2 + " : " + player_lines_dict.Value[key][key2].Count);
+                    }
+                }
+
+                // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
                 if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
                 {
                     __instance.DisplayMenuNotification($"Press R to record some voice lines.\nSelected Mic is {mic_name}", "[ Done ]");
-                    foreach (Transform t in __instance.menuNotification.transform.Find("Panel"))
-                    {
-                        WriteToConsole(t.name);
-                    }
                     Transform responseButton = __instance.menuNotification.transform.Find("Panel").Find("ResponseButton");
                     responseButton.transform.position = new Vector3(responseButton.transform.position.x, responseButton.transform.position.y - 10, responseButton.transform.position.z);
                 }
@@ -541,33 +564,6 @@ namespace Wendigos
                 }
             }
         }
-
-        [HarmonyPatch(typeof(StartOfRound), "Start")]
-        class StartOfRoundAwakePatch
-        {
-            static void Postfix()
-            {
-                //SteamCLient assembly?
-                PlayerControllerB player = StartOfRound.Instance.localPlayerController;
-
-                // bad
-                //player_lines_dict.Value[player.playerSteamId] = new Dictionary<string, List<AudioClip>>();
-
-                foreach (string idle_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                    player_lines_dict.Value[player.playerSteamId]["idle"].Append(LoadWavFile(idle_line));
-
-                foreach (string nearby_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
-                    player_lines_dict.Value[player.playerSteamId]["nearby"].Append(LoadWavFile(nearby_line));
-
-                foreach (string chasing_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
-                    player_lines_dict.Value[player.playerSteamId]["chasing"].Append(LoadWavFile(chasing_line));
-
-                WriteToConsole("Loaded Player Lines into network dict");
-
-            }
-        }
-
-
 
     }
 }
