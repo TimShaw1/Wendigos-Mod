@@ -527,7 +527,13 @@ namespace Wendigos
                 {
                     return;
                 }
-                steamID = Steamworks.SteamClient.SteamId.Value;
+                try
+                {
+                    steamID = Steamworks.SteamClient.SteamId.Value;
+                }
+                catch {
+                    steamID = 1;
+                }
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
