@@ -209,6 +209,8 @@ namespace Wendigos
 
             harmonyInstance.PatchAll();
 
+            SceneManager.sceneLoaded += ClientConnectionInit;
+
             need_new_player_audio = Config.Bind<bool>(
                 "General",
                 "Record new player sample audio?",
@@ -611,21 +613,25 @@ namespace Wendigos
             }
         }
 
+        static void ClientConnectionInit(Scene scene, LoadSceneMode sceneEnum)
+        {
+            if (scene.name == "SampleSceneRelay")
+            {
+                GameObject manager = new GameObject("WendigosNetworkManager");
+                manager.AddComponent<NetworkObject>();
+                manager.AddComponent<WendigosNetworkManager>();
+            }
+        }
+
         [HarmonyPatch(typeof(StartOfRound), "OnPlayerConnectedClientRpc")]
         class StartOfRoundAwakePatch
         {
             static void Postfix()
             {
                 WriteToConsole("Got Here");
-                GameObject manager = new GameObject("WendigosNetworkManager");
-                manager.AddComponent<NetworkObject>();
-                manager.AddComponent<WendigosNetworkManager>();
-
-                if (GameNetworkManager.Instance.isHostingGame)
-                    manager.GetComponent<NetworkObject>().Spawn();
 
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                    manager.GetComponent<WendigosNetworkManager>().SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line))); 
+                    WendigosNetworkManager.Instance.GetComponent<WendigosNetworkManager>().SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line))); 
 
                 /*
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
