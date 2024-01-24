@@ -31,7 +31,8 @@
       <HintPath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed')">C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Facepunch.Steamworks.Win64">
-      <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
+      <HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
+      <HintPath Condition="Exists('C:\Users\Tim\source\repos\TimShaw1\Wendigos-Mod\bin\Debug\netstandard2.1\Facepunch.Steamworks.Win64.dll')">C:\Users\Tim\source\repos\TimShaw1\Wendigos-Mod\bin\Debug\netstandard2.1\Facepunch.Steamworks.Win64.dll</HintPath>
     </Reference>
     <Reference Include="LC_API">
       <HintPath>LC_API.dll</HintPath>
