@@ -94,6 +94,16 @@ namespace Wendigos
             Console.WriteLine("Wendigos: " + output);
         }
 
+        static void ClientConnectionInit(Scene scene, LoadSceneMode sceneEnum)
+        {
+            if (scene.name == "SampleSceneRelay")
+            {
+                GameObject manager = new GameObject("WendigosNetworkManager");
+                manager.AddComponent<NetworkObject>();
+                manager.AddComponent<WendigosNetworkManager>();
+            }
+        }
+
         private void Open_YT_URL()
         {
             UnityEngine.Application.OpenURL("https://www.youtube.com/@Tim-Shaw");
@@ -617,16 +627,6 @@ namespace Wendigos
             }
         }
 
-        static void ClientConnectionInit(Scene scene, LoadSceneMode sceneEnum)
-        {
-            if (scene.name == "SampleSceneRelay")
-            {
-                GameObject manager = new GameObject("WendigosNetworkManager");
-                manager.AddComponent<NetworkObject>();
-                manager.AddComponent<WendigosNetworkManager>();
-            }
-        }
-
         public static byte[] Compress(byte[] data)
         {
             MemoryStream output = new MemoryStream();
@@ -648,7 +648,7 @@ namespace Wendigos
             return output.ToArray();
         }
 
-        [HarmonyPatch(typeof(StartOfRound), "OnPlayerConnectedClientRpc")]
+        [HarmonyPatch(typeof(StartOfRound), "Start")]
         class StartOfRoundAwakePatch
         {
             static void Postfix()
