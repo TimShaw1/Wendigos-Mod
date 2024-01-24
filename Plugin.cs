@@ -30,6 +30,8 @@ using UnityEngine.SceneManagement;
 using System.IO.Compression;
 using LCSoundTool;
 using LCSoundTool.Networking;
+using LethalNetworkAPI;
+using System.Xml.Linq;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -282,7 +284,6 @@ namespace Wendigos
         {
             if (File.Exists(audioFilePath))
             {
-
                 using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.WAV))
                 {
                     request.SendWebRequest();
@@ -598,7 +599,6 @@ namespace Wendigos
             }
             return output.ToArray();
         }
-
         static bool sent_audio_clips = false;
 
         [HarmonyPatch(typeof(StartOfRound), "PlayerLoadedClientRpc")]
@@ -608,14 +608,26 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
+
+                    //Transform.FindObjectOfType<NetworkManager>().MaximumTransmissionUnitSize = 1000000;
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                        SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
+                    {
+                        WriteToConsole(line);
+                        AudioClip ac = LoadWavFile(line);
+                        WriteToConsole(ac.length.ToString());
+                        SoundTool.SendNetworkedAudioClip(ac);
+                    }
+
+                    /*
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
                         SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
                         SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
+                    */
+
+                    sent_audio_clips = true;
                 }
-                SoundTool.SyncNetworkedAudioClips();
+                //SoundTool.SyncNetworkedAudioClips();
             }
         }
 
