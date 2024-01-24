@@ -29,6 +29,7 @@ using Newtonsoft.Json;
 using UnityEngine.SceneManagement;
 using System.IO.Compression;
 using LCSoundTool;
+using LCSoundTool.Networking;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -598,22 +599,23 @@ namespace Wendigos
             return output.ToArray();
         }
 
-        [HarmonyPatch(typeof(StartOfRound), "Start")]
-        class StartOfRoundAwakePatch
+        static bool sent_audio_clips = false;
+
+        [HarmonyPatch(typeof(StartOfRound), "PlayerLoadedClientRpc")]
+        class StartOfRoundConnectPatch
         {
             static void Postfix()
             {
-                WriteToConsole("Got Here");
-
-                foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                    SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
-
-                /*
-                foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
-                    wendigosNetworkManager.SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
-                foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
-                    wendigosNetworkManager.SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
-                */
+                if (!sent_audio_clips)
+                {
+                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
+                        SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
+                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
+                        SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
+                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
+                        SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
+                }
+                SoundTool.SyncNetworkedAudioClips();
             }
         }
 
