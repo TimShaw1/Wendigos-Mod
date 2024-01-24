@@ -620,7 +620,9 @@ namespace Wendigos
                 GameObject manager = new GameObject("WendigosNetworkManager");
                 manager.AddComponent<NetworkObject>();
                 manager.AddComponent<WendigosNetworkManager>();
-                manager.GetComponent<NetworkObject>().Spawn();
+
+                if (GameNetworkManager.Instance.isHostingGame)
+                    manager.GetComponent<NetworkObject>().Spawn();
 
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     manager.GetComponent<WendigosNetworkManager>().SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line))); 
