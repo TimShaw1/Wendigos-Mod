@@ -22,6 +22,9 @@ using static System.Net.Mime.MediaTypeNames;
 using Unity.Netcode;
 using LC_API.GameInterfaceAPI.Features;
 using LC_API.GameInterfaceAPI.Events.Handlers;
+using System.Runtime.Serialization.Json;
+using System.Xml;
+using Newtonsoft.Json;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -42,6 +45,31 @@ namespace Wendigos
             {
                 playerControllerB = pcB;
                 playerSuitID = playerControllerB.currentSuitID;
+            }
+        }
+
+        internal class WendigosNetworkManager : NetworkBehaviour
+        {
+            [ServerRpc]
+            internal void SendBytesServerRpc(byte[] audioclip)
+            {
+                NetworkManager networkManager = base.NetworkManager;
+                if ((object)networkManager == null || !networkManager.IsListening)
+                {
+                    WriteToConsole("Bad");
+                    return;
+                }
+                WriteToConsole("ServerRpc" + OwnerClientId);
+                SendBytesClientRpc(audioclip);
+            }
+
+            [ClientRpc]
+            internal void SendBytesClientRpc(byte[] audioclip)
+            {
+                AudioClip ac = LoadAudioClip(audioclip);
+                WriteToConsole("ClientRpc" + OwnerClientId);
+                audioClipList.Add(ac);
+                WriteToConsole(audioClipList.Count.ToString());
             }
         }
 
@@ -142,6 +170,7 @@ namespace Wendigos
         }
 
         private static ConfigEntry<bool> need_new_player_audio;
+        static System.Random rand1 = new System.Random();
 
         public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
@@ -157,10 +186,10 @@ namespace Wendigos
 
         internal static ulong steamID;
 
-        // Mapped <steamID, <lineType, audioclips>>
-        static NetworkVariable<Dictionary<ulong, Dictionary<string, List<AudioClip>>>> player_lines_dict { get; } = new NetworkVariable<
-                Dictionary<ulong, Dictionary<string, List<AudioClip>>>
-            >(new Dictionary<ulong, Dictionary<string, List<AudioClip>>>()); 
+        internal static List<AudioClip> audioClipList = new List<AudioClip>();
+
+        private static WendigosNetworkManager wendigosNetworkManager = new WendigosNetworkManager();
+
 
         private void Awake()
         {
@@ -343,7 +372,6 @@ namespace Wendigos
         {
             static void Prefix(MaskedPlayerEnemy __instance)
             {
-                WriteToConsole(player_lines_dict.Value.ToString());
                 if (__instance.isEnemyDead)
                 {
                     __instance.agent.speed = 0f;
@@ -430,7 +458,6 @@ namespace Wendigos
         }
 
         static AudioClip ac;
-        static System.Random rand1 = new System.Random();
         static string[] lines_to_read = """
             Prosecutors have opened a massive investigation into allegations of fixing games and illegal betting.
             Different telescope designs perform differently and have different strengths and weaknesses.
@@ -458,6 +485,39 @@ namespace Wendigos
             Subscribe to @Tim-Shaw on YouTube
             """.Split('\n').OrderBy(a => rand1.Next()).ToArray();
 
+        public static byte[] ConvertToByteArr(AudioClip clip)
+        {
+            var samples = new float[clip.samples];
+            clip.GetData(samples, 0);
+
+            MemoryStream stream = new MemoryStream();
+            BinaryWriter writer = new BinaryWriter(stream);
+
+            int length = samples.Length;
+            writer.Write(length);
+
+            foreach (var sample in samples)
+            {
+                writer.Write(sample);
+            }
+
+            return stream.ToArray();
+        }
+
+        public static AudioClip LoadAudioClip(byte[] receivedBytes, int sampleRate = 48000)
+        {
+            float[] samples = new float[receivedBytes.Length / 4]; //size of a float is 4 bytes
+
+            Buffer.BlockCopy(receivedBytes, 0, samples, 0, receivedBytes.Length);
+
+            int channels = 1; //Assuming audio is mono because microphone input usually is
+
+            AudioClip clip = AudioClip.Create("ClipName", samples.Length, channels, sampleRate, false);
+            clip.SetData(samples, 0);
+
+            return clip;
+        }
+
         [HarmonyPatch(typeof(MenuManager), "Start")]
         class MenuManagerPatch
         {
@@ -468,36 +528,6 @@ namespace Wendigos
                     return;
                 }
                 steamID = Steamworks.SteamClient.SteamId.Value;
-
-                WriteToConsole(steamID.ToString());
-
-                // Init steamID dict
-                player_lines_dict.Value.Add(steamID, new Dictionary<string, List<AudioClip>>());
-
-                // Init audioclip dicts
-                player_lines_dict.Value[steamID].Add("idle", new List<AudioClip>());
-                player_lines_dict.Value[steamID].Add("nearby", new List<AudioClip>());
-                player_lines_dict.Value[steamID].Add("chasing", new List<AudioClip>());
-
-
-                // Add idle audioclips
-                foreach (string idle_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                    player_lines_dict.Value[steamID]["idle"].Add(LoadWavFile(idle_line));
-
-                foreach (string nearby_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
-                    player_lines_dict.Value[steamID]["nearby"].Add(LoadWavFile(nearby_line));
-
-                foreach (string chasing_line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
-                    player_lines_dict.Value[steamID]["chasing"].Add(LoadWavFile(chasing_line));
-
-                WriteToConsole("Loaded Player Lines into network dict");
-                foreach (var key in player_lines_dict.Value.Keys)
-                {
-                    foreach (var key2 in player_lines_dict.Value[key].Keys)
-                    {
-                        WriteToConsole(key + " : " + key2 + " : " + player_lines_dict.Value[key][key2].Count);
-                    }
-                }
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
@@ -562,6 +592,23 @@ namespace Wendigos
                         }
                     }
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(StartOfRound), "Awake")]
+        class StartOfRoundAwakePatch
+        {
+            static void Postfix()
+            {
+                foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
+                    wendigosNetworkManager.SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
+
+                /*
+                foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
+                    wendigosNetworkManager.SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
+                foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
+                    wendigosNetworkManager.SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
+                */
             }
         }
 
