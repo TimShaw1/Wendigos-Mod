@@ -54,6 +54,7 @@ namespace Wendigos
             [ServerRpc]
             internal void SendBytesServerRpc(byte[] audioclip)
             {
+                WriteToConsole(audioclip.Length.ToString());
                 NetworkManager networkManager = base.NetworkManager;
                 if ((object)networkManager == null || !networkManager.IsListening)
                 {
@@ -67,6 +68,7 @@ namespace Wendigos
             [ClientRpc]
             internal void SendBytesClientRpc(byte[] audioclip)
             {
+                
                 NetworkManager networkManager = base.NetworkManager;
                 AudioClip ac = LoadAudioClip(audioclip);
                 WriteToConsole("ClientRpc" + OwnerClientId);
