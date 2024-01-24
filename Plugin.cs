@@ -648,7 +648,7 @@ namespace Wendigos
             return output.ToArray();
         }
 
-        [HarmonyPatch(typeof(StartOfRound), "Start")]
+        [HarmonyPatch(typeof(StartOfRound), "OnPlayerConnectedClientRpc")]
         class StartOfRoundAwakePatch
         {
             static void Postfix()
