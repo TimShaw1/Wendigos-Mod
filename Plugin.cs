@@ -53,7 +53,7 @@ namespace Wendigos
         internal class WendigosNetworkManager : NetworkBehaviour
         {
             [ServerRpc]
-            internal void SendBytesServerRpc(byte[] audioclip)
+            public void SendBytesServerRpc(byte[] audioclip)
             {
                 audioclip = Compress(audioclip);
                 WriteToConsole(audioclip.Length.ToString());
@@ -68,12 +68,19 @@ namespace Wendigos
             }
 
             [ClientRpc]
-            internal void SendBytesClientRpc(byte[] audioclip)
+            public void SendBytesClientRpc(byte[] audioclip)
             {
                 
                 NetworkManager networkManager = base.NetworkManager;
+                if ((object)networkManager == null || !networkManager.IsListening)
+                {
+                    WriteToConsole("Bad");
+                    return;
+                }
                 AudioClip ac = LoadAudioClip(Decompress(audioclip));
                 WriteToConsole("ClientRpc" + OwnerClientId);
+                foreach (var id in networkManager.ConnectedClientsIds)
+                    WriteToConsole("id: " + id.ToString());
                 audioClipList.Add(ac);
                 WriteToConsole(audioClipList.Count.ToString());
             }
@@ -98,9 +105,13 @@ namespace Wendigos
         {
             if (scene.name == "SampleSceneRelay")
             {
+                WriteToConsole("Initializing NetworkManager...");
+
                 GameObject manager = new GameObject("WendigosNetworkManager");
                 manager.AddComponent<NetworkObject>();
                 manager.AddComponent<WendigosNetworkManager>();
+
+                WriteToConsole("Initialized NetworkManager");
             }
         }
 
@@ -213,7 +224,6 @@ namespace Wendigos
         internal static ulong steamID;
 
         internal static List<AudioClip> audioClipList = new List<AudioClip>();
-
 
         private void Awake()
         {
@@ -648,7 +658,7 @@ namespace Wendigos
             return output.ToArray();
         }
 
-        [HarmonyPatch(typeof(StartOfRound), "OnPlayerConnectedClientRpc")]
+        [HarmonyPatch(typeof(StartOfRound), "Start")]
         class StartOfRoundAwakePatch
         {
             static void Postfix()
