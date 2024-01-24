@@ -26,6 +26,7 @@ using System.Runtime.Serialization.Json;
 using System.Xml;
 using Newtonsoft.Json;
 using UnityEngine.SceneManagement;
+using System.IO.Compression;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -54,6 +55,7 @@ namespace Wendigos
             [ServerRpc]
             internal void SendBytesServerRpc(byte[] audioclip)
             {
+                audioclip = Compress(audioclip);
                 WriteToConsole(audioclip.Length.ToString());
                 NetworkManager networkManager = base.NetworkManager;
                 if ((object)networkManager == null || !networkManager.IsListening)
@@ -70,7 +72,7 @@ namespace Wendigos
             {
                 
                 NetworkManager networkManager = base.NetworkManager;
-                AudioClip ac = LoadAudioClip(audioclip);
+                AudioClip ac = LoadAudioClip(Decompress(audioclip));
                 WriteToConsole("ClientRpc" + OwnerClientId);
                 audioClipList.Add(ac);
                 WriteToConsole(audioClipList.Count.ToString());
@@ -623,6 +625,27 @@ namespace Wendigos
                 manager.AddComponent<NetworkObject>();
                 manager.AddComponent<WendigosNetworkManager>();
             }
+        }
+
+        public static byte[] Compress(byte[] data)
+        {
+            MemoryStream output = new MemoryStream();
+            using (DeflateStream dstream = new DeflateStream(output, System.IO.Compression.CompressionLevel.Optimal))
+            {
+                dstream.Write(data, 0, data.Length);
+            }
+            return output.ToArray();
+        }
+
+        public static byte[] Decompress(byte[] data)
+        {
+            MemoryStream input = new MemoryStream(data);
+            MemoryStream output = new MemoryStream();
+            using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
+            {
+                dstream.CopyTo(output);
+            }
+            return output.ToArray();
         }
 
         [HarmonyPatch(typeof(StartOfRound), "OnPlayerConnectedClientRpc")]
