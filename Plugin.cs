@@ -67,6 +67,7 @@ namespace Wendigos
             [ClientRpc]
             internal void SendBytesClientRpc(byte[] audioclip)
             {
+                NetworkManager networkManager = base.NetworkManager;
                 AudioClip ac = LoadAudioClip(audioclip);
                 WriteToConsole("ClientRpc" + OwnerClientId);
                 audioClipList.Add(ac);
@@ -610,7 +611,7 @@ namespace Wendigos
             }
         }
 
-        [HarmonyPatch(typeof(StartOfRound), "Awake")]
+        [HarmonyPatch(typeof(StartOfRound), "Start")]
         class StartOfRoundAwakePatch
         {
             static void Postfix()
@@ -621,7 +622,7 @@ namespace Wendigos
                 manager.AddComponent<WendigosNetworkManager>();
 
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                    manager.GetComponent<WendigosNetworkManager>().SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
+                    manager.GetComponent<WendigosNetworkManager>().SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line))); 
 
                 /*
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
