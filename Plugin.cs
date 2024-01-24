@@ -71,6 +71,8 @@ namespace Wendigos
                 audioClipList.Add(ac);
                 WriteToConsole(audioClipList.Count.ToString());
             }
+
+            public static WendigosNetworkManager Instance { get; private set; }
         }
 
         static void WriteToConsole(string output)
@@ -187,8 +189,6 @@ namespace Wendigos
         internal static ulong steamID;
 
         internal static List<AudioClip> audioClipList = new List<AudioClip>();
-
-        private static WendigosNetworkManager wendigosNetworkManager = new WendigosNetworkManager();
 
 
         private void Awake()
@@ -607,7 +607,7 @@ namespace Wendigos
             static void Postfix()
             {
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                    wendigosNetworkManager.SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
+                    WendigosNetworkManager.Instance.SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
 
                 /*
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
