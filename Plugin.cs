@@ -22,11 +22,13 @@ using static System.Net.Mime.MediaTypeNames;
 using Unity.Netcode;
 using LC_API.GameInterfaceAPI.Features;
 using LC_API.GameInterfaceAPI.Events.Handlers;
+using LC_API.ServerAPI;
 using System.Runtime.Serialization.Json;
 using System.Xml;
 using Newtonsoft.Json;
 using UnityEngine.SceneManagement;
 using System.IO.Compression;
+using LCSoundTool;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -50,69 +52,9 @@ namespace Wendigos
             }
         }
 
-        internal class WendigosNetworkManager : NetworkBehaviour
-        {
-            [ServerRpc]
-            public void SendBytesServerRpc(byte[] audioclip)
-            {
-                audioclip = Compress(audioclip);
-                WriteToConsole(audioclip.Length.ToString());
-                NetworkManager networkManager = base.NetworkManager;
-                if ((object)networkManager == null || !networkManager.IsListening)
-                {
-                    WriteToConsole("Bad");
-                    return;
-                }
-                WriteToConsole("ServerRpc" + OwnerClientId);
-                SendBytesClientRpc(audioclip);
-            }
-
-            [ClientRpc]
-            public void SendBytesClientRpc(byte[] audioclip)
-            {
-                
-                NetworkManager networkManager = base.NetworkManager;
-                if ((object)networkManager == null || !networkManager.IsListening)
-                {
-                    WriteToConsole("Bad");
-                    return;
-                }
-                AudioClip ac = LoadAudioClip(Decompress(audioclip));
-                WriteToConsole("ClientRpc" + OwnerClientId);
-                foreach (var id in networkManager.ConnectedClientsIds)
-                    WriteToConsole("id: " + id.ToString());
-                audioClipList.Add(ac);
-                WriteToConsole(audioClipList.Count.ToString());
-            }
-
-            public WendigosNetworkManager()
-            {
-                if (Instance == null)
-                {
-                    Instance = this;
-                }
-            }
-
-            public static WendigosNetworkManager Instance { get; private set; }
-        }
-
         static void WriteToConsole(string output)
         {
             Console.WriteLine("Wendigos: " + output);
-        }
-
-        static void ClientConnectionInit(Scene scene, LoadSceneMode sceneEnum)
-        {
-            if (scene.name == "SampleSceneRelay")
-            {
-                WriteToConsole("Initializing NetworkManager...");
-
-                GameObject manager = new GameObject("WendigosNetworkManager");
-                manager.AddComponent<NetworkObject>();
-                manager.AddComponent<WendigosNetworkManager>();
-
-                WriteToConsole("Initialized NetworkManager");
-            }
         }
 
         private void Open_YT_URL()
@@ -232,8 +174,6 @@ namespace Wendigos
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 
             harmonyInstance.PatchAll();
-
-            SceneManager.sceneLoaded += ClientConnectionInit;
 
             need_new_player_audio = Config.Bind<bool>(
                 "General",
@@ -666,7 +606,7 @@ namespace Wendigos
                 WriteToConsole("Got Here");
 
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                    WendigosNetworkManager.Instance.GetComponent<WendigosNetworkManager>().SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line))); 
+                    SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
 
                 /*
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))

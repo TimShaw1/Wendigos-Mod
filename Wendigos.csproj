@@ -37,6 +37,9 @@
     <Reference Include="LC_API">
       <HintPath>LC_API.dll</HintPath>
     </Reference>
+    <Reference Include="LC_SoundTool">
+      <HintPath>..\..\..\..\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\no00ob-LCSoundTool\LC_SoundTool.dll</HintPath>
+    </Reference>
     <Reference Include="LethalLib">
       <HintPath>..\..\..\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\Evaisa-LethalLib\LethalLib\LethalLib.dll</HintPath>
     </Reference>
