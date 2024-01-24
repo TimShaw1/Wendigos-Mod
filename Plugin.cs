@@ -25,6 +25,7 @@ using LC_API.GameInterfaceAPI.Events.Handlers;
 using System.Runtime.Serialization.Json;
 using System.Xml;
 using Newtonsoft.Json;
+using UnityEngine.SceneManagement;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -70,6 +71,14 @@ namespace Wendigos
                 WriteToConsole("ClientRpc" + OwnerClientId);
                 audioClipList.Add(ac);
                 WriteToConsole(audioClipList.Count.ToString());
+            }
+
+            public WendigosNetworkManager()
+            {
+                if (Instance == null)
+                {
+                    Instance = this;
+                }
             }
 
             public static WendigosNetworkManager Instance { get; private set; }
@@ -606,8 +615,13 @@ namespace Wendigos
         {
             static void Postfix()
             {
+                WriteToConsole("Got Here");
+                GameObject manager = new GameObject("WendigosNetworkManager");
+                manager.AddComponent<NetworkObject>();
+                manager.AddComponent<WendigosNetworkManager>();
+
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-                    WendigosNetworkManager.Instance.SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
+                    manager.GetComponent<WendigosNetworkManager>().SendBytesServerRpc(ConvertToByteArr(LoadWavFile(line)));
 
                 /*
                 foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
