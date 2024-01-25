@@ -301,6 +301,7 @@ namespace Wendigos
                     else
                     {
                         AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
+                        myClip.name = audioFilePath;
                         return myClip;
                     }
                 }
@@ -608,26 +609,56 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
-
                     //Transform.FindObjectOfType<NetworkManager>().MaximumTransmissionUnitSize = 1000000;
+
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
-                        WriteToConsole(line);
-                        AudioClip ac = LoadWavFile(line);
-                        WriteToConsole(ac.length.ToString());
-                        SoundTool.SendNetworkedAudioClip(ac);
+                        try
+                        {
+                            AudioClip clip = LoadWavFile(line);
+                            SoundTool.networkedClips.Add(clip.name, clip);
+                        }
+                        catch 
+                        { 
+                            WriteToConsole("Overflow");
+                            WriteToConsole(line);
+                        }
+                    }
+                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
+                    {
+                        try
+                        {
+                            AudioClip clip = LoadWavFile(line);
+                            SoundTool.networkedClips.Add(clip.name, clip);
+                        }
+                        catch
+                        {
+                            WriteToConsole("Overflow");
+                            WriteToConsole(line);
+                        }
+                    }
+                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
+                    {
+                        try
+                        {
+                            AudioClip clip = LoadWavFile(line);
+                            SoundTool.networkedClips.Add(clip.name, clip);
+                        }
+                        catch
+                        {
+                            WriteToConsole("Overflow");
+                            WriteToConsole(line);
+                        }
                     }
 
-                    /*
-                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
-                        SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
-                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
-                        SoundTool.SendNetworkedAudioClip(LoadWavFile(line));
-                    */
+                    SoundTool.SyncNetworkedAudioClips();
+                    WriteToConsole("Synced clips");
 
+
+                    WriteToConsole("Clips count: " + SoundTool.networkedClips.Keys.Count.ToString());
                     sent_audio_clips = true;
                 }
-                //SoundTool.SyncNetworkedAudioClips();
+                
             }
         }
 
