@@ -30,8 +30,11 @@ using UnityEngine.SceneManagement;
 using System.IO.Compression;
 using LCSoundTool;
 using LCSoundTool.Networking;
+using LCSoundTool.Patches;
 using LethalNetworkAPI;
 using System.Xml.Linq;
+using LCSoundTool.Utilities;
+using System.Security.Claims;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -52,6 +55,28 @@ namespace Wendigos
             {
                 playerControllerB = pcB;
                 playerSuitID = playerControllerB.currentSuitID;
+            }
+        }
+
+        public class WendigosNetworkManager : NetworkBehaviour
+        {
+            public List<AudioClip> clips = new List<AudioClip>();
+            public static WendigosNetworkManager Instance {  get; private set; }
+            [ServerRpc]
+            public void SendAudioServerRpc(AudioClip audioclip)
+            {
+                RecieveAudioClientRpc(ConvertToByteArr(audioclip));
+            }
+
+            [ClientRpc]
+            public void RecieveAudioClientRpc(byte[] audioclip)
+            {
+                clips.Add(LoadAudioClip(audioclip));
+            }
+
+            public void Spawn()
+            {
+                Instance = this;
             }
         }
 
@@ -514,6 +539,12 @@ namespace Wendigos
                     steamID = 1;
                 }
 
+                GameObject val = new GameObject("SkinwalkerNetworkManager");
+                val.AddComponent<NetworkObject>();
+                val.AddComponent<WendigosNetworkManager>();
+                val.GetComponent<WendigosNetworkManager>().Spawn();
+                Instantiate(val);
+
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
                 if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
@@ -602,22 +633,21 @@ namespace Wendigos
         }
         static bool sent_audio_clips = false;
 
-        [HarmonyPatch(typeof(StartOfRound), "PlayerLoadedClientRpc")]
+
+        [HarmonyPatch(typeof(StartOfRound), "PlayerLoadedServerRpc")]
         class StartOfRoundConnectPatch
         {
             static void Postfix()
             {
                 if (!sent_audio_clips)
                 {
-                    //Transform.FindObjectOfType<NetworkManager>().MaximumTransmissionUnitSize = 1000000;
-
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.SendNetworkedAudioClip(clip);
-                            //SoundTool.networkedClips.Add(clip.name, clip);
+                            WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
+                            //SoundTool.SendNetworkedAudioClip(clip);
                         }
                         catch 
                         { 
@@ -630,8 +660,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.SendNetworkedAudioClip(clip);
-                            //SoundTool.networkedClips.Add(clip.name, clip);
+                            WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
+
                         }
                         catch
                         {
@@ -644,8 +674,7 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.SendNetworkedAudioClip(clip);
-                            //SoundTool.networkedClips.Add(clip.name, clip);
+                            WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
                         }
                         catch
                         {
@@ -654,11 +683,11 @@ namespace Wendigos
                         }
                     }
 
-                    SoundTool.SyncNetworkedAudioClips();
+                    //SoundTool.SyncNetworkedAudioClips();
                     WriteToConsole("Synced clips");
 
 
-                    WriteToConsole("Clips count: " + SoundTool.networkedClips.Keys.Count.ToString());
+                    WriteToConsole("Clips count: " + WendigosNetworkManager.Instance.clips.Count);
                     sent_audio_clips = true;
                 }
                 
