@@ -616,7 +616,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.networkedClips.Add(clip.name, clip);
+                            SoundTool.SendNetworkedAudioClip(clip);
+                            //SoundTool.networkedClips.Add(clip.name, clip);
                         }
                         catch 
                         { 
@@ -629,7 +630,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.networkedClips.Add(clip.name, clip);
+                            SoundTool.SendNetworkedAudioClip(clip);
+                            //SoundTool.networkedClips.Add(clip.name, clip);
                         }
                         catch
                         {
@@ -642,7 +644,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.networkedClips.Add(clip.name, clip);
+                            SoundTool.SendNetworkedAudioClip(clip);
+                            //SoundTool.networkedClips.Add(clip.name, clip);
                         }
                         catch
                         {
