@@ -65,28 +65,14 @@ namespace Wendigos
             [ServerRpc]
             public void SendAudioServerRpc(AudioClip audioclip)
             {
-           
                 NetworkManager networkManager = base.NetworkManager;
                 if ((object)networkManager == null || !networkManager.IsListening)
                 {
                     return;
                 }
+                
 
                 byte[] audioData  = ConvertToByteArr(audioclip);
-                if (__rpc_exec_stage != __RpcExecStage.Server && (networkManager.IsClient || networkManager.IsHost))
-                {
-                    ServerRpcParams serverRpcParams = default(ServerRpcParams);
-                    FastBufferWriter bufferWriter = __beginSendServerRpc2(867452943u, serverRpcParams, RpcDelivery.Reliable);
-
-                    bool value2 = audioData != null;
-                    bufferWriter.WriteValueSafe(in value2, default(FastBufferWriter.ForPrimitives));
-                    if (value2)
-                    {
-                        bufferWriter.WriteValueSafe(audioData, default(FastBufferWriter.ForPrimitives));
-                    }
-
-                    __endSendServerRpc(ref bufferWriter, 867452943u, serverRpcParams, RpcDelivery.Reliable);
-                }
 
                 RecieveAudioClientRpc(audioData);
             }
@@ -96,26 +82,6 @@ namespace Wendigos
             {
                 NetworkManager networkManager = base.NetworkManager;
                 if ((object)networkManager == null || !networkManager.IsListening)
-                {
-                    return;
-                }
-
-                if (__rpc_exec_stage != __RpcExecStage.Client && (networkManager.IsServer || networkManager.IsHost))
-                {
-                    ClientRpcParams clientRpcParams = default(ClientRpcParams);
-                    FastBufferWriter bufferWriter = __beginSendClientRpc2(2736638642u, clientRpcParams, RpcDelivery.Reliable);
-
-                    bool value2 = audioData != null;
-                    bufferWriter.WriteValueSafe(in value2, default(FastBufferWriter.ForPrimitives));
-                    if (value2)
-                    {
-                        bufferWriter.WriteValueSafe(audioData, default(FastBufferWriter.ForPrimitives));
-                    }
-
-                    __endSendClientRpc(ref bufferWriter, 2736638642u, clientRpcParams, RpcDelivery.Reliable);
-                }
-
-                if (__rpc_exec_stage != __RpcExecStage.Client || (!networkManager.IsClient && !networkManager.IsHost))
                 {
                     return;
                 }
@@ -602,7 +568,16 @@ namespace Wendigos
                 val.AddComponent<NetworkObject>();
                 val.AddComponent<WendigosNetworkManager>();
                 val.GetComponent<WendigosNetworkManager>().Spawn();
+                try
+                {
+                    val.GetComponent<NetworkObject>().Spawn();
+                }
+                catch
+                {
+                    WriteToConsole("Not host");
+                }
                 Instantiate(val);
+                DontDestroyOnLoad(val);
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
@@ -702,10 +677,10 @@ namespace Wendigos
                 {
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
+                        AudioClip clip = LoadWavFile(line);
+                        WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
                         try
                         {
-                            AudioClip clip = LoadWavFile(line);
-                            WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
                             //SoundTool.SendNetworkedAudioClip(clip);
                         }
                         catch 
