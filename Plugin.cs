@@ -103,6 +103,27 @@ namespace Wendigos
             {
                 return new FastBufferWriter(1024, Unity.Collections.Allocator.Temp, 65536*100);
             }
+
+            public static void InitClient(Scene sceneName, LoadSceneMode sceneEnum)
+            {
+                if (((Scene)(sceneName)).name == "SampleSceneRelay")
+                {
+                    GameObject val = new GameObject("SkinwalkerNetworkManager");
+                    val.AddComponent<NetworkObject>();
+                    val.AddComponent<WendigosNetworkManager>();
+                    val.GetComponent<WendigosNetworkManager>().Spawn();
+                    try
+                    {
+                        val.GetComponent<NetworkObject>().Spawn();
+                    }
+                    catch
+                    {
+                        WriteToConsole("Not host");
+                    }
+                    Instantiate(val);
+                    DontDestroyOnLoad(val);
+                }
+            }
         }
 
         static void WriteToConsole(string output)
@@ -227,6 +248,8 @@ namespace Wendigos
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 
             harmonyInstance.PatchAll();
+
+            SceneManager.sceneLoaded += WendigosNetworkManager.InitClient;
 
             need_new_player_audio = Config.Bind<bool>(
                 "General",
@@ -563,21 +586,6 @@ namespace Wendigos
                 catch {
                     steamID = 1;
                 }
-
-                GameObject val = new GameObject("SkinwalkerNetworkManager");
-                val.AddComponent<NetworkObject>();
-                val.AddComponent<WendigosNetworkManager>();
-                val.GetComponent<WendigosNetworkManager>().Spawn();
-                try
-                {
-                    val.GetComponent<NetworkObject>().Spawn();
-                }
-                catch
-                {
-                    WriteToConsole("Not host");
-                }
-                Instantiate(val);
-                DontDestroyOnLoad(val);
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
