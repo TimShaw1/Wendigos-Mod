@@ -39,12 +39,14 @@
     </Reference>
     <Reference Include="LC_SoundTool">
       <HintPath>..\..\..\..\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\no00ob-LCSoundTool\LC_SoundTool.dll</HintPath>
+      <HintPath Condition="Exists('C:\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\no00ob-LCSoundTool\LC_SoundTool.dll')">C:\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\no00ob-LCSoundTool\LC_SoundTool.dll</HintPath>
     </Reference>
     <Reference Include="LethalLib">
       <HintPath>..\..\..\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\Evaisa-LethalLib\LethalLib\LethalLib.dll</HintPath>
     </Reference>
     <Reference Include="LethalNetworkAPI">
       <HintPath>..\..\..\..\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\xilophor-LethalNetworkAPI\LethalNetworkAPI\LethalNetworkAPI.dll</HintPath>
+      <HintPath Condition="Exists('C:\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\xilophor-LethalNetworkAPI\LethalNetworkAPI\LethalNetworkAPI.dll')">C:\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\xilophor-LethalNetworkAPI\LethalNetworkAPI\LethalNetworkAPI.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Netcode.Runtime">
       <HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Runtime.dll</HintPath>
