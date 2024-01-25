@@ -76,7 +76,7 @@ namespace Wendigos
                 if (__rpc_exec_stage != __RpcExecStage.Server && (networkManager.IsClient || networkManager.IsHost))
                 {
                     ServerRpcParams serverRpcParams = default(ServerRpcParams);
-                    FastBufferWriter bufferWriter = __beginSendServerRpc(867452943u, serverRpcParams, RpcDelivery.Reliable);
+                    FastBufferWriter bufferWriter = __beginSendServerRpc2(867452943u, serverRpcParams, RpcDelivery.Reliable);
 
                     bool value2 = audioData != null;
                     bufferWriter.WriteValueSafe(in value2, default(FastBufferWriter.ForPrimitives));
@@ -103,7 +103,7 @@ namespace Wendigos
                 if (__rpc_exec_stage != __RpcExecStage.Client && (networkManager.IsServer || networkManager.IsHost))
                 {
                     ClientRpcParams clientRpcParams = default(ClientRpcParams);
-                    FastBufferWriter bufferWriter = __beginSendClientRpc(2736638642u, clientRpcParams, RpcDelivery.Reliable);
+                    FastBufferWriter bufferWriter = __beginSendClientRpc2(2736638642u, clientRpcParams, RpcDelivery.Reliable);
 
                     bool value2 = audioData != null;
                     bufferWriter.WriteValueSafe(in value2, default(FastBufferWriter.ForPrimitives));
@@ -126,6 +126,16 @@ namespace Wendigos
             public void Spawn()
             {
                 Instance = this;
+            }
+
+            protected FastBufferWriter __beginSendClientRpc2(uint rpcMethodId, ClientRpcParams clientRpcParams, RpcDelivery rpcDelivery)
+            {
+                return new FastBufferWriter(1024, Unity.Collections.Allocator.Temp, 65536*100);
+            }
+
+            protected FastBufferWriter __beginSendServerRpc2(uint rpcMethodId, ServerRpcParams serverRpcParams, RpcDelivery rpcDelivery)
+            {
+                return new FastBufferWriter(1024, Unity.Collections.Allocator.Temp, 65536*100);
             }
         }
 
