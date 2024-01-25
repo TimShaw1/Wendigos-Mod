@@ -602,7 +602,7 @@ namespace Wendigos
         }
         static bool sent_audio_clips = false;
 
-        [HarmonyPatch(typeof(StartMatchLever), "StartGame")]
+        [HarmonyPatch(typeof(StartOfRound), "PlayerLoadedClientRpc")]
         class StartOfRoundConnectPatch
         {
             static void Postfix()
