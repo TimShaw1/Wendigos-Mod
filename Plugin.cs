@@ -65,13 +65,62 @@ namespace Wendigos
             [ServerRpc]
             public void SendAudioServerRpc(AudioClip audioclip)
             {
-                RecieveAudioClientRpc(ConvertToByteArr(audioclip));
+           
+                NetworkManager networkManager = base.NetworkManager;
+                if ((object)networkManager == null || !networkManager.IsListening)
+                {
+                    return;
+                }
+
+                byte[] audioData  = ConvertToByteArr(audioclip);
+                if (__rpc_exec_stage != __RpcExecStage.Server && (networkManager.IsClient || networkManager.IsHost))
+                {
+                    ServerRpcParams serverRpcParams = default(ServerRpcParams);
+                    FastBufferWriter bufferWriter = __beginSendServerRpc(867452943u, serverRpcParams, RpcDelivery.Reliable);
+
+                    bool value2 = audioData != null;
+                    bufferWriter.WriteValueSafe(in value2, default(FastBufferWriter.ForPrimitives));
+                    if (value2)
+                    {
+                        bufferWriter.WriteValueSafe(audioData, default(FastBufferWriter.ForPrimitives));
+                    }
+
+                    __endSendServerRpc(ref bufferWriter, 867452943u, serverRpcParams, RpcDelivery.Reliable);
+                }
+
+                RecieveAudioClientRpc(audioData);
             }
 
             [ClientRpc]
-            public void RecieveAudioClientRpc(byte[] audioclip)
+            public void RecieveAudioClientRpc(byte[] audioData)
             {
-                clips.Add(LoadAudioClip(audioclip));
+                NetworkManager networkManager = base.NetworkManager;
+                if ((object)networkManager == null || !networkManager.IsListening)
+                {
+                    return;
+                }
+
+                if (__rpc_exec_stage != __RpcExecStage.Client && (networkManager.IsServer || networkManager.IsHost))
+                {
+                    ClientRpcParams clientRpcParams = default(ClientRpcParams);
+                    FastBufferWriter bufferWriter = __beginSendClientRpc(2736638642u, clientRpcParams, RpcDelivery.Reliable);
+
+                    bool value2 = audioData != null;
+                    bufferWriter.WriteValueSafe(in value2, default(FastBufferWriter.ForPrimitives));
+                    if (value2)
+                    {
+                        bufferWriter.WriteValueSafe(audioData, default(FastBufferWriter.ForPrimitives));
+                    }
+
+                    __endSendClientRpc(ref bufferWriter, 2736638642u, clientRpcParams, RpcDelivery.Reliable);
+                }
+
+                if (__rpc_exec_stage != __RpcExecStage.Client || (!networkManager.IsClient && !networkManager.IsHost))
+                {
+                    return;
+                }
+
+                clips.Add(LoadAudioClip(audioData));
             }
 
             public void Spawn()
