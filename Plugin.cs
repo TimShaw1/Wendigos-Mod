@@ -149,7 +149,8 @@ namespace Wendigos
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
                 using (writer)
                 {
-                    WriteToConsole("Writing data...");
+                    WriteToConsole($"Writing {messageContent.Length} bytes of data...");
+                    // Issue is here
                     writer.WriteValueSafe(messageContent);
                     WriteToConsole("Wrote data");
                     if (NetworkManager.Singleton.IsServer)
