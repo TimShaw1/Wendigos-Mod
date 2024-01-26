@@ -593,6 +593,8 @@ namespace Wendigos
             return clip;
         }
 
+        static GameObject manager = new GameObject("WendigosMessageHandler");
+
         [HarmonyPatch(typeof(MenuManager), "Start")]
         class MenuManagerPatch
         {
@@ -610,6 +612,11 @@ namespace Wendigos
                     steamID = 1;
                 }
 
+                manager.AddComponent<NetworkObject>();
+                manager.AddComponent<WendigosMessageHandler>();
+                
+
+                DontDestroyOnLoad(manager);
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
@@ -705,13 +712,8 @@ namespace Wendigos
         {
             static void Postfix()
             {
-                GameObject manager = new GameObject("WendigosMessageHandler");
-                manager.AddComponent<NetworkObject>();
-                manager.AddComponent<WendigosMessageHandler>();
                 if (WendigosMessageHandler.Instance.IsServer)
                     manager.GetComponent<NetworkObject>().Spawn();
-
-                DontDestroyOnLoad(manager);
                 if (!sent_audio_clips)
                 {
                    
