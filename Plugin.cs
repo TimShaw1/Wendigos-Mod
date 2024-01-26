@@ -606,16 +606,6 @@ namespace Wendigos
         }
         static bool sent_audio_clips = false;
 
-        private static void ReceiveFromServer(byte[] data)
-        {
-            audioClipList.Add(LoadAudioClip(data));
-        }
-
-        private static void ReceiveFromClient(byte[] data, ulong clientId)
-        {
-            audioClipList.Add(LoadAudioClip(data));
-        }
-
         [PublicNetworkVariable]
         public static LethalNetworkVariable<string> strings = new LethalNetworkVariable<string>(identifier: "clips");
 
