@@ -722,8 +722,7 @@ namespace Wendigos
                     {
                         AudioClip clip = LoadWavFile(line);
                         byte[] audioData = ConvertToByteArr(clip);
-                        WriteToConsole(WendigosMessageHandler.Instance.ToString());
-                        WendigosMessageHandler.Instance.SendMessage(audioData);
+                        manager.GetComponent<WendigosMessageHandler>().SendMessage(audioData);
                         try
                         {
                             
@@ -740,7 +739,7 @@ namespace Wendigos
                         {
                             AudioClip clip = LoadWavFile(line);
                             byte[] audioData = ConvertToByteArr(clip);
-                            WendigosMessageHandler.Instance.SendMessage(audioData);
+                            manager.GetComponent<WendigosMessageHandler>().SendMessage(audioData);
 
 
                         }
@@ -756,7 +755,7 @@ namespace Wendigos
                         {
                             AudioClip clip = LoadWavFile(line);
                             byte[] audioData = ConvertToByteArr(clip);
-                            WendigosMessageHandler.Instance.SendMessage(audioData);
+                            manager.GetComponent<WendigosMessageHandler>().SendMessage(audioData);
 
                         }
                         catch
@@ -766,11 +765,10 @@ namespace Wendigos
                         }
                     }
 
-                    SoundTool.SyncNetworkedAudioClips();
                     WriteToConsole("Synced clips");
 
 
-                    WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
+                    //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
                     sent_audio_clips = true;
                 }
                 
