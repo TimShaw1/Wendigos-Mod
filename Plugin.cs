@@ -125,6 +125,7 @@ namespace Wendigos
             {
                 byte[] receivedMessageContent;
                 messagePayload.ReadValueSafe(out receivedMessageContent);
+                receivedMessageContent = Decompress(receivedMessageContent);
                 if (IsServer)
                 {
                     WriteToConsole($"Sever received ({receivedMessageContent}) from client ({senderId})");
@@ -141,7 +142,7 @@ namespace Wendigos
             /// </summary>
             public void SendMessage(byte[] audioClip)
             {
-                var messageContent = audioClip;
+                var messageContent = Compress(audioClip);
                 var writer = new FastBufferWriter(1100, Unity.Collections.Allocator.Temp);
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
                 using (writer)
