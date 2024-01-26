@@ -124,7 +124,7 @@ namespace Wendigos
             private void ReceiveMessage(ulong senderId, FastBufferReader messagePayload)
             {
                 byte[] receivedMessageContent;
-                messagePayload.ReadValueSafe(out receivedMessageContent);
+                messagePayload.ReadValue(out receivedMessageContent);
                 receivedMessageContent = Decompress(receivedMessageContent);
                 if (IsServer)
                 {
@@ -151,7 +151,7 @@ namespace Wendigos
                 {
                     WriteToConsole($"Writing {messageContent.Length} bytes of data...");
                     // Issue is here
-                    writer.WriteValueSafe(messageContent);
+                    writer.WriteValue(messageContent);
                     WriteToConsole("Wrote data");
                     if (NetworkManager.Singleton.IsServer)
                     {
