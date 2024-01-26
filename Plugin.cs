@@ -87,6 +87,18 @@ namespace Wendigos
                 }
             }
 
+            internal static void ClientConnectInitializer(Scene sceneName, LoadSceneMode sceneEnum)
+            {
+                //IL_001c: Unknown result type (might be due to invalid IL or missing references)
+                //IL_0022: Expected O, but got Unknown
+                if (((Scene)(sceneName)).name == "SampleSceneRelay")
+                {
+                    GameObject val = new GameObject("WendigosMessageHandler");
+                    val.AddComponent<NetworkObject>();
+                    val.AddComponent<WendigosMessageHandler>();
+                }
+            }
+
             private void Awake()
             {
                 Instance = this;
@@ -274,6 +286,7 @@ namespace Wendigos
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 
             harmonyInstance.PatchAll();
+            SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
 
             need_new_player_audio = Config.Bind<bool>(
                 "General",
@@ -610,16 +623,7 @@ namespace Wendigos
                     steamID = 1;
                 }
 
-                GameObject manager = new GameObject("WendigosMessageHandler");
-                manager.AddComponent<NetworkObject>();
-                manager.AddComponent<WendigosMessageHandler>();
-                Instantiate(manager);
-                if (WendigosMessageHandler.Instance.IsServer)
-                    manager.GetComponent<NetworkObject>().Spawn();
-                
-                
 
-                DontDestroyOnLoad(manager);
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
