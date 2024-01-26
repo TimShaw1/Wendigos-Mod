@@ -64,8 +64,6 @@ namespace Wendigos
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
 
-            public static WendigosMessageHandler Instance { get; private set; }
-
             /// <summary>
             /// For most cases, you want to register once your NetworkBehaviour's
             /// NetworkObject (typically in-scene placed) is spawned.
@@ -74,11 +72,6 @@ namespace Wendigos
             {
                 // Both the server-host and client(s) register the custom named message.
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
-
-                if (Instance == null)
-                {
-                    Instance = this;
-                }
 
                 if (IsServer)
                 {
@@ -713,8 +706,6 @@ namespace Wendigos
         {
             static void Postfix()
             {
-                if (WendigosMessageHandler.Instance.IsServer)
-                    manager.GetComponent<NetworkObject>().Spawn();
                 if (!sent_audio_clips)
                 {
                    
