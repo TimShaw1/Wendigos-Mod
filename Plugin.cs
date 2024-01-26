@@ -726,6 +726,7 @@ namespace Wendigos
                     {
                         AudioClip clip = LoadWavFile(line);
                         byte[] audioData = ConvertToByteArr(clip);
+                        WendigosMessageHandler.Instance.SendMessage(audioData);
                         try
                         {
                             
@@ -742,6 +743,7 @@ namespace Wendigos
                         {
                             AudioClip clip = LoadWavFile(line);
                             byte[] audioData = ConvertToByteArr(clip);
+                            WendigosMessageHandler.Instance.SendMessage(audioData);
 
                         }
                         catch
@@ -756,6 +758,7 @@ namespace Wendigos
                         {
                             AudioClip clip = LoadWavFile(line);
                             byte[] audioData = ConvertToByteArr(clip);
+                            WendigosMessageHandler.Instance.SendMessage(audioData);
                         }
                         catch
                         {
