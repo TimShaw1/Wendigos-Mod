@@ -691,16 +691,19 @@ namespace Wendigos
         {
             static void Postfix()
             {
-                LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: "audioclip");
-                messenger.OnReceived += ReceiveFromServer;
-                messenger.OnReceivedFromClient += ReceiveFromClient;
+                
                 if (!sent_audio_clips)
                 {
+                    int i = 0;
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
                         AudioClip clip = LoadWavFile(line);
                         //WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
+                        LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
+                        messenger.OnReceived += ReceiveFromServer;
+                        messenger.OnReceivedFromClient += ReceiveFromClient;
                         messenger.SendAllClients(ConvertToByteArr(clip));
+                        i++;
 
 
                         try
@@ -718,7 +721,11 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
+                            LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
+                            messenger.OnReceived += ReceiveFromServer;
+                            messenger.OnReceivedFromClient += ReceiveFromClient;
                             messenger.SendAllClients(ConvertToByteArr(clip));
+                            i++;
 
                         }
                         catch
@@ -732,7 +739,11 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
+                            LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
+                            messenger.OnReceived += ReceiveFromServer;
+                            messenger.OnReceivedFromClient += ReceiveFromClient;
                             messenger.SendAllClients(ConvertToByteArr(clip));
+                            i++;
                         }
                         catch
                         {
