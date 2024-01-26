@@ -593,7 +593,7 @@ namespace Wendigos
             return clip;
         }
 
-        static GameObject manager = new GameObject("WendigosMessageHandler");
+        static GameObject manager;
 
         [HarmonyPatch(typeof(MenuManager), "Start")]
         class MenuManagerPatch
@@ -612,6 +612,7 @@ namespace Wendigos
                     steamID = 1;
                 }
 
+                manager = new GameObject("WendigosMessageHandler");
                 manager.AddComponent<NetworkObject>();
                 manager.AddComponent<WendigosMessageHandler>();
                 
