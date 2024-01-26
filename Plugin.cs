@@ -675,18 +675,34 @@ namespace Wendigos
         }
         static bool sent_audio_clips = false;
 
+        private static void ReceiveFromServer(byte[] data)
+        {
+            audioClipList.Add(LoadAudioClip(data));
+        }
+
+        private static void ReceiveFromClient(byte[] data, ulong clientId)
+        {
+            audioClipList.Add(LoadAudioClip(data));
+        }
+
 
         [HarmonyPatch(typeof(StartOfRound), "PlayerLoadedServerRpc")]
         class StartOfRoundConnectPatch
         {
             static void Postfix()
             {
+                LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: "audioclip");
+                messenger.OnReceived += ReceiveFromServer;
+                messenger.OnReceivedFromClient += ReceiveFromClient;
                 if (!sent_audio_clips)
                 {
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
                         AudioClip clip = LoadWavFile(line);
-                        WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
+                        //WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
+                        messenger.SendAllClients(ConvertToByteArr(clip));
+
+
                         try
                         {
                             //SoundTool.SendNetworkedAudioClip(clip);
@@ -702,7 +718,7 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
+                            messenger.SendAllClients(ConvertToByteArr(clip));
 
                         }
                         catch
@@ -716,7 +732,7 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
+                            messenger.SendAllClients(ConvertToByteArr(clip));
                         }
                         catch
                         {
