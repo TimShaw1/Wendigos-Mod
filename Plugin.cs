@@ -685,25 +685,29 @@ namespace Wendigos
             audioClipList.Add(LoadAudioClip(data));
         }
 
+        [PublicNetworkVariable]
+        public static LethalNetworkVariable<List<byte[]>> networkedClips = new LethalNetworkVariable<List<byte[]>>(identifier: "clips");
+
 
         [HarmonyPatch(typeof(StartOfRound), "OnClientConnect")]
         class StartOfRoundConnectPatch
         {
             static void Postfix()
             {
-                
                 if (!sent_audio_clips)
                 {
                     int i = 0;
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
                         AudioClip clip = LoadWavFile(line);
+                        networkedClips.Value.Add(ConvertToByteArr(clip));
                         //WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
-                        LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
-                        messenger.OnReceived += ReceiveFromServer;
-                        messenger.OnReceivedFromClient += ReceiveFromClient;
-                        messenger.SendAllClients(ConvertToByteArr(clip));
-                        i++;
+
+                        //LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
+                        //messenger.OnReceived += ReceiveFromServer;
+                        //messenger.OnReceivedFromClient += ReceiveFromClient;
+                        //messenger.SendAllClients(ConvertToByteArr(clip));
+                        //i++;
 
 
                         try
@@ -721,11 +725,13 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
-                            messenger.OnReceived += ReceiveFromServer;
-                            messenger.OnReceivedFromClient += ReceiveFromClient;
-                            messenger.SendAllClients(ConvertToByteArr(clip));
-                            i++;
+                            networkedClips.Value.Add(ConvertToByteArr(clip));
+
+                            //LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
+                            //messenger.OnReceived += ReceiveFromServer;
+                            //messenger.OnReceivedFromClient += ReceiveFromClient;
+                            //messenger.SendAllClients(ConvertToByteArr(clip));
+                            //i++;
 
                         }
                         catch
@@ -739,11 +745,13 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
-                            messenger.OnReceived += ReceiveFromServer;
-                            messenger.OnReceivedFromClient += ReceiveFromClient;
-                            messenger.SendAllClients(ConvertToByteArr(clip));
-                            i++;
+                            networkedClips.Value.Add(ConvertToByteArr(clip));
+
+                            //LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
+                            //messenger.OnReceived += ReceiveFromServer;
+                            //messenger.OnReceivedFromClient += ReceiveFromClient;
+                            //messenger.SendAllClients(ConvertToByteArr(clip));
+                            //i++;
                         }
                         catch
                         {
@@ -756,7 +764,7 @@ namespace Wendigos
                     WriteToConsole("Synced clips");
 
 
-                    WriteToConsole("Clips count: " + audioClipList.Count);
+                    WriteToConsole("Clips count: " + networkedClips.Value.Count);
                     sent_audio_clips = true;
                 }
                 
