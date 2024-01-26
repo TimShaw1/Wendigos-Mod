@@ -172,7 +172,7 @@ namespace Wendigos
 
         internal static ulong steamID;
 
-        internal static List<AudioClip> audioClipList = new List<AudioClip>();
+        static AudioClip ac;
 
         private void Awake()
         {
@@ -440,7 +440,6 @@ namespace Wendigos
             }
         }
 
-        static AudioClip ac;
         static string[] lines_to_read = """
             Prosecutors have opened a massive investigation into allegations of fixing games and illegal betting.
             Different telescope designs perform differently and have different strengths and weaknesses.
