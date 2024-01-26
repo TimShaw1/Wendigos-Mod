@@ -610,13 +610,6 @@ namespace Wendigos
                     steamID = 1;
                 }
 
-                GameObject manager = new GameObject("WendigosMessageHandler");
-                manager.AddComponent<NetworkObject>();
-                manager.AddComponent<WendigosMessageHandler>();
-                if (WendigosMessageHandler.Instance.IsServer)
-                    manager.GetComponent<NetworkObject>().Spawn();
-
-                DontDestroyOnLoad(manager);
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
@@ -712,6 +705,13 @@ namespace Wendigos
         {
             static void Postfix()
             {
+                GameObject manager = new GameObject("WendigosMessageHandler");
+                manager.AddComponent<NetworkObject>();
+                manager.AddComponent<WendigosMessageHandler>();
+                if (WendigosMessageHandler.Instance.IsServer)
+                    manager.GetComponent<NetworkObject>().Spawn();
+
+                DontDestroyOnLoad(manager);
                 if (!sent_audio_clips)
                 {
                    
