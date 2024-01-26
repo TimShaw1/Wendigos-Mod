@@ -686,7 +686,7 @@ namespace Wendigos
         }
 
         [PublicNetworkVariable]
-        public static LethalNetworkVariable<List<string>> strings = new LethalNetworkVariable<List<string>>(identifier: "clips") { Value = new List<string>() };
+        public static LethalNetworkVariable<List<string>> strings;
 
         //[PublicNetworkVariable]
         //public static LethalNetworkVariable<List<byte[]>> networkedClips = new LethalNetworkVariable<List<byte[]>>(identifier: "clips");
@@ -699,8 +699,10 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
+                    if (strings.Value == null)
+                        new LethalNetworkVariable<List<string>>(identifier: "clips") { Value = new List<string>() };
                     //if (strings.Value == null)
-                        //strings.Value = new List<string>();
+                    //strings.Value = new List<string>();
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
                         AudioClip clip = LoadWavFile(line);
