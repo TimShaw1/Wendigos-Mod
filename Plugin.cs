@@ -696,7 +696,8 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
-                    int i = 0;
+                    if (networkedClips.Value == null)
+                        networkedClips.Value = new List<byte[]>();
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
                         AudioClip clip = LoadWavFile(line);
