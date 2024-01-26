@@ -35,6 +35,7 @@ using LethalNetworkAPI;
 using System.Xml.Linq;
 using LCSoundTool.Utilities;
 using System.Security.Claims;
+using System.Buffers;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -55,6 +56,92 @@ namespace Wendigos
             {
                 playerControllerB = pcB;
                 playerSuitID = playerControllerB.currentSuitID;
+            }
+        }
+
+        public class WendigosMessageHandler : NetworkBehaviour
+        {
+            [Tooltip("The name identifier used for this custom message handler.")]
+            public static string MessageName = "clipSender";
+
+            public static WendigosMessageHandler Instance { get; private set; }
+
+            /// <summary>
+            /// For most cases, you want to register once your NetworkBehaviour's
+            /// NetworkObject (typically in-scene placed) is spawned.
+            /// </summary>
+            public override void OnNetworkSpawn()
+            {
+                // Both the server-host and client(s) register the custom named message.
+                NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
+
+                if (IsServer)
+                {
+                    // Server broadcasts to all clients when a new client connects (just for example purposes)
+                    NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
+                }
+                else
+                {
+                    // Clients send a unique Guid to the server
+                    //SendMessage(Guid.NewGuid());
+                }
+            }
+
+            private void OnClientConnectedCallback(ulong obj)
+            {
+                //SendMessage(Guid.NewGuid());
+            }
+
+            public override void OnNetworkDespawn()
+            {
+                // De-register when the associated NetworkObject is despawned.
+                NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
+                // Whether server or not, unregister this.
+                NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
+            }
+
+            /// <summary>
+            /// Invoked when a custom message of type <see cref="MessageName"/>
+            /// </summary>
+            private void ReceiveMessage(ulong senderId, FastBufferReader messagePayload)
+            {
+                byte[] receivedMessageContent;
+                messagePayload.ReadValueSafe(out receivedMessageContent);
+                if (IsServer)
+                {
+                    WriteToConsole($"Sever received ({receivedMessageContent}) from client ({senderId})");
+                }
+                else
+                {
+                    WriteToConsole($"Client received ({receivedMessageContent}) from the server.");
+                }
+            }
+
+            /// <summary>
+            /// Invoke this with a Guid by a client or server-host to send a
+            /// custom named message.
+            /// </summary>
+            public void SendMessage(byte[] audioClip)
+            {
+                var messageContent = audioClip;
+                var writer = new FastBufferWriter(1100, Unity.Collections.Allocator.Temp);
+                var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
+                using (writer)
+                {
+                    writer.WriteValueSafe(messageContent);
+                    if (NetworkManager.Singleton.IsServer)
+                    {
+                        // This is a server-only method that will broadcast the named message.
+                        // Caution: Invoking this method on a client will throw an exception!
+                        customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                    }
+                    else
+                    {
+                        // This is a client or server method that sends a named message to one target destination
+                        // (client to server or server to client)
+                        customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                    }
+                }
             }
         }
 
@@ -619,7 +706,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.SendNetworkedAudioClip(clip);
+                            byte[] audioData = ConvertToByteArr(clip);
+                            WendigosMessageHandler.Instance.SendMessage(audioData);
                         }
                         catch 
                         { 
@@ -632,7 +720,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.SendNetworkedAudioClip(clip);
+                            byte[] audioData = ConvertToByteArr(clip);
+                            WendigosMessageHandler.Instance.SendMessage(audioData);
 
 
                         }
@@ -647,7 +736,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            SoundTool.SendNetworkedAudioClip(clip);
+                            byte[] audioData = ConvertToByteArr(clip);
+                            WendigosMessageHandler.Instance.SendMessage(audioData);
 
                         }
                         catch
