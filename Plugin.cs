@@ -58,73 +58,6 @@ namespace Wendigos
             }
         }
 
-        public class WendigosNetworkManager : NetworkBehaviour
-        {
-            public List<AudioClip> clips = new List<AudioClip>();
-            public static WendigosNetworkManager Instance {  get; private set; }
-            [ServerRpc]
-            public void SendAudioServerRpc(AudioClip audioclip)
-            {
-                NetworkManager networkManager = base.NetworkManager;
-                if ((object)networkManager == null || !networkManager.IsListening)
-                {
-                    return;
-                }
-                
-
-                byte[] audioData  = ConvertToByteArr(audioclip);
-
-                RecieveAudioClientRpc(audioData);
-            }
-
-            [ClientRpc]
-            public void RecieveAudioClientRpc(byte[] audioData)
-            {
-                NetworkManager networkManager = base.NetworkManager;
-                if ((object)networkManager == null || !networkManager.IsListening)
-                {
-                    return;
-                }
-
-                clips.Add(LoadAudioClip(audioData));
-            }
-
-            public void Spawn()
-            {
-                Instance = this;
-            }
-
-            protected FastBufferWriter __beginSendClientRpc2(uint rpcMethodId, ClientRpcParams clientRpcParams, RpcDelivery rpcDelivery)
-            {
-                return new FastBufferWriter(1024, Unity.Collections.Allocator.Temp, 65536*100);
-            }
-
-            protected FastBufferWriter __beginSendServerRpc2(uint rpcMethodId, ServerRpcParams serverRpcParams, RpcDelivery rpcDelivery)
-            {
-                return new FastBufferWriter(1024, Unity.Collections.Allocator.Temp, 65536*100);
-            }
-
-            public static void InitClient(Scene sceneName, LoadSceneMode sceneEnum)
-            {
-                if (((Scene)(sceneName)).name == "SampleSceneRelay")
-                {
-                    GameObject val = new GameObject("SkinwalkerNetworkManager");
-                    val.AddComponent<NetworkObject>();
-                    val.AddComponent<WendigosNetworkManager>();
-                    val.GetComponent<WendigosNetworkManager>().Spawn();
-                    try
-                    {
-                        val.GetComponent<NetworkObject>().Spawn();
-                    }
-                    catch
-                    {
-                        WriteToConsole("Not host");
-                    }
-                    Instantiate(val);
-                    DontDestroyOnLoad(val);
-                }
-            }
-        }
 
         static void WriteToConsole(string output)
         {
@@ -248,8 +181,6 @@ namespace Wendigos
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 
             harmonyInstance.PatchAll();
-
-            SceneManager.sceneLoaded += WendigosNetworkManager.InitClient;
 
             need_new_player_audio = Config.Bind<bool>(
                 "General",
