@@ -686,10 +686,7 @@ namespace Wendigos
         }
 
         [PublicNetworkVariable]
-        public static LethalNetworkVariable<List<string>> strings;
-
-        //[PublicNetworkVariable]
-        //public static LethalNetworkVariable<List<byte[]>> networkedClips = new LethalNetworkVariable<List<byte[]>>(identifier: "clips");
+        public static LethalNetworkVariable<string> strings = new LethalNetworkVariable<string>(identifier: "clips");
 
 
         [HarmonyPatch(typeof(StartOfRound), "OnPlayerConnectedClientRpc")]
@@ -699,14 +696,13 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
-                    if (strings.Value == null)
-                        new LethalNetworkVariable<List<string>>(identifier: "clips") { Value = new List<string>() };
+                   
                     //if (strings.Value == null)
                     //strings.Value = new List<string>();
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
                         AudioClip clip = LoadWavFile(line);
-                        strings.Value.Add(line);
+                        strings.Value += line;
                         //networkedClips.Value.Add(ConvertToByteArr(clip));
                         //WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
 
@@ -732,7 +728,7 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            strings.Value.Add(line);
+                            strings.Value += line;
                             //networkedClips.Value.Add(ConvertToByteArr(clip));
 
                             //LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
@@ -753,7 +749,7 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            strings.Value.Add(line);
+                            strings.Value += line;
                             //networkedClips.Value.Add(ConvertToByteArr(clip));
 
                             //LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
@@ -773,7 +769,7 @@ namespace Wendigos
                     WriteToConsole("Synced clips");
 
 
-                    WriteToConsole("Clips count: " + strings.Value.Count);
+                    WriteToConsole("Clips count: " + strings.Value);
                     sent_audio_clips = true;
                 }
                 
