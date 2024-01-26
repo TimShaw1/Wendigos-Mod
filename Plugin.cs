@@ -143,7 +143,9 @@ namespace Wendigos
             public void SendMessage(byte[] audioClip)
             {
                 var messageContent = Compress(audioClip);
+                WriteToConsole("Writing message...");
                 var writer = new FastBufferWriter(11000, Unity.Collections.Allocator.Temp);
+                WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
                 using (writer)
                 {
@@ -152,13 +154,17 @@ namespace Wendigos
                     {
                         // This is a server-only method that will broadcast the named message.
                         // Caution: Invoking this method on a client will throw an exception!
+                        WriteToConsole("Sending Message...");
                         customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                        WriteToConsole("Sent Message");
                     }
                     else
                     {
                         // This is a client or server method that sends a named message to one target destination
                         // (client to server or server to client)
+                        WriteToConsole("Sending Message...");
                         customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                        WriteToConsole("Sent Message");
                     }
                 }
             }
