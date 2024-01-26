@@ -64,6 +64,8 @@ namespace Wendigos
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
 
+            public static WendigosMessageHandler Instance { get; private set; }
+
             /// <summary>
             /// For most cases, you want to register once your NetworkBehaviour's
             /// NetworkObject (typically in-scene placed) is spawned.
@@ -83,6 +85,11 @@ namespace Wendigos
                     // Clients send a unique Guid to the server
                     //SendMessage(Guid.NewGuid());
                 }
+            }
+
+            private void Awake()
+            {
+                Instance = this;
             }
 
             private void OnClientConnectedCallback(ulong obj)
@@ -586,8 +593,6 @@ namespace Wendigos
             return clip;
         }
 
-        static GameObject manager;
-
         [HarmonyPatch(typeof(MenuManager), "Start")]
         class MenuManagerPatch
         {
@@ -605,9 +610,13 @@ namespace Wendigos
                     steamID = 1;
                 }
 
-                manager = new GameObject("WendigosMessageHandler");
+                GameObject manager = new GameObject("WendigosMessageHandler");
                 manager.AddComponent<NetworkObject>();
                 manager.AddComponent<WendigosMessageHandler>();
+                Instantiate(manager);
+                if (WendigosMessageHandler.Instance.IsServer)
+                    manager.GetComponent<NetworkObject>().Spawn();
+                
                 
 
                 DontDestroyOnLoad(manager);
@@ -713,7 +722,6 @@ namespace Wendigos
                     {
                         AudioClip clip = LoadWavFile(line);
                         byte[] audioData = ConvertToByteArr(clip);
-                        manager.GetComponent<WendigosMessageHandler>().SendMessage(audioData);
                         try
                         {
                             
@@ -730,8 +738,6 @@ namespace Wendigos
                         {
                             AudioClip clip = LoadWavFile(line);
                             byte[] audioData = ConvertToByteArr(clip);
-                            manager.GetComponent<WendigosMessageHandler>().SendMessage(audioData);
-
 
                         }
                         catch
@@ -746,8 +752,6 @@ namespace Wendigos
                         {
                             AudioClip clip = LoadWavFile(line);
                             byte[] audioData = ConvertToByteArr(clip);
-                            manager.GetComponent<WendigosMessageHandler>().SendMessage(audioData);
-
                         }
                         catch
                         {
