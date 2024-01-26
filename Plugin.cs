@@ -75,6 +75,11 @@ namespace Wendigos
                 // Both the server-host and client(s) register the custom named message.
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
 
+                if (Instance == null)
+                {
+                    Instance = this;
+                }
+
                 if (IsServer)
                 {
                     // Server broadcasts to all clients when a new client connects (just for example purposes)
@@ -90,6 +95,7 @@ namespace Wendigos
             private void OnClientConnectedCallback(ulong obj)
             {
                 //SendMessage(Guid.NewGuid());
+
             }
 
             public override void OnNetworkDespawn()
@@ -604,6 +610,14 @@ namespace Wendigos
                     steamID = 1;
                 }
 
+                GameObject manager = new GameObject("WendigosMessageHandler");
+                manager.AddComponent<NetworkObject>();
+                manager.AddComponent<WendigosMessageHandler>();
+                if (WendigosMessageHandler.Instance.IsServer)
+                    manager.GetComponent<NetworkObject>().Spawn();
+
+                DontDestroyOnLoad(manager);
+
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
                 if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
@@ -703,11 +717,13 @@ namespace Wendigos
                    
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
+                        AudioClip clip = LoadWavFile(line);
+                        byte[] audioData = ConvertToByteArr(clip);
+                        WriteToConsole(WendigosMessageHandler.Instance.ToString());
+                        WendigosMessageHandler.Instance.SendMessage(audioData);
                         try
                         {
-                            AudioClip clip = LoadWavFile(line);
-                            byte[] audioData = ConvertToByteArr(clip);
-                            WendigosMessageHandler.Instance.SendMessage(audioData);
+                            
                         }
                         catch 
                         { 
