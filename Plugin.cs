@@ -149,7 +149,9 @@ namespace Wendigos
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
                 using (writer)
                 {
+                    WriteToConsole("Writing data...");
                     writer.WriteValueSafe(messageContent);
+                    WriteToConsole("Wrote data");
                     if (NetworkManager.Singleton.IsServer)
                     {
                         // This is a server-only method that will broadcast the named message.
