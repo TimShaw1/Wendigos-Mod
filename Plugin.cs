@@ -686,7 +686,7 @@ namespace Wendigos
         }
 
 
-        [HarmonyPatch(typeof(StartOfRound), "PlayerLoadedServerRpc")]
+        [HarmonyPatch(typeof(StartOfRound), "OnClientConnect")]
         class StartOfRoundConnectPatch
         {
             static void Postfix()
@@ -745,7 +745,7 @@ namespace Wendigos
                     WriteToConsole("Synced clips");
 
 
-                    WriteToConsole("Clips count: " + WendigosNetworkManager.Instance.clips.Count);
+                    WriteToConsole("Clips count: " + audioClipList.Count);
                     sent_audio_clips = true;
                 }
                 
