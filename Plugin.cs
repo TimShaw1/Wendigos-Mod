@@ -606,9 +606,6 @@ namespace Wendigos
         }
         static bool sent_audio_clips = false;
 
-        [PublicNetworkVariable]
-        public static LethalNetworkVariable<string> strings = new LethalNetworkVariable<string>(identifier: "clips");
-
 
         [HarmonyPatch(typeof(StartOfRound), "OnPlayerConnectedClientRpc")]
         class StartOfRoundConnectPatch
@@ -618,25 +615,12 @@ namespace Wendigos
                 if (!sent_audio_clips)
                 {
                    
-                    //if (strings.Value == null)
-                    //strings.Value = new List<string>();
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
-                        AudioClip clip = LoadWavFile(line);
-                        strings.Value += line;
-                        //networkedClips.Value.Add(ConvertToByteArr(clip));
-                        //WendigosNetworkManager.Instance.SendAudioServerRpc(clip);
-
-                        //LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
-                        //messenger.OnReceived += ReceiveFromServer;
-                        //messenger.OnReceivedFromClient += ReceiveFromClient;
-                        //messenger.SendAllClients(ConvertToByteArr(clip));
-                        //i++;
-
-
                         try
                         {
-                            //SoundTool.SendNetworkedAudioClip(clip);
+                            AudioClip clip = LoadWavFile(line);
+                            SoundTool.SendNetworkedAudioClip(clip);
                         }
                         catch 
                         { 
@@ -649,14 +633,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            strings.Value += line;
-                            //networkedClips.Value.Add(ConvertToByteArr(clip));
+                            SoundTool.SendNetworkedAudioClip(clip);
 
-                            //LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
-                            //messenger.OnReceived += ReceiveFromServer;
-                            //messenger.OnReceivedFromClient += ReceiveFromClient;
-                            //messenger.SendAllClients(ConvertToByteArr(clip));
-                            //i++;
 
                         }
                         catch
@@ -670,14 +648,8 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
-                            strings.Value += line;
-                            //networkedClips.Value.Add(ConvertToByteArr(clip));
+                            SoundTool.SendNetworkedAudioClip(clip);
 
-                            //LethalClientMessage<byte[]> messenger = new LethalClientMessage<byte[]>(identifier: $"audioclip{i}");
-                            //messenger.OnReceived += ReceiveFromServer;
-                            //messenger.OnReceivedFromClient += ReceiveFromClient;
-                            //messenger.SendAllClients(ConvertToByteArr(clip));
-                            //i++;
                         }
                         catch
                         {
@@ -686,11 +658,11 @@ namespace Wendigos
                         }
                     }
 
-                    //SoundTool.SyncNetworkedAudioClips();
+                    SoundTool.SyncNetworkedAudioClips();
                     WriteToConsole("Synced clips");
 
 
-                    WriteToConsole("Clips count: " + strings.Value);
+                    WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
                     sent_audio_clips = true;
                 }
                 
