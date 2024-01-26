@@ -143,7 +143,7 @@ namespace Wendigos
             public void SendMessage(byte[] audioClip)
             {
                 var messageContent = Compress(audioClip);
-                var writer = new FastBufferWriter(1100, Unity.Collections.Allocator.Temp);
+                var writer = new FastBufferWriter(11000, Unity.Collections.Allocator.Temp);
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
                 using (writer)
                 {
