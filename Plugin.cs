@@ -135,7 +135,6 @@ namespace Wendigos
                 messagePayload.ReadValueSafe(out receivedMessageContent);
                 receivedMessageContent = Decompress(receivedMessageContent);
                 AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
-                recievedClip.name = recievedClip.GetHashCode().ToString();
                 bool doWeHaveTheClip = false;
                 if (IsServer)
                 {
@@ -466,7 +465,7 @@ namespace Wendigos
                     else
                     {
                         AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
-                        myClip.name = myClip.GetHashCode().ToString();
+                        myClip.name = string.Join(string.Empty, ConvertToByteArr(myClip)).GetHashCode().ToString();
                         return myClip;
                     }
                 }
@@ -655,7 +654,7 @@ namespace Wendigos
 
             int channels = 1; //Assuming audio is mono because microphone input usually is
 
-            AudioClip clip = AudioClip.Create("ClipName", samples.Length, channels, sampleRate, false);
+            AudioClip clip = AudioClip.Create(string.Join(string.Empty, receivedBytes).GetHashCode().ToString(), samples.Length, channels, sampleRate, false);
             clip.SetData(samples, 0);
 
             return clip;
