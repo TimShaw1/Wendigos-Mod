@@ -65,10 +65,8 @@ namespace Wendigos
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
             public static List<AudioClip> audioClips = new List<AudioClip>();
-            public NetworkVariable<int> indexToPlay = new NetworkVariable<int>();
-            public NetworkVariable<int> randomValue = new NetworkVariable<int>();
-
-            public static WendigosMessageHandler managerHandler;
+            public static NetworkVariable<int> indexToPlay = new NetworkVariable<int>();
+            public static NetworkVariable<int> randomValue = new NetworkVariable<int>();
 
             public static WendigosMessageHandler Instance { get; private set; }
 
@@ -91,6 +89,9 @@ namespace Wendigos
                 {
                     // Clients send a unique Guid to the server
                     //SendMessage(Guid.NewGuid());
+
+                    //indexToPlay.OnValueChanged += UpdateIndexValue;
+                    //randomValue.OnValueChanged += UpdateRandomValue;
                 }
             }
 
@@ -102,9 +103,7 @@ namespace Wendigos
                 {
                     GameObject val = new GameObject("WendigosMessageHandler");
                     val.AddComponent<NetworkObject>();
-                    val.AddComponent<WendigosMessageHandler>();
-                    managerHandler = val.GetComponent<WendigosMessageHandler>();
-                }
+                    val.AddComponent<WendigosMessageHandler>();                }
             }
 
             private void Awake()
@@ -183,7 +182,7 @@ namespace Wendigos
                     }
                 }
 
-               
+                
             }
 
             /// <summary>
@@ -221,6 +220,16 @@ namespace Wendigos
                         WriteToConsole("Sent Message");
                     }
                 }
+            }
+
+            public static void UpdateRandomValue(int value)
+            {
+                randomValue.Value = value;
+            }
+
+            public static void UpdateIndexValue(int value)
+            {
+                indexToPlay.Value = value;
             }
         }
 
@@ -537,16 +546,16 @@ namespace Wendigos
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
                             if (WendigosMessageHandler.Instance.IsServer)
-                                WendigosMessageHandler.managerHandler.randomValue.Value = rand1.Next();
-                            if (WendigosMessageHandler.managerHandler.randomValue.Value % 10 == 0)
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.managerHandler.indexToPlay.Value], __instance);
+                                WendigosMessageHandler.UpdateRandomValue(rand1.Next());
+                            if (WendigosMessageHandler.randomValue.Value % 10 == 0)
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
                         }
                         else
                         {
                             if (WendigosMessageHandler.Instance.IsServer)
-                                WendigosMessageHandler.managerHandler.randomValue.Value = rand1.Next();
-                            if (WendigosMessageHandler.managerHandler.randomValue.Value % 20 == 0)
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.managerHandler.indexToPlay.Value], __instance);
+                                WendigosMessageHandler.UpdateRandomValue(rand1.Next());
+                            if (WendigosMessageHandler.randomValue.Value % 20 == 0)
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
                         }
 
                         break;
@@ -582,9 +591,9 @@ namespace Wendigos
                 string type = "chasing";
 
                 if (WendigosMessageHandler.Instance.IsServer)
-                    WendigosMessageHandler.managerHandler.randomValue.Value = rand1.Next();
-                if (WendigosMessageHandler.managerHandler.randomValue.Value % 10 == 0)
-                    TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.managerHandler.indexToPlay.Value], __instance);
+                    WendigosMessageHandler.UpdateRandomValue(rand1.Next());
+                if (WendigosMessageHandler.randomValue.Value % 10 == 0)
+                    TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
 
             }
 
