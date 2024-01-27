@@ -131,6 +131,7 @@ namespace Wendigos
                 if (IsServer)
                 {
                     WriteToConsole($"Sever received ({receivedMessageContent}) from client ({senderId})");
+                    audioClips.Add(LoadAudioClip(receivedMessageContent));
                 }
                 else
                 {
