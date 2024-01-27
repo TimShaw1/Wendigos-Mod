@@ -110,7 +110,8 @@ namespace Wendigos
             {
                 //SendMessage(Guid.NewGuid());
                 WriteToConsole("Server sending " + audioClips.Count + " clips");
-                foreach (AudioClip clip in audioClips)
+                List<AudioClip> clipsCopy = new List<AudioClip>(audioClips);
+                foreach (AudioClip clip in clipsCopy)
                 {
                     SendMessage(ConvertToByteArr(clip));
                 }
