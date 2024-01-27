@@ -126,7 +126,7 @@ namespace Wendigos
             private void ReceiveMessage(ulong senderId, FastBufferReader messagePayload)
             {
                 byte[] receivedMessageContent;
-                messagePayload.ReadValue(out receivedMessageContent);
+                messagePayload.ReadValueSafe(out receivedMessageContent);
                 receivedMessageContent = Decompress(receivedMessageContent);
                 if (IsServer)
                 {
@@ -149,15 +149,15 @@ namespace Wendigos
             {
                 var messageContent = Compress(audioClip);
                 WriteToConsole("Writing message...");
-                // BIG BUFFER
-                var writer = new FastBufferWriter(1100000, Unity.Collections.Allocator.Temp);
+                // BIG BUFFER - 2^24 bytes
+                var writer = new FastBufferWriter(16777216, Unity.Collections.Allocator.Temp);
                 WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
                 using (writer)
                 {
                     WriteToConsole($"Writing {messageContent.Length} bytes of data...");
                     // Issue is here
-                    writer.WriteValue(messageContent);
+                    writer.WriteValueSafe(messageContent);
                     WriteToConsole("Wrote data");
                     if (NetworkManager.Singleton.IsServer)
                     {
