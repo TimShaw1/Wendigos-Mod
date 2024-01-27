@@ -98,6 +98,8 @@ namespace Wendigos
                     //indexToPlay.OnValueChanged += UpdateIndexValue;
                     //randomValue.OnValueChanged += UpdateRandomValue;
 
+                    randomInt = new LethalNetworkVariable<int>("randomInt");
+
                 }
             }
 
