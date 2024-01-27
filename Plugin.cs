@@ -63,8 +63,10 @@ namespace Wendigos
         {
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
+            public static List<AudioClip> audioClips = new List<AudioClip>();
 
             public static WendigosMessageHandler Instance { get; private set; }
+
 
             /// <summary>
             /// For most cases, you want to register once your NetworkBehaviour's
@@ -133,7 +135,10 @@ namespace Wendigos
                 else
                 {
                     WriteToConsole($"Client received ({receivedMessageContent}) from the server.");
+                    audioClips.Add(LoadAudioClip(receivedMessageContent));
                 }
+
+               
             }
 
             /// <summary>
@@ -144,6 +149,7 @@ namespace Wendigos
             {
                 var messageContent = Compress(audioClip);
                 WriteToConsole("Writing message...");
+                // BIG BUFFER
                 var writer = new FastBufferWriter(1100000, Unity.Collections.Allocator.Temp);
                 WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
@@ -778,6 +784,7 @@ namespace Wendigos
                     }
 
                     WriteToConsole("Synced clips");
+                    WriteToConsole(WendigosMessageHandler.audioClips.Count.ToString());
 
 
                     //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
