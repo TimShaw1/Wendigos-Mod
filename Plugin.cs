@@ -94,10 +94,6 @@ namespace Wendigos
                     //indexToPlay.OnValueChanged += UpdateIndexValue;
                     //randomValue.OnValueChanged += UpdateRandomValue;
 
-                    GameObject val = new GameObject("WendigosMessageHandler");
-                    val.AddComponent<NetworkObject>();
-                    val.AddComponent<WendigosMessageHandler>();
-
                     indexToPlay.Value = rand1.Next() % 2;
                 }
             }
@@ -108,7 +104,9 @@ namespace Wendigos
                 //IL_0022: Expected O, but got Unknown
                 if (((Scene)(sceneName)).name == "SampleSceneRelay")
                 {
-                                   
+                    GameObject val = new GameObject("WendigosMessageHandler");
+                    val.AddComponent<NetworkObject>();
+                    val.AddComponent<WendigosMessageHandler>();
                 }
             }
 
