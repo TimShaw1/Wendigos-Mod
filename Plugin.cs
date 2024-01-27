@@ -93,6 +93,10 @@ namespace Wendigos
 
                     //indexToPlay.OnValueChanged += UpdateIndexValue;
                     //randomValue.OnValueChanged += UpdateRandomValue;
+
+                    GameObject val = new GameObject("WendigosMessageHandler");
+                    val.AddComponent<NetworkObject>();
+                    val.AddComponent<WendigosMessageHandler>();
                 }
             }
 
@@ -102,9 +106,7 @@ namespace Wendigos
                 //IL_0022: Expected O, but got Unknown
                 if (((Scene)(sceneName)).name == "SampleSceneRelay")
                 {
-                    GameObject val = new GameObject("WendigosMessageHandler");
-                    val.AddComponent<NetworkObject>();
-                    val.AddComponent<WendigosMessageHandler>();                
+                                   
                 }
             }
 
@@ -129,9 +131,9 @@ namespace Wendigos
             {
                 audioClips.Clear();
                 // De-register when the associated NetworkObject is despawned.
-                NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
+                //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
-                NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
+                //NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
                 
             }
 
