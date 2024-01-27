@@ -65,7 +65,9 @@ namespace Wendigos
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
             public static List<AudioClip> audioClips = new List<AudioClip>();
-            public static NetworkVariable<int> randomValue = new NetworkVariable<int>();
+
+            public static LethalNetworkVariable<int> randomInt;
+
 
             public static WendigosMessageHandler Instance { get; private set; }
 
@@ -85,8 +87,8 @@ namespace Wendigos
                     // Server broadcasts to all clients when a new client connects (just for example purposes)
                     NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
 
-                    randomValue.Value = rand1.Next();
-                    WriteToConsole("Random seed is " + randomValue.Value);
+                    randomInt = new LethalNetworkVariable<int>("randomInt") { Value = rand1.Next() };
+                    WriteToConsole("Random seed is " + randomInt.Value);
                 }
                 else
                 {
@@ -534,8 +536,8 @@ namespace Wendigos
                     return;
                 }
 
-                WriteToConsole("Wendigos random seed is: " + WendigosMessageHandler.randomValue.Value);
-                var syncedRand = new System.Random(WendigosMessageHandler.randomValue.Value);
+                WriteToConsole("Wendigos random seed is: " + WendigosMessageHandler.randomInt.Value);
+                var syncedRand = new System.Random(WendigosMessageHandler.randomInt.Value);
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[syncedRand.Next(types.Length)];
                 var randomValue = syncedRand.Next();
@@ -589,7 +591,7 @@ namespace Wendigos
                 setOut = false;
                 string type = "chasing";
 
-                var syncedRand = new System.Random(WendigosMessageHandler.randomValue.Value);
+                var syncedRand = new System.Random(WendigosMessageHandler.randomInt.Value);
                 var randomValue = syncedRand.Next();
                 WriteToConsole("Random Value is " + randomValue);
                 if (randomValue % 10 == 0)
