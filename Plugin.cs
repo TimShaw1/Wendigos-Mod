@@ -132,11 +132,13 @@ namespace Wendigos
                 {
                     WriteToConsole($"Sever received ({receivedMessageContent}) from client ({senderId})");
                     audioClips.Add(LoadAudioClip(receivedMessageContent));
+                    WriteToConsole("AudioClip count is now: " + audioClips.Count);
                 }
                 else
                 {
                     WriteToConsole($"Client received ({receivedMessageContent}) from the server.");
                     audioClips.Add(LoadAudioClip(receivedMessageContent));
+                    WriteToConsole("AudioClip count is now: " + audioClips.Count);
                 }
 
                
@@ -785,7 +787,7 @@ namespace Wendigos
                     }
 
                     WriteToConsole("Synced clips");
-                    WriteToConsole(WendigosMessageHandler.audioClips.Count.ToString());
+                    WriteToConsole("Sent " + WendigosMessageHandler.audioClips.Count.ToString() + " Clips");
 
 
                     //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
