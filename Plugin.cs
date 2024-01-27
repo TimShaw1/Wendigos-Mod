@@ -131,6 +131,7 @@ namespace Wendigos
                 NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
                 NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
+                audioClips.Clear();
             }
 
             /// <summary>
