@@ -109,6 +109,10 @@ namespace Wendigos
             private void OnClientConnectedCallback(ulong obj)
             {
                 //SendMessage(Guid.NewGuid());
+                foreach (AudioClip clip in audioClips)
+                {
+                    SendMessage(ConvertToByteArr(clip));
+                }
 
             }
 
@@ -128,17 +132,43 @@ namespace Wendigos
                 byte[] receivedMessageContent;
                 messagePayload.ReadValueSafe(out receivedMessageContent);
                 receivedMessageContent = Decompress(receivedMessageContent);
+                AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
+                bool doWeHaveTheClip = false;
                 if (IsServer)
                 {
                     WriteToConsole($"Sever received ({receivedMessageContent}) from client ({senderId})");
-                    audioClips.Add(LoadAudioClip(receivedMessageContent));
-                    WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                    foreach (AudioClip clip in audioClips)
+                    {
+                        if (clip.name == recievedClip.name)
+                        {
+                            WriteToConsole("We already have this clip!");
+                            doWeHaveTheClip = true;
+                        }
+                    }
+                    if (!doWeHaveTheClip)
+                    {
+                        audioClips.Add(recievedClip);
+                        WriteToConsole("Added Clip.");
+                        WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                    }
                 }
                 else
                 {
                     WriteToConsole($"Client received ({receivedMessageContent}) from the server.");
-                    audioClips.Add(LoadAudioClip(receivedMessageContent));
-                    WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                    foreach (AudioClip clip in audioClips)
+                    {
+                        if (clip.name == recievedClip.name)
+                        {
+                            WriteToConsole("We already have this clip!");
+                            doWeHaveTheClip = true;
+                        }
+                    }
+                    if (!doWeHaveTheClip)
+                    {
+                        audioClips.Add(recievedClip);
+                        WriteToConsole("Added Clip.");
+                        WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                    }
                 }
 
                
@@ -744,6 +774,7 @@ namespace Wendigos
                     foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
                     {
                         AudioClip clip = LoadWavFile(line);
+                        WendigosMessageHandler.audioClips.Add(clip);
                         byte[] audioData = ConvertToByteArr(clip);
                         WendigosMessageHandler.Instance.SendMessage(audioData);
                         try
@@ -761,6 +792,7 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
+                            WendigosMessageHandler.audioClips.Add(clip);
                             byte[] audioData = ConvertToByteArr(clip);
                             WendigosMessageHandler.Instance.SendMessage(audioData);
 
@@ -776,6 +808,7 @@ namespace Wendigos
                         try
                         {
                             AudioClip clip = LoadWavFile(line);
+                            WendigosMessageHandler.audioClips.Add(clip);
                             byte[] audioData = ConvertToByteArr(clip);
                             WendigosMessageHandler.Instance.SendMessage(audioData);
                         }
