@@ -142,6 +142,7 @@ namespace Wendigos
                     {
                         if (clip.name == recievedClip.name)
                         {
+                            WriteToConsole(clip.name);
                             WriteToConsole("We already have this clip!");
                             doWeHaveTheClip = true;
                             WriteToConsole("AudioClip count is now: " + audioClips.Count);
