@@ -64,6 +64,8 @@ namespace Wendigos
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
             public static List<AudioClip> audioClips = new List<AudioClip>();
+            public static NetworkVariable<int> indexToPlay = new NetworkVariable<int>();
+            public static NetworkVariable<int> randomValue = new NetworkVariable<int>();
 
             public static WendigosMessageHandler Instance { get; private set; }
 
@@ -530,13 +532,17 @@ namespace Wendigos
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            if (rand.Next() % 10 == 0)
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[rand1.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+                            if (WendigosMessageHandler.Instance.IsServer)
+                                WendigosMessageHandler.randomValue.Value = rand1.Next();
+                            if (WendigosMessageHandler.randomValue.Value % 10 == 0)
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
                         }
                         else
                         {
-                            if (rand.Next() % 20 == 0)
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[rand1.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+                            if (WendigosMessageHandler.Instance.IsServer)
+                                WendigosMessageHandler.randomValue.Value = rand1.Next();
+                            if (WendigosMessageHandler.randomValue.Value % 20 == 0)
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
                         }
 
                         break;
@@ -570,9 +576,11 @@ namespace Wendigos
             {
                 setOut = false;
                 string type = "chasing";
-                
-                if (rand1.Next() % 10 == 0)
-                    TryToPlayAudio(WendigosMessageHandler.audioClips[rand1.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+
+                if (WendigosMessageHandler.Instance.IsServer)
+                    WendigosMessageHandler.randomValue.Value = rand1.Next();
+                if (WendigosMessageHandler.randomValue.Value % 10 == 0)
+                    TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
 
             }
 
