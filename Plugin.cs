@@ -97,6 +97,8 @@ namespace Wendigos
                     GameObject val = new GameObject("WendigosMessageHandler");
                     val.AddComponent<NetworkObject>();
                     val.AddComponent<WendigosMessageHandler>();
+
+                    indexToPlay.Value = rand1.Next() % 2;
                 }
             }
 
