@@ -152,6 +152,7 @@ namespace Wendigos
                     if (!doWeHaveTheClip)
                     {
                         audioClips.Add(recievedClip);
+                        audioClips.Sort(delegate (AudioClip c1, AudioClip c2) { return c1.name.CompareTo(c2.name); });
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + audioClips.Count);
                     }
@@ -465,6 +466,7 @@ namespace Wendigos
                     else
                     {
                         AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
+                        // Slow hash
                         myClip.name = string.Join(string.Empty, ConvertToByteArr(myClip)).GetHashCode().ToString();
                         return myClip;
                     }
@@ -474,13 +476,10 @@ namespace Wendigos
             return null;
         }
 
-        static void TryToPlayAudio(string type, MaskedPlayerEnemy __instance)
+        static void TryToPlayAudio(AudioClip clip, MaskedPlayerEnemy __instance)
         {
             try
             {
-                string path = GetPathOfWav(type);
-                // Sandworm bug? Avoid sandworm if necessary
-                AudioClip clip = LoadWavFile(path);
                 if (clip && !__instance.creatureVoice.isPlaying)
                     __instance.creatureVoice.PlayOneShot(clip);
             }
@@ -532,12 +531,12 @@ namespace Wendigos
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
                             if (rand.Next() % 10 == 0)
-                                TryToPlayAudio("nearby", __instance);
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[rand1.Next() % WendigosMessageHandler.audioClips.Count], __instance);
                         }
                         else
                         {
                             if (rand.Next() % 20 == 0)
-                                TryToPlayAudio("idle", __instance);
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[rand1.Next() % WendigosMessageHandler.audioClips.Count], __instance);
                         }
 
                         break;
@@ -573,7 +572,7 @@ namespace Wendigos
                 string type = "chasing";
                 
                 if (rand1.Next() % 10 == 0)
-                    TryToPlayAudio(type, __instance);
+                    TryToPlayAudio(WendigosMessageHandler.audioClips[rand1.Next() % WendigosMessageHandler.audioClips.Count], __instance);
 
             }
 
@@ -654,6 +653,7 @@ namespace Wendigos
 
             int channels = 1; //Assuming audio is mono because microphone input usually is
 
+            // Slow hash
             AudioClip clip = AudioClip.Create(string.Join(string.Empty, receivedBytes).GetHashCode().ToString(), samples.Length, channels, sampleRate, false);
             clip.SetData(samples, 0);
 
@@ -824,6 +824,7 @@ namespace Wendigos
                         }
                     }
 
+                    WendigosMessageHandler.audioClips.Sort(delegate (AudioClip c1, AudioClip c2) { return c1.name.CompareTo(c2.name); });
                     WriteToConsole("Synced clips");
                     WriteToConsole("Sent " + WendigosMessageHandler.audioClips.Count.ToString() + " Clips");
 
