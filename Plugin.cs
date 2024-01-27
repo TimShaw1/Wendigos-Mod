@@ -66,6 +66,7 @@ namespace Wendigos
             public static string MessageName = "clipSender";
             public static List<AudioClip> audioClips = new List<AudioClip>();
 
+            [PublicNetworkVariable]
             public static LethalNetworkVariable<int> randomInt;
 
 
