@@ -145,6 +145,7 @@ namespace Wendigos
                 receivedMessageContent = Decompress(receivedMessageContent);
                 AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
                 bool doWeHaveTheClip = false;
+
                 if (IsServer)
                 {
                     WriteToConsole($"Sever received ({receivedMessageContent}) from client ({senderId})");
@@ -201,6 +202,7 @@ namespace Wendigos
                 var writer = new FastBufferWriter(8388608, Unity.Collections.Allocator.Temp);
                 WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
+
                 using (writer)
                 {
                     WriteToConsole($"Writing {messageContent.Length} bytes of data...");
@@ -539,15 +541,15 @@ namespace Wendigos
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            //if (WendigosMessageHandler.Instance.IsServer)
-                                //WendigosMessageHandler.UpdateRandomValue(rand1.Next());
+                            if (WendigosMessageHandler.Instance.IsServer)
+                                WendigosMessageHandler.randomValue.Value = rand1.Next();
                             if (WendigosMessageHandler.randomValue.Value % 10 == 0)
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
                         }
                         else
                         {
-                            //if (WendigosMessageHandler.Instance.IsServer)
-                                //WendigosMessageHandler.UpdateRandomValue(rand1.Next());
+                            if (WendigosMessageHandler.Instance.IsServer)
+                                WendigosMessageHandler.randomValue.Value = rand1.Next();
                             if (WendigosMessageHandler.randomValue.Value % 20 == 0)
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
                         }
@@ -584,8 +586,8 @@ namespace Wendigos
                 setOut = false;
                 string type = "chasing";
 
-                //if (WendigosMessageHandler.Instance.IsServer)
-                    //WendigosMessageHandler.UpdateRandomValue(rand1.Next());
+                if (WendigosMessageHandler.Instance.IsServer)
+                    WendigosMessageHandler.randomValue.Value = rand1.Next();
                 if (WendigosMessageHandler.randomValue.Value % 10 == 0)
                     TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
 
