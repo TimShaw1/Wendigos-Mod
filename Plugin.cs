@@ -558,7 +558,7 @@ namespace Wendigos
                             if (WendigosMessageHandler.Instance.IsServer)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                                WendigosMessageHandler.indexToPlay.Value = serverRand.Next();
+                                WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                             }
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0)
                             {
@@ -571,7 +571,7 @@ namespace Wendigos
                             if (WendigosMessageHandler.Instance.IsServer)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                                WendigosMessageHandler.indexToPlay.Value = serverRand.Next();
+                                WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                             }
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0)
                             {
@@ -615,7 +615,7 @@ namespace Wendigos
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
                     WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                    WendigosMessageHandler.indexToPlay.Value = serverRand.Next();
+                    WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                 }
                 if (WendigosMessageHandler.randomInt.Value % 10 == 0)
                 {
