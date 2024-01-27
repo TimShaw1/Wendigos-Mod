@@ -109,6 +109,7 @@ namespace Wendigos
             private void OnClientConnectedCallback(ulong obj)
             {
                 //SendMessage(Guid.NewGuid());
+                WriteToConsole("Server sending " + audioClips.Count + " clips");
                 foreach (AudioClip clip in audioClips)
                 {
                     SendMessage(ConvertToByteArr(clip));
@@ -143,6 +144,7 @@ namespace Wendigos
                         {
                             WriteToConsole("We already have this clip!");
                             doWeHaveTheClip = true;
+                            WriteToConsole("AudioClip count is now: " + audioClips.Count);
                         }
                     }
                     if (!doWeHaveTheClip)
@@ -161,6 +163,7 @@ namespace Wendigos
                         {
                             WriteToConsole("We already have this clip!");
                             doWeHaveTheClip = true;
+                            WriteToConsole("AudioClip count is now: " + audioClips.Count);
                         }
                     }
                     if (!doWeHaveTheClip)
