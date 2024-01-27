@@ -534,6 +534,7 @@ namespace Wendigos
                     return;
                 }
 
+                WriteToConsole("Wendigos random seed is: " + WendigosMessageHandler.randomValue.Value);
                 var syncedRand = new System.Random(WendigosMessageHandler.randomValue.Value);
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[syncedRand.Next(types.Length)];
