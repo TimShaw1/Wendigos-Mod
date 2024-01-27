@@ -68,6 +68,8 @@ namespace Wendigos
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> randomInt;
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<int> indexToPlay;
 
 
             public static WendigosMessageHandler Instance { get; private set; }
@@ -89,8 +91,8 @@ namespace Wendigos
                     NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
 
                     randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
+                    indexToPlay = new LethalNetworkVariable<int>("indexToPlay") { Value = 0 };
                     WriteToConsole("Random seed is " + randomInt.Value);
-                    clientRand = new System.Random(randomInt.Value);
                 }
                 else
                 {
@@ -101,9 +103,9 @@ namespace Wendigos
                     //randomValue.OnValueChanged += UpdateRandomValue;
 
                     randomInt = new LethalNetworkVariable<int>("randomInt");
-                    WriteToConsole("Created Client rand");
-                    clientRand = new System.Random(randomInt.Value);
+                    indexToPlay = new LethalNetworkVariable<int>("indexToPlay");
 
+                    WriteToConsole("Created Client rand");
                 }
             }
 
@@ -339,7 +341,6 @@ namespace Wendigos
 
         private static ConfigEntry<bool> need_new_player_audio;
         static System.Random serverRand = new System.Random();
-        static System.Random clientRand;
 
         public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
@@ -545,9 +546,7 @@ namespace Wendigos
 
                 WriteToConsole("Wendigos random seed is: " + WendigosMessageHandler.randomInt.Value);
                 string[] types = ["idle", "nearby", "chasing"];
-                string type = types[clientRand.Next(types.Length)];
-                var randomValue = clientRand.Next();
-                WriteToConsole("Random Value is " + randomValue);
+                string type = types[serverRand.Next(types.Length)];
 
 
 
@@ -556,13 +555,29 @@ namespace Wendigos
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            if (randomValue % 10 == 0)
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[clientRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+                            if (WendigosMessageHandler.Instance.IsServer)
+                            {
+                                WendigosMessageHandler.randomInt.Value = serverRand.Next();
+                                WendigosMessageHandler.indexToPlay.Value = serverRand.Next();
+                            }
+                            if (WendigosMessageHandler.randomInt.Value % 10 == 0)
+                            {
+                                WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
+                            }
                         }
                         else
                         {
-                            if (randomValue % 10 == 0)
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[clientRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+                            if (WendigosMessageHandler.Instance.IsServer)
+                            {
+                                WendigosMessageHandler.randomInt.Value = serverRand.Next();
+                                WendigosMessageHandler.indexToPlay.Value = serverRand.Next();
+                            }
+                            if (WendigosMessageHandler.randomInt.Value % 10 == 0)
+                            {
+                                WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
+                            }
                         }
 
                         break;
@@ -597,10 +612,16 @@ namespace Wendigos
                 setOut = false;
                 string type = "chasing";
 
-                var randomValue = clientRand.Next();
-                WriteToConsole("Random Value is " + randomValue);
-                if (randomValue % 10 == 0)
-                    TryToPlayAudio(WendigosMessageHandler.audioClips[clientRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+                if (WendigosMessageHandler.Instance.IsServer)
+                {
+                    WendigosMessageHandler.randomInt.Value = serverRand.Next();
+                    WendigosMessageHandler.indexToPlay.Value = serverRand.Next();
+                }
+                if (WendigosMessageHandler.randomInt.Value % 10 == 0)
+                {
+                    WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
+                    TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
+                }
 
             }
 
