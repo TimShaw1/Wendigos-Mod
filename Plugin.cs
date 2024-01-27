@@ -87,8 +87,9 @@ namespace Wendigos
                     // Server broadcasts to all clients when a new client connects (just for example purposes)
                     NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
 
-                    randomInt = new LethalNetworkVariable<int>("randomInt") { Value = rand1.Next() };
+                    randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
                     WriteToConsole("Random seed is " + randomInt.Value);
+                    clientRand = new System.Random(randomInt.Value);
                 }
                 else
                 {
@@ -99,6 +100,8 @@ namespace Wendigos
                     //randomValue.OnValueChanged += UpdateRandomValue;
 
                     randomInt = new LethalNetworkVariable<int>("randomInt");
+                    WriteToConsole("Created Client rand");
+                    clientRand = new System.Random(randomInt.Value);
 
                 }
             }
@@ -334,7 +337,8 @@ namespace Wendigos
         }
 
         private static ConfigEntry<bool> need_new_player_audio;
-        static System.Random rand1 = new System.Random();
+        static System.Random serverRand = new System.Random();
+        static System.Random clientRand;
 
         public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
@@ -539,10 +543,9 @@ namespace Wendigos
                 }
 
                 WriteToConsole("Wendigos random seed is: " + WendigosMessageHandler.randomInt.Value);
-                var syncedRand = new System.Random(WendigosMessageHandler.randomInt.Value);
                 string[] types = ["idle", "nearby", "chasing"];
-                string type = types[syncedRand.Next(types.Length)];
-                var randomValue = syncedRand.Next();
+                string type = types[clientRand.Next(types.Length)];
+                var randomValue = clientRand.Next();
                 WriteToConsole("Random Value is " + randomValue);
 
 
@@ -553,12 +556,12 @@ namespace Wendigos
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
                             if (randomValue % 10 == 0)
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[syncedRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[clientRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
                         }
                         else
                         {
                             if (randomValue % 10 == 0)
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[syncedRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[clientRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
                         }
 
                         break;
@@ -593,11 +596,10 @@ namespace Wendigos
                 setOut = false;
                 string type = "chasing";
 
-                var syncedRand = new System.Random(WendigosMessageHandler.randomInt.Value);
-                var randomValue = syncedRand.Next();
+                var randomValue = clientRand.Next();
                 WriteToConsole("Random Value is " + randomValue);
                 if (randomValue % 10 == 0)
-                    TryToPlayAudio(WendigosMessageHandler.audioClips[syncedRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
+                    TryToPlayAudio(WendigosMessageHandler.audioClips[clientRand.Next() % WendigosMessageHandler.audioClips.Count], __instance);
 
             }
 
@@ -649,7 +651,7 @@ namespace Wendigos
             Funding is always an issue after the fact.
             Let us encourage each other.
             Subscribe to @Tim-Shaw on YouTube
-            """.Split('\n').OrderBy(a => rand1.Next()).ToArray();
+            """.Split('\n').OrderBy(a => serverRand.Next()).ToArray();
 
         public static byte[] ConvertToByteArr(AudioClip clip)
         {
