@@ -187,8 +187,8 @@ namespace Wendigos
             {
                 var messageContent = Compress(audioClip);
                 WriteToConsole("Writing message...");
-                // BIG BUFFER - 2^24 bytes
-                var writer = new FastBufferWriter(16777216, Unity.Collections.Allocator.Temp);
+                // BIG BUFFER - 2^23 bytes
+                var writer = new FastBufferWriter(8388608, Unity.Collections.Allocator.Temp);
                 WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
                 using (writer)
