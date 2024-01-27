@@ -127,11 +127,12 @@ namespace Wendigos
 
             public override void OnNetworkDespawn()
             {
+                audioClips.Clear();
                 // De-register when the associated NetworkObject is despawned.
                 NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
                 NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
-                audioClips.Clear();
+                
             }
 
             /// <summary>
