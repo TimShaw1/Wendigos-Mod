@@ -134,6 +134,7 @@ namespace Wendigos
                 messagePayload.ReadValueSafe(out receivedMessageContent);
                 receivedMessageContent = Decompress(receivedMessageContent);
                 AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
+                recievedClip.name = recievedClip.GetHashCode().ToString();
                 bool doWeHaveTheClip = false;
                 if (IsServer)
                 {
@@ -464,7 +465,7 @@ namespace Wendigos
                     else
                     {
                         AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
-                        myClip.name = audioFilePath;
+                        myClip.name = myClip.GetHashCode().ToString();
                         return myClip;
                     }
                 }
