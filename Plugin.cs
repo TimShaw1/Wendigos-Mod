@@ -485,6 +485,15 @@ namespace Wendigos
             }
         }
 
+        [HarmonyPatch(typeof(StartOfRound), "OnLocalDisconnect")]
+        class DisconnectPatch
+        {
+            static void Postfix() 
+            {
+                sent_audio_clips = false;
+            }
+        }
+
         static AudioClip LoadWavFile(string audioFilePath)
         {
             if (File.Exists(audioFilePath))
@@ -870,7 +879,7 @@ namespace Wendigos
 
 
         [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
-        class StartOfRoundConnectPatch
+        class PlayerConnectPatch
         {
             static void Postfix()
             {
