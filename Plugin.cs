@@ -578,6 +578,16 @@ namespace Wendigos
                 else
                     WendigosMessageHandler.ready_players.Value[NetworkManager.Singleton.LocalClientId] = false;
 
+                /* worked with this, should work without
+                int count = 0;
+                foreach (bool ready in WendigosMessageHandler.ready_players.Value)
+                {
+                    if (!ready)
+                        count++;
+                }
+                WriteToConsole("READY COUNT: " +  count); 
+                */
+
                 switch (__instance.currentBehaviourStateIndex)
                 {
                     case 0:
