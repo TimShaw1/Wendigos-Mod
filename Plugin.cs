@@ -472,6 +472,8 @@ namespace Wendigos
             }
         }
 
+        static DateTime time_since_audio_ended = DateTime.Now;
+
         static AudioClip LoadWavFile(string audioFilePath)
         {
             if (File.Exists(audioFilePath))
@@ -551,19 +553,24 @@ namespace Wendigos
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[serverRand.Next(types.Length)];
 
-
+                if (__instance.creatureVoice.isPlaying)
+                    time_since_audio_ended = DateTime.Now;
 
                 switch (__instance.currentBehaviourStateIndex)
                 {
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            if (WendigosMessageHandler.Instance.IsServer)
+                            if (WendigosMessageHandler.Instance.IsServer && (DateTime.Now - time_since_audio_ended).TotalMilliseconds > 1000)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                             }
-                            if (WendigosMessageHandler.randomInt.Value % 10 == 0 && !__instance.creatureVoice.isPlaying)
+                            
+
+                            if (WendigosMessageHandler.randomInt.Value % 10 == 0 
+                                && !__instance.creatureVoice.isPlaying 
+                                && (DateTime.Now - time_since_audio_ended).TotalMilliseconds > 1000)
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
@@ -571,12 +578,14 @@ namespace Wendigos
                         }
                         else
                         {
-                            if (WendigosMessageHandler.Instance.IsServer)
+                            if (WendigosMessageHandler.Instance.IsServer && (DateTime.Now - time_since_audio_ended).TotalMilliseconds > 1000)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                             }
-                            if (WendigosMessageHandler.randomInt.Value % 10 == 0 && !__instance.creatureVoice.isPlaying)
+                            if (WendigosMessageHandler.randomInt.Value % 10 == 0
+                                && !__instance.creatureVoice.isPlaying
+                                && (DateTime.Now - time_since_audio_ended).TotalMilliseconds > 1000)
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
@@ -615,12 +624,14 @@ namespace Wendigos
                 setOut = false;
                 string type = "chasing";
 
-                if (WendigosMessageHandler.Instance.IsServer)
+                if (WendigosMessageHandler.Instance.IsServer && (DateTime.Now - time_since_audio_ended).TotalMilliseconds > 1000)
                 {
                     WendigosMessageHandler.randomInt.Value = serverRand.Next();
                     WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                 }
-                if (WendigosMessageHandler.randomInt.Value % 10 == 0 && !__instance.creatureVoice.isPlaying)
+                if (WendigosMessageHandler.randomInt.Value % 10 == 0
+                                && !__instance.creatureVoice.isPlaying
+                                && (DateTime.Now - time_since_audio_ended).TotalMilliseconds > 1000)
                 {
                     WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                     TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
