@@ -868,7 +868,7 @@ namespace Wendigos
         static bool sent_audio_clips = false;
 
 
-        [HarmonyPatch(typeof(StartOfRound), "OnPlayerConnectedClientRpc")]
+        [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
         class StartOfRoundConnectPatch
         {
             static void Postfix()
