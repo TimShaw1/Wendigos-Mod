@@ -33,6 +33,7 @@ using System.Xml.Linq;
 using System.Security.Claims;
 using System.Buffers;
 using static Wendigos.Plugin;
+using System.Text;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -517,7 +518,7 @@ namespace Wendigos
                     {
                         AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
                         // Slow hash
-                        myClip.name = string.Join(string.Empty, ConvertToByteArr(myClip)).GetHashCode().ToString();
+                        myClip.name = Convert.ToBase64String(ConvertToByteArr(myClip));
                         return myClip;
                     }
                 }
@@ -765,7 +766,7 @@ namespace Wendigos
             int channels = 1; //Assuming audio is mono because microphone input usually is
 
             // Slow hash
-            AudioClip clip = AudioClip.Create(string.Join(string.Empty, receivedBytes).GetHashCode().ToString(), samples.Length, channels, sampleRate, false);
+            AudioClip clip = AudioClip.Create(Convert.ToBase64String(receivedBytes), samples.Length, channels, sampleRate, false);
             clip.SetData(samples, 0);
 
             return clip;
