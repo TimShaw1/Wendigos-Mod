@@ -69,7 +69,7 @@ namespace Wendigos
             public static LethalNetworkVariable<int> indexToPlay;
 
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<bool[]> ready_players;
+            public static LethalNetworkVariable<bool[]> ready_players; // TODO: Multiple masked?
 
 
             public static WendigosMessageHandler Instance { get; private set; }
@@ -148,7 +148,7 @@ namespace Wendigos
             public override void OnNetworkDespawn()
             {
                 ready_players.Value[NetworkManager.Singleton.LocalClientId] = true;
-                audioClips.Clear();
+                audioClips.Clear(); // TODO
                 // De-register when the associated NetworkObject is despawned.
                 //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
