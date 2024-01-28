@@ -569,7 +569,7 @@ namespace Wendigos
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 1)
+                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 0.9)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
@@ -586,7 +586,7 @@ namespace Wendigos
                         }
                         else
                         {
-                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 1)
+                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 0.9)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
@@ -639,7 +639,7 @@ namespace Wendigos
                 if (__instance.creatureVoice.isPlaying)
                     WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
 
-                if (WendigosMessageHandler.Instance.IsServer && elapsed > 1)
+                if (WendigosMessageHandler.Instance.IsServer && elapsed > 0.9)
                 {
                     WendigosMessageHandler.randomInt.Value = serverRand.Next();
                     WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
