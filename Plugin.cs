@@ -559,9 +559,9 @@ namespace Wendigos
 
                 long time_since_audio_ended = WendigosMessageHandler.last_time_played_audio.Value;
                 long rn = DateTime.Now.Ticks;
-                double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalSeconds;
+                double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalMilliseconds;
 
-                if (__instance.creatureVoice.isPlaying && elapsed > 1.1)
+                if (__instance.creatureVoice.isPlaying && elapsed > 1100)
                     WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
 
                 switch (__instance.currentBehaviourStateIndex)
@@ -569,7 +569,7 @@ namespace Wendigos
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 0.9)
+                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 900)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
@@ -578,7 +578,7 @@ namespace Wendigos
 
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0 
                                 && !__instance.creatureVoice.isPlaying 
-                                && elapsed > 1)
+                                && elapsed > 1000)
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
@@ -586,14 +586,14 @@ namespace Wendigos
                         }
                         else
                         {
-                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 0.9)
+                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 900)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                             }
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0
                                 && !__instance.creatureVoice.isPlaying
-                                && elapsed > 1)
+                                && elapsed > 1000)
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
@@ -636,17 +636,17 @@ namespace Wendigos
                 long rn = DateTime.Now.Ticks;
                 double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalSeconds;
 
-                if (__instance.creatureVoice.isPlaying && elapsed > 1.1)
+                if (__instance.creatureVoice.isPlaying && elapsed > 1100)
                     WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
 
-                if (WendigosMessageHandler.Instance.IsServer && elapsed > 0.9)
+                if (WendigosMessageHandler.Instance.IsServer && elapsed > 900)
                 {
                     WendigosMessageHandler.randomInt.Value = serverRand.Next();
                     WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                 }
                 if (WendigosMessageHandler.randomInt.Value % 10 == 0
                                 && !__instance.creatureVoice.isPlaying
-                                && elapsed > 1)
+                                && elapsed > 1000)
                 {
                     WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                     TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
