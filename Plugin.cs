@@ -66,8 +66,6 @@ namespace Wendigos
             public static LethalNetworkVariable<int> randomInt;
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> indexToPlay;
-            [PublicNetworkVariable]
-            public static LethalNetworkVariable<int> numberOfClientsDone;
 
 
             public static WendigosMessageHandler Instance { get; private set; }
@@ -90,7 +88,6 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay") { Value = 0 };
-                    numberOfClientsDone = new LethalNetworkVariable<int>("numberOfClientsDone") { Value = 0 };
                     WriteToConsole("Random seed is " + randomInt.Value);
                 }
                 else
@@ -103,7 +100,6 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt");
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay");
-                    numberOfClientsDone = new LethalNetworkVariable<int>("numberOfClientsDone");
 
                     WriteToConsole("Created Client rand");
                 }
