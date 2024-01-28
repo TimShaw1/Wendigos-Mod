@@ -490,6 +490,7 @@ namespace Wendigos
         {
             static void Postfix() 
             {
+                WendigosMessageHandler.audioClips.Clear();
                 sent_audio_clips = false;
             }
         }
