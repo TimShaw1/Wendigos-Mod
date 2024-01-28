@@ -68,6 +68,9 @@ namespace Wendigos
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> indexToPlay;
 
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<bool[]> ready_players;
+
 
             public static WendigosMessageHandler Instance { get; private set; }
 
@@ -79,7 +82,7 @@ namespace Wendigos
             public override void OnNetworkSpawn()
             {
                 base.OnNetworkSpawn();
-                WriteToConsole(NetworkManager.Singleton.LocalClientId.ToString());
+                //WriteToConsole(NetworkManager.Singleton.LocalClientId.ToString());
                 // Both the server-host and client(s) register the custom named message.
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
 
@@ -90,6 +93,11 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay") { Value = 0 };
+                    ready_players = new LethalNetworkVariable<bool[]>("readyPlayers") { Value = new bool[64] };
+                    for (int i = 0; i < ready_players.Value.Length; i++)
+                    {
+                        ready_players.Value[i] = true;
+                    }
                     WriteToConsole("Random seed is " + randomInt.Value);
                 }
                 else
@@ -102,6 +110,7 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt");
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay");
+                    ready_players = new LethalNetworkVariable<bool[]>("readyPlayers");
 
                     WriteToConsole("Created Client rand");
                 }
@@ -138,6 +147,7 @@ namespace Wendigos
 
             public override void OnNetworkDespawn()
             {
+                ready_players.Value[NetworkManager.Singleton.LocalClientId] = true;
                 audioClips.Clear();
                 // De-register when the associated NetworkObject is despawned.
                 //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
@@ -538,6 +548,16 @@ namespace Wendigos
             return Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly).Length;
         }
 
+        static bool are_all_ready()
+        {
+            bool ready = true;
+            foreach(bool readyVal in WendigosMessageHandler.ready_players.Value)
+            {
+                ready = ready && readyVal;
+            }
+            return ready;
+        }
+
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
         class MaskedPlayerEnemyAIPatch
         {
@@ -553,12 +573,17 @@ namespace Wendigos
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[serverRand.Next(types.Length)];
 
+                if (!__instance.creatureVoice.isPlaying)
+                    WendigosMessageHandler.ready_players.Value[NetworkManager.Singleton.LocalClientId] = true;
+                else
+                    WendigosMessageHandler.ready_players.Value[NetworkManager.Singleton.LocalClientId] = false;
+
                 switch (__instance.currentBehaviourStateIndex)
                 {
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            if (WendigosMessageHandler.Instance.IsServer)
+                            if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
@@ -566,7 +591,8 @@ namespace Wendigos
                             
 
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0 
-                                && !__instance.creatureVoice.isPlaying )
+                                && !__instance.creatureVoice.isPlaying 
+                                && are_all_ready())
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
@@ -574,13 +600,14 @@ namespace Wendigos
                         }
                         else
                         {
-                            if (WendigosMessageHandler.Instance.IsServer)
+                            if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                             }
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0
-                                && !__instance.creatureVoice.isPlaying)
+                                && !__instance.creatureVoice.isPlaying
+                                && are_all_ready())
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
@@ -619,13 +646,19 @@ namespace Wendigos
                 setOut = false;
                 string type = "chasing";
 
-                if (WendigosMessageHandler.Instance.IsServer)
+                if (!__instance.creatureVoice.isPlaying)
+                    WendigosMessageHandler.ready_players.Value[NetworkManager.Singleton.LocalClientId] = true;
+                else
+                    WendigosMessageHandler.ready_players.Value[NetworkManager.Singleton.LocalClientId] = false;
+
+                if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
                 {
                     WendigosMessageHandler.randomInt.Value = serverRand.Next();
                     WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                 }
                 if (WendigosMessageHandler.randomInt.Value % 10 == 0
-                                && !__instance.creatureVoice.isPlaying)
+                                && !__instance.creatureVoice.isPlaying
+                                && are_all_ready())
                 {
                     WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                     TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
