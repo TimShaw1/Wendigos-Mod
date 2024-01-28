@@ -634,7 +634,7 @@ namespace Wendigos
 
                 long time_since_audio_ended = WendigosMessageHandler.last_time_played_audio.Value;
                 long rn = DateTime.Now.Ticks;
-                double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalSeconds;
+                double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalMilliseconds;
 
                 if (__instance.creatureVoice.isPlaying && elapsed > 1100)
                     WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
