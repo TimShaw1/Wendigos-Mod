@@ -496,6 +496,14 @@ namespace Wendigos
             }
         }
 
+        public static string GetHashSHA1(byte[] data)
+        {
+            using (var sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider())
+            {
+                return string.Concat(sha1.ComputeHash(data).Select(x => x.ToString("X2")));
+            }
+        }
+
         static AudioClip LoadWavFile(string audioFilePath)
         {
             if (File.Exists(audioFilePath))
@@ -518,7 +526,7 @@ namespace Wendigos
                     {
                         AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
                         // Slow hash
-                        myClip.name = Convert.ToBase64String(ConvertToByteArr(myClip)).GetHashCode().ToString();
+                        myClip.name = GetHashSHA1(ConvertToByteArr(myClip));
                         return myClip;
                     }
                 }
@@ -766,7 +774,7 @@ namespace Wendigos
             int channels = 1; //Assuming audio is mono because microphone input usually is
 
             // Slow hash
-            AudioClip clip = AudioClip.Create(Convert.ToBase64String(receivedBytes).GetHashCode().ToString(), samples.Length, channels, sampleRate, false);
+            AudioClip clip = AudioClip.Create(GetHashSHA1(receivedBytes), samples.Length, channels, sampleRate, false);
             clip.SetData(samples, 0);
 
             return clip;
