@@ -557,12 +557,12 @@ namespace Wendigos
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[serverRand.Next(types.Length)];
 
-                if (__instance.creatureVoice.isPlaying)
-                    WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
-
                 long time_since_audio_ended = WendigosMessageHandler.last_time_played_audio.Value;
                 long rn = DateTime.Now.Ticks;
                 double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalSeconds;
+
+                if (__instance.creatureVoice.isPlaying && elapsed > 1.1)
+                    WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
 
                 switch (__instance.currentBehaviourStateIndex)
                 {
@@ -636,7 +636,7 @@ namespace Wendigos
                 long rn = DateTime.Now.Ticks;
                 double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalSeconds;
 
-                if (__instance.creatureVoice.isPlaying)
+                if (__instance.creatureVoice.isPlaying && elapsed > 1.1)
                     WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
 
                 if (WendigosMessageHandler.Instance.IsServer && elapsed > 0.9)
