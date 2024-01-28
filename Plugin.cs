@@ -30,7 +30,6 @@ using UnityEngine.SceneManagement;
 using System.IO.Compression;
 using LethalNetworkAPI;
 using System.Xml.Linq;
-using LCSoundTool.Utilities;
 using System.Security.Claims;
 using System.Buffers;
 using static Wendigos.Plugin;
