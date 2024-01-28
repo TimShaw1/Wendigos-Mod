@@ -70,6 +70,8 @@ namespace Wendigos
             public static LethalNetworkVariable<int> randomInt;
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> indexToPlay;
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<int> numberOfClientsDone;
 
 
             public static WendigosMessageHandler Instance { get; private set; }
@@ -92,6 +94,7 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay") { Value = 0 };
+                    numberOfClientsDone = new LethalNetworkVariable<int>("numberOfClientsDone") { Value = 0 };
                     WriteToConsole("Random seed is " + randomInt.Value);
                 }
                 else
@@ -104,6 +107,7 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt");
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay");
+                    numberOfClientsDone = new LethalNetworkVariable<int>("numberOfClientsDone");
 
                     WriteToConsole("Created Client rand");
                 }
@@ -694,7 +698,7 @@ namespace Wendigos
             return stream.ToArray();
         }
 
-        public static AudioClip LoadAudioClip(byte[] receivedBytes, int sampleRate = 48000)
+        public static AudioClip LoadAudioClip(byte[] receivedBytes, int sampleRate = 24000)
         {
             float[] samples = new float[receivedBytes.Length / 4]; //size of a float is 4 bytes
 
