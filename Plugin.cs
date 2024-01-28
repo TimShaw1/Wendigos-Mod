@@ -68,9 +68,6 @@ namespace Wendigos
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> indexToPlay;
 
-            [PublicNetworkVariable]
-            public static LethalNetworkVariable<long> last_time_played_audio;
-
 
             public static WendigosMessageHandler Instance { get; private set; }
 
@@ -92,7 +89,6 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay") { Value = 0 };
-                    last_time_played_audio = new LethalNetworkVariable<long>("lastPlayedAudio") { Value = 0 };
                     WriteToConsole("Random seed is " + randomInt.Value);
                 }
                 else
@@ -105,7 +101,6 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt");
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay");
-                    last_time_played_audio = new LethalNetworkVariable<long>("lastPlayedAudio");
 
                     WriteToConsole("Created Client rand");
                 }
@@ -557,19 +552,12 @@ namespace Wendigos
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[serverRand.Next(types.Length)];
 
-                long time_since_audio_ended = WendigosMessageHandler.last_time_played_audio.Value;
-                long rn = DateTime.Now.Ticks;
-                double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalMilliseconds;
-
-                if (__instance.creatureVoice.isPlaying && elapsed > 1100)
-                    WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
-
                 switch (__instance.currentBehaviourStateIndex)
                 {
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 900)
+                            if (WendigosMessageHandler.Instance.IsServer)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
@@ -577,8 +565,7 @@ namespace Wendigos
                             
 
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0 
-                                && !__instance.creatureVoice.isPlaying 
-                                && elapsed > 1000)
+                                && !__instance.creatureVoice.isPlaying )
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
@@ -586,14 +573,13 @@ namespace Wendigos
                         }
                         else
                         {
-                            if (WendigosMessageHandler.Instance.IsServer && elapsed > 900)
+                            if (WendigosMessageHandler.Instance.IsServer)
                             {
                                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
                                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                             }
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0
-                                && !__instance.creatureVoice.isPlaying
-                                && elapsed > 1000)
+                                && !__instance.creatureVoice.isPlaying)
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                                 TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
@@ -632,21 +618,13 @@ namespace Wendigos
                 setOut = false;
                 string type = "chasing";
 
-                long time_since_audio_ended = WendigosMessageHandler.last_time_played_audio.Value;
-                long rn = DateTime.Now.Ticks;
-                double elapsed = new TimeSpan(rn - time_since_audio_ended).TotalMilliseconds;
-
-                if (__instance.creatureVoice.isPlaying && elapsed > 1100)
-                    WendigosMessageHandler.last_time_played_audio.Value = DateTime.Now.Ticks;
-
-                if (WendigosMessageHandler.Instance.IsServer && elapsed > 900)
+                if (WendigosMessageHandler.Instance.IsServer)
                 {
                     WendigosMessageHandler.randomInt.Value = serverRand.Next();
                     WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
                 }
                 if (WendigosMessageHandler.randomInt.Value % 10 == 0
-                                && !__instance.creatureVoice.isPlaying
-                                && elapsed > 1000)
+                                && !__instance.creatureVoice.isPlaying)
                 {
                     WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                     TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
