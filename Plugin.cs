@@ -79,6 +79,7 @@ namespace Wendigos
             public override void OnNetworkSpawn()
             {
                 base.OnNetworkSpawn();
+                WriteToConsole(NetworkManager.Singleton.LocalClientId.ToString());
                 // Both the server-host and client(s) register the custom named message.
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
 
