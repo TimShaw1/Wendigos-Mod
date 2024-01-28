@@ -149,6 +149,7 @@ namespace Wendigos
             {
                 ready_players.Value[NetworkManager.Singleton.LocalClientId] = true;
                 audioClips.Clear(); // TODO
+                sent_audio_clips = false;
                 // De-register when the associated NetworkObject is despawned.
                 //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
