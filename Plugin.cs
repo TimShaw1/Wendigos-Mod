@@ -179,7 +179,7 @@ namespace Wendigos
                     if (!doWeHaveTheClip)
                     {
                         audioClips.Add(recievedClip);
-                        audioClips.Sort(delegate (AudioClip c1, AudioClip c2) { return c1.name.CompareTo(c2.name); });
+                        audioClips.Sort((a, b) => Int32.Parse(a.name).CompareTo(Int32.Parse(b.name)));
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + audioClips.Count);
                         foreach (var clip1 in audioClips)
@@ -197,12 +197,13 @@ namespace Wendigos
                             doWeHaveTheClip = true;
                             WriteToConsole("AudioClip count is now: " + audioClips.Count);
                             foreach (var clip1 in audioClips)
-                                WriteToConsole(clip.name);
+                                WriteToConsole(clip1.name);
                         }
                     }
                     if (!doWeHaveTheClip)
                     {
                         audioClips.Add(recievedClip);
+                        audioClips.Sort((a, b) => Int32.Parse(a.name).CompareTo(Int32.Parse(b.name)));
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + audioClips.Count);
                         foreach (var clip1 in audioClips)
@@ -883,7 +884,7 @@ namespace Wendigos
                         }
                     }
 
-                    WendigosMessageHandler.audioClips.Sort(delegate (AudioClip c1, AudioClip c2) { return c1.name.CompareTo(c2.name); });
+                    WendigosMessageHandler.audioClips.Sort((a, b) => Int32.Parse(a.name).CompareTo(Int32.Parse(b.name)));
                     WriteToConsole("Synced clips");
                     WriteToConsole("Sent " + WendigosMessageHandler.audioClips.Count.ToString() + " Clips");
 
