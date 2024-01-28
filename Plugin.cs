@@ -182,6 +182,8 @@ namespace Wendigos
                         audioClips.Sort(delegate (AudioClip c1, AudioClip c2) { return c1.name.CompareTo(c2.name); });
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                        foreach (var clip1 in audioClips)
+                            WriteToConsole(clip1.name);
                     }
                 }
                 else
@@ -194,6 +196,8 @@ namespace Wendigos
                             WriteToConsole("We already have this clip!");
                             doWeHaveTheClip = true;
                             WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                            foreach (var clip1 in audioClips)
+                                WriteToConsole(clip.name);
                         }
                     }
                     if (!doWeHaveTheClip)
@@ -201,6 +205,8 @@ namespace Wendigos
                         audioClips.Add(recievedClip);
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                        foreach (var clip1 in audioClips)
+                            WriteToConsole(clip1.name);
                     }
                 }
 
