@@ -227,7 +227,7 @@ namespace Wendigos
             /// Invoke this with a Guid by a client or server-host to send a
             /// custom named message.
             /// </summary>
-            public void SendMessage(byte[] audioClip)
+            public void SendMessage(byte[] audioClip, ulong steamID)
             {
                 var messageContent = Compress(audioClip);
                 WriteToConsole("Writing message...");
@@ -821,7 +821,7 @@ namespace Wendigos
                     steamID = Steamworks.SteamClient.SteamId.Value;
                 }
                 catch {
-                    steamID = 1;
+                    steamID = NetworkManager.Singleton.LocalClientId;
                 }
 
                 // Show record audio prompt
