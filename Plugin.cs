@@ -72,6 +72,9 @@ namespace Wendigos
             [PublicNetworkVariable]
             public static LethalNetworkVariable<bool[]> ready_players; // TODO: Multiple masked?
 
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<Dictionary<ulong, bool[]>> ready_dict; // TODO: Multiple masked?
+
 
             public static WendigosMessageHandler Instance { get; private set; }
 
@@ -374,6 +377,8 @@ namespace Wendigos
         internal static ulong steamID;
 
         static AudioClip ac;
+
+        static List<AudioClip> myClips = new List<AudioClip>();
 
         private void Awake()
         {
@@ -780,6 +785,26 @@ namespace Wendigos
             return clip;
         }
 
+        public static void GenerateClips()
+        {
+            // Generate audio clips
+            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
+            {
+                AudioClip clip = LoadWavFile(line);
+                myClips.Add(clip);
+            }
+            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
+            {
+                AudioClip clip = LoadWavFile(line);
+                myClips.Add(clip);
+            }
+            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
+            {
+                AudioClip clip = LoadWavFile(line);
+                myClips.Add(clip);
+            }
+        }
+
         [HarmonyPatch(typeof(MenuManager), "Start")]
         class MenuManagerPatch
         {
@@ -787,6 +812,7 @@ namespace Wendigos
             {
                 if (__instance.isInitScene)
                 {
+                    Task.Factory.StartNew(GenerateClips);
                     return;
                 }
                 try
@@ -796,8 +822,6 @@ namespace Wendigos
                 catch {
                     steamID = 1;
                 }
-
-
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
@@ -895,53 +919,12 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
-                   
-                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
+
+                    foreach(AudioClip clip in myClips)
                     {
-                        AudioClip clip = LoadWavFile(line);
                         WendigosMessageHandler.audioClips.Add(clip);
                         byte[] audioData = ConvertToByteArr(clip);
                         WendigosMessageHandler.Instance.SendMessage(audioData);
-                        try
-                        {
-                            
-                        }
-                        catch 
-                        { 
-                            WriteToConsole("Overflow");
-                            WriteToConsole(line);
-                        }
-                    }
-                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
-                    {
-                        try
-                        {
-                            AudioClip clip = LoadWavFile(line);
-                            WendigosMessageHandler.audioClips.Add(clip);
-                            byte[] audioData = ConvertToByteArr(clip);
-                            WendigosMessageHandler.Instance.SendMessage(audioData);
-
-                        }
-                        catch
-                        {
-                            WriteToConsole("Overflow");
-                            WriteToConsole(line);
-                        }
-                    }
-                    foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
-                    {
-                        try
-                        {
-                            AudioClip clip = LoadWavFile(line);
-                            WendigosMessageHandler.audioClips.Add(clip);
-                            byte[] audioData = ConvertToByteArr(clip);
-                            WendigosMessageHandler.Instance.SendMessage(audioData);
-                        }
-                        catch
-                        {
-                            WriteToConsole("Overflow");
-                            WriteToConsole(line);
-                        }
                     }
 
                     WendigosMessageHandler.audioClips.Sort((a, b) => a.name.CompareTo(b.name));
