@@ -221,7 +221,9 @@ namespace Wendigos
                     }
                 }
 
-                
+                // Cant be async with latecompany
+                sort_audioclips();
+
             }
 
             /// <summary>
@@ -260,6 +262,14 @@ namespace Wendigos
                         WriteToConsole("Sent Message");
                     }
                 }
+            }
+        }
+
+        static void sort_audioclips()
+        {
+            foreach (var clipList in audioClips.Values)
+            {
+                clipList.Sort((c1, c2) => c1.name.CompareTo(c2.name));
             }
         }
 
@@ -955,7 +965,6 @@ namespace Wendigos
                         WendigosMessageHandler.Instance.SendMessage(audioData);
                     }
 
-                    WriteToConsole("Synced clips");
                     var clips_count = get_clips_count();
                     WriteToConsole("Sent " + clips_count + " Clips");
 
