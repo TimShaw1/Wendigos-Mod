@@ -79,7 +79,7 @@ namespace Wendigos
             public static LethalNetworkVariable<Dictionary<ulong, bool[]>> ready_dict; // TODO: Multiple masked?
 
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<List<ulong>> ConnectedClientIDs; // TODO: Multiple masked?
+            public static LethalNetworkVariable<List<ulong>> ConnectedClientIDs;
 
 
             public static WendigosMessageHandler Instance { get; private set; }
@@ -256,6 +256,7 @@ namespace Wendigos
                 var messageContent = Compress(audioClip);
                 WriteToConsole("Writing message...");
                 // BIG BUFFER - 2^23 bytes
+                // Steam has max size of 512kb (C)
                 var writer = new FastBufferWriter(8388608, Unity.Collections.Allocator.Temp);
                 WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
@@ -873,7 +874,7 @@ namespace Wendigos
                 }
                 try
                 {
-                    steamID = Steamworks.SteamClient.SteamId.Value;
+                    steamID = Steamworks.SteamClient.SteamId.Value;                
                 }
                 catch {
                     steamID = 1;
@@ -923,6 +924,9 @@ namespace Wendigos
                         ac = SavWav.TrimSilence(ac, 0.01f);
                         need_new_player_audio.Value = false;
                         SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", ac);
+                        Task.Factory.StartNew(GenerateAllPlayerSentences);
+
+
                     }
                     else if (UnityInput.Current.GetKeyUp("N"))
                     {
@@ -939,10 +943,11 @@ namespace Wendigos
                             need_new_player_audio.Value = false;
                             ac = SavWav.TrimSilence(ac, 0.01f);
                             SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", ac);
+                            Task.Factory.StartNew(GenerateAllPlayerSentences);
+
                         }
                     }
                 }
-                GenerateAllPlayerSentences();
             }
         }
 
