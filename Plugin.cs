@@ -716,10 +716,11 @@ namespace Wendigos
                 else
                     WendigosMessageHandler.ready_players.Value[NetworkManager.Singleton.LocalClientId] = false;
 
+                //TODO: null reference?
                 prep_server();
                 if (WendigosMessageHandler.randomInt.Value % 10 == 0
-                                && !__instance.creatureVoice.isPlaying
-                                && are_all_ready())
+                    && !__instance.creatureVoice.isPlaying
+                    && are_all_ready())
                 {
                     WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
                     TryToPlayAudio(audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
