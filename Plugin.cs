@@ -61,13 +61,17 @@ namespace Wendigos
         {
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
-            public static List<AudioClip> audioClips = new List<AudioClip>();
+            public static ulong localID = NetworkManager.Singleton.LocalClientId;
+            public static Dictionary<ulong, List<AudioClip>> audioClips = new Dictionary<ulong, List<AudioClip>>();
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> randomInt;
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> indexToPlay;
+
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<ulong> random_clientID;
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<bool[]> ready_players; // TODO: Multiple masked?
@@ -97,6 +101,7 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay") { Value = 0 };
+                    random_clientID = new LethalNetworkVariable<ulong>("randomClientID") { Value = 0 };
                     ready_players = new LethalNetworkVariable<bool[]>("readyPlayers") { Value = new bool[64] };
                     for (int i = 0; i < ready_players.Value.Length; i++)
                     {
@@ -114,6 +119,7 @@ namespace Wendigos
 
                     randomInt = new LethalNetworkVariable<int>("randomInt");
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay");
+                    random_clientID = new LethalNetworkVariable<ulong>("randomClientID");
                     ready_players = new LethalNetworkVariable<bool[]>("readyPlayers");
 
                     WriteToConsole("Created Client rand");
@@ -141,7 +147,7 @@ namespace Wendigos
             {
                 //SendMessage(Guid.NewGuid());
                 WriteToConsole("Server sending " + audioClips.Count + " clips");
-                List<AudioClip> clipsCopy = new List<AudioClip>(audioClips);
+                List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[localID]);
                 foreach (AudioClip clip in clipsCopy)
                 {
                     SendMessage(ConvertToByteArr(clip));
@@ -172,10 +178,13 @@ namespace Wendigos
                 AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
                 bool doWeHaveTheClip = false;
 
+                if (!audioClips.Keys.Contains(senderId))
+                    audioClips.Add(senderId, new List<AudioClip>());
+
                 if (IsServer)
                 {
                     WriteToConsole($"Sever received ({receivedMessageContent}) from client ({senderId})");
-                    foreach (AudioClip clip in audioClips)
+                    foreach (AudioClip clip in audioClips[senderId])
                     {
                         if (clip.name == recievedClip.name)
                         {
@@ -187,36 +196,28 @@ namespace Wendigos
                     }
                     if (!doWeHaveTheClip)
                     {
-                        audioClips.Add(recievedClip);
-                        audioClips.Sort((a, b) => a.name.CompareTo(b.name));
+                        audioClips[senderId].Add(recievedClip);
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + audioClips.Count);
-                        foreach (var clip1 in audioClips)
-                            WriteToConsole(clip1.name);
                     }
                 }
                 else
                 {
                     WriteToConsole($"Client received ({receivedMessageContent}) from the server.");
-                    foreach (AudioClip clip in audioClips)
+                    foreach (AudioClip clip in audioClips[senderId])
                     {
                         if (clip.name == recievedClip.name)
                         {
                             WriteToConsole("We already have this clip!");
                             doWeHaveTheClip = true;
                             WriteToConsole("AudioClip count is now: " + audioClips.Count);
-                            foreach (var clip1 in audioClips)
-                                WriteToConsole(clip1.name);
                         }
                     }
                     if (!doWeHaveTheClip)
                     {
-                        audioClips.Add(recievedClip);
-                        audioClips.Sort((a, b) => a.name.CompareTo(b.name));
+                        audioClips[senderId].Add(recievedClip);
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + audioClips.Count);
-                        foreach (var clip1 in audioClips)
-                            WriteToConsole(clip1.name);
                     }
                 }
 
@@ -227,7 +228,7 @@ namespace Wendigos
             /// Invoke this with a Guid by a client or server-host to send a
             /// custom named message.
             /// </summary>
-            public void SendMessage(byte[] audioClip, ulong steamID)
+            public void SendMessage(byte[] audioClip)
             {
                 var messageContent = Compress(audioClip);
                 WriteToConsole("Writing message...");
@@ -462,6 +463,16 @@ namespace Wendigos
 
         }
 
+        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnPlayerDC))]
+        class PlayerDCPatch
+        {
+            static void Prefix(int playerObjectNumber, ulong clientId)
+            {
+                WriteToConsole($"Clearing {clientId}'s audio clips");
+                WendigosMessageHandler.audioClips[clientId].Clear();
+            }
+        }
+
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Update))]
         class MaskedPlayerEnemyUpdatePatch
         {
@@ -583,6 +594,16 @@ namespace Wendigos
             return ready;
         }
 
+        static void prep_server()
+        {
+            if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
+            {
+                WendigosMessageHandler.randomInt.Value = serverRand.Next();
+                WendigosMessageHandler.random_clientID.Value = (ulong)(serverRand.Next() % WendigosMessageHandler.audioClips.Keys.Count);
+                WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips[WendigosMessageHandler.random_clientID.Value].Count;
+            }
+        }
+
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
         class MaskedPlayerEnemyAIPatch
         {
@@ -618,34 +639,25 @@ namespace Wendigos
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-                            if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
-                            {
-                                WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                                WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
-                            }
-                            
+                            prep_server();
 
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0 
                                 && !__instance.creatureVoice.isPlaying 
                                 && are_all_ready())
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
                             }
                         }
                         else
                         {
-                            if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
-                            {
-                                WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                                WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
-                            }
+                            prep_server();
                             if (WendigosMessageHandler.randomInt.Value % 10 == 0
                                 && !__instance.creatureVoice.isPlaying
                                 && are_all_ready())
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
+                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
                             }
                         }
 
@@ -686,17 +698,13 @@ namespace Wendigos
                 else
                     WendigosMessageHandler.ready_players.Value[NetworkManager.Singleton.LocalClientId] = false;
 
-                if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
-                {
-                    WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                    WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips.Count;
-                }
+                prep_server();
                 if (WendigosMessageHandler.randomInt.Value % 10 == 0
                                 && !__instance.creatureVoice.isPlaying
                                 && are_all_ready())
                 {
                     WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
-                    TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.indexToPlay.Value], __instance);
+                    TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
                 }
 
             }
@@ -821,7 +829,7 @@ namespace Wendigos
                     steamID = Steamworks.SteamClient.SteamId.Value;
                 }
                 catch {
-                    steamID = NetworkManager.Singleton.LocalClientId;
+                    steamID = 1;
                 }
 
                 // Show record audio prompt
@@ -920,17 +928,23 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
+                    if (!WendigosMessageHandler.audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
+                        WendigosMessageHandler.audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
 
-                    foreach(AudioClip clip in myClips)
+                    foreach (AudioClip clip in myClips)
                     {
-                        WendigosMessageHandler.audioClips.Add(clip);
+                        WendigosMessageHandler.audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
                         byte[] audioData = ConvertToByteArr(clip);
                         WendigosMessageHandler.Instance.SendMessage(audioData);
                     }
 
-                    WendigosMessageHandler.audioClips.Sort((a, b) => a.name.CompareTo(b.name));
                     WriteToConsole("Synced clips");
-                    WriteToConsole("Sent " + WendigosMessageHandler.audioClips.Count.ToString() + " Clips");
+                    var clips_count = 0;
+                    foreach (var audioList in WendigosMessageHandler.audioClips.Values)
+                    {
+                        clips_count += audioList.Count;
+                    }
+                    WriteToConsole("Sent " + clips_count + " Clips");
 
 
                     //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
