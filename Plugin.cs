@@ -144,7 +144,7 @@ namespace Wendigos
             private void OnClientConnectedCallback(ulong obj)
             {
                 //SendMessage(Guid.NewGuid());
-                WriteToConsole("Server sending " + audioClips.Count + " clips");
+                WriteToConsole("Server sending " + get_clips_count() + " clips");
                 List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
                 foreach (AudioClip clip in clipsCopy)
                 {
@@ -189,14 +189,14 @@ namespace Wendigos
                             WriteToConsole(clip.name);
                             WriteToConsole("We already have this clip!");
                             doWeHaveTheClip = true;
-                            WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                            WriteToConsole("AudioClip count is now: " + get_clips_count());
                         }
                     }
                     if (!doWeHaveTheClip)
                     {
                         audioClips[senderId].Add(recievedClip);
                         WriteToConsole("Added Clip.");
-                        WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                        WriteToConsole("AudioClip count is now: " + get_clips_count());
                     }
                 }
                 else
@@ -208,14 +208,14 @@ namespace Wendigos
                         {
                             WriteToConsole("We already have this clip!");
                             doWeHaveTheClip = true;
-                            WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                            WriteToConsole("AudioClip count is now: " + get_clips_count());
                         }
                     }
                     if (!doWeHaveTheClip)
                     {
                         audioClips[senderId].Add(recievedClip);
                         WriteToConsole("Added Clip.");
-                        WriteToConsole("AudioClip count is now: " + audioClips.Count);
+                        WriteToConsole("AudioClip count is now: " + get_clips_count());
                     }
                 }
 
