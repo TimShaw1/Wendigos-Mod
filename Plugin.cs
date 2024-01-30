@@ -34,6 +34,7 @@ using System.Security.Claims;
 using System.Buffers;
 using static Wendigos.Plugin;
 using System.Text;
+using Steamworks.ServerList;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -510,7 +511,8 @@ namespace Wendigos
         {
             static void Postfix() 
             {
-                audioClips.Clear();
+                foreach (var clipList in audioClips.Values)
+                    clipList.Clear();
                 sent_audio_clips = false;
             }
         }
