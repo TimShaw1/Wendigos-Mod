@@ -78,6 +78,9 @@ namespace Wendigos
             [PublicNetworkVariable]
             public static LethalNetworkVariable<Dictionary<ulong, bool[]>> ready_dict; // TODO: Multiple masked?
 
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<List<ulong>> ConnectedClientIDs; // TODO: Multiple masked?
+
 
             public static WendigosMessageHandler Instance { get; private set; }
 
@@ -102,6 +105,13 @@ namespace Wendigos
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay") { Value = 0 };
                     random_clientID = new LethalNetworkVariable<ulong>("randomClientID") { Value = 0 };
                     ready_players = new LethalNetworkVariable<bool[]>("readyPlayers") { Value = new bool[64] };
+
+                    ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs") { Value = new List<ulong>() };
+                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        ConnectedClientIDs.Value.Add(clientID);
+                    }
+
                     for (int i = 0; i < ready_players.Value.Length; i++)
                     {
                         ready_players.Value[i] = true;
@@ -120,6 +130,7 @@ namespace Wendigos
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay");
                     random_clientID = new LethalNetworkVariable<ulong>("randomClientID");
                     ready_players = new LethalNetworkVariable<bool[]>("readyPlayers");
+                    ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs");
 
                     WriteToConsole("Created Client rand");
                 }
@@ -152,6 +163,15 @@ namespace Wendigos
                     SendMessage(ConvertToByteArr(clip));
                 }
 
+                if (IsServer)
+                {
+                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        if (!ConnectedClientIDs.Value.Contains(clientID))
+                            ConnectedClientIDs.Value.Add(clientID);
+                    }
+                }
+
             }
 
             public override void OnNetworkDespawn()
@@ -160,11 +180,12 @@ namespace Wendigos
                 foreach (var clipList in audioClips.Values)
                     clipList.Clear(); 
                 sent_audio_clips = false;
+                ConnectedClientIDs.Value.Clear();
                 // De-register when the associated NetworkObject is despawned.
                 //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
                 //NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
-                
+
             }
 
             /// <summary>
@@ -485,6 +506,15 @@ namespace Wendigos
                 audioClips[clientId].Clear();
                 WriteToConsole($"Removed {audioClips[clientId].Count} Clips");
                 WriteToConsole("AudioClip count is now " + get_clips_count());
+
+                if (WendigosMessageHandler.Instance.IsServer)
+                {
+                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        if (!WendigosMessageHandler.ConnectedClientIDs.Value.Contains(clientID))
+                            WendigosMessageHandler.ConnectedClientIDs.Value.Add(clientID);
+                    }
+                }
             }
         }
 
@@ -615,8 +645,8 @@ namespace Wendigos
             if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
             {
                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                WendigosMessageHandler.random_clientID.Value = NetworkManager.Singleton.ConnectedClientsIds[
-                        serverRand.Next() % NetworkManager.Singleton.ConnectedClientsIds.Count
+                WendigosMessageHandler.random_clientID.Value = WendigosMessageHandler.ConnectedClientIDs.Value[
+                        serverRand.Next() % WendigosMessageHandler.ConnectedClientIDs.Value.Count
                     ];
                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % audioClips[WendigosMessageHandler.random_clientID.Value].Count;
             }
