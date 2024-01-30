@@ -157,7 +157,8 @@ namespace Wendigos
             public override void OnNetworkDespawn()
             {
                 ready_players.Value[NetworkManager.Singleton.LocalClientId] = true;
-                audioClips.Clear(); // TODO
+                foreach (var clipList in audioClips.Values)
+                    clipList.Clear(); 
                 sent_audio_clips = false;
                 // De-register when the associated NetworkObject is despawned.
                 //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
