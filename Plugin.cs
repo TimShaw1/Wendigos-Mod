@@ -470,6 +470,7 @@ namespace Wendigos
             {
                 WriteToConsole($"Clearing {clientId}'s audio clips");
                 WendigosMessageHandler.audioClips[clientId].Clear();
+                WriteToConsole("AudioClip count is now " + get_clips_count());
             }
         }
 
@@ -920,6 +921,15 @@ namespace Wendigos
         }
         static bool sent_audio_clips = false;
 
+        public static int get_clips_count()
+        {
+            int clips_count = 0;
+            foreach (var audioList in WendigosMessageHandler.audioClips.Values)
+            {
+                clips_count += audioList.Count;
+            }
+            return clips_count;
+        }
 
         [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
         class PlayerConnectPatch
@@ -939,11 +949,7 @@ namespace Wendigos
                     }
 
                     WriteToConsole("Synced clips");
-                    var clips_count = 0;
-                    foreach (var audioList in WendigosMessageHandler.audioClips.Values)
-                    {
-                        clips_count += audioList.Count;
-                    }
+                    var clips_count = get_clips_count();
                     WriteToConsole("Sent " + clips_count + " Clips");
 
 
