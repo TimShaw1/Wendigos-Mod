@@ -61,8 +61,6 @@ namespace Wendigos
         {
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
-            public static ulong localID = NetworkManager.Singleton.LocalClientId;
-            public static Dictionary<ulong, List<AudioClip>> audioClips = new Dictionary<ulong, List<AudioClip>>();
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> randomInt;
@@ -147,7 +145,7 @@ namespace Wendigos
             {
                 //SendMessage(Guid.NewGuid());
                 WriteToConsole("Server sending " + audioClips.Count + " clips");
-                List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[localID]);
+                List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
                 foreach (AudioClip clip in clipsCopy)
                 {
                     SendMessage(ConvertToByteArr(clip));
@@ -380,6 +378,7 @@ namespace Wendigos
         static AudioClip ac;
 
         static List<AudioClip> myClips = new List<AudioClip>();
+        public static Dictionary<ulong, List<AudioClip>> audioClips = new Dictionary<ulong, List<AudioClip>>() { { 0, new List<AudioClip>() } };
 
         private void Awake()
         {
@@ -461,6 +460,8 @@ namespace Wendigos
 
             //maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
 
+            WriteToConsole("AudioClip dict is: " + audioClips.ToString());
+
         }
 
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnPlayerDC))]
@@ -469,7 +470,7 @@ namespace Wendigos
             static void Prefix(int playerObjectNumber, ulong clientId)
             {
                 WriteToConsole($"Clearing {clientId}'s audio clips");
-                WendigosMessageHandler.audioClips[clientId].Clear();
+                audioClips[clientId].Clear();
                 WriteToConsole("AudioClip count is now " + get_clips_count());
             }
         }
@@ -508,7 +509,7 @@ namespace Wendigos
         {
             static void Postfix() 
             {
-                WendigosMessageHandler.audioClips.Clear();
+                audioClips.Clear();
                 sent_audio_clips = false;
             }
         }
@@ -600,8 +601,8 @@ namespace Wendigos
             if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
             {
                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                WendigosMessageHandler.random_clientID.Value = (ulong)(serverRand.Next() % WendigosMessageHandler.audioClips.Keys.Count);
-                WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % WendigosMessageHandler.audioClips[WendigosMessageHandler.random_clientID.Value].Count;
+                WendigosMessageHandler.random_clientID.Value = (ulong)(serverRand.Next() % audioClips.Keys.Count);
+                WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % audioClips[WendigosMessageHandler.random_clientID.Value].Count;
             }
         }
 
@@ -647,7 +648,7 @@ namespace Wendigos
                                 && are_all_ready())
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
+                                TryToPlayAudio(audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
                             }
                         }
                         else
@@ -658,7 +659,7 @@ namespace Wendigos
                                 && are_all_ready())
                             {
                                 WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
-                                TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
+                                TryToPlayAudio(audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
                             }
                         }
 
@@ -705,7 +706,7 @@ namespace Wendigos
                                 && are_all_ready())
                 {
                     WriteToConsole("Playing Index " + WendigosMessageHandler.indexToPlay.Value);
-                    TryToPlayAudio(WendigosMessageHandler.audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
+                    TryToPlayAudio(audioClips[WendigosMessageHandler.random_clientID.Value][WendigosMessageHandler.indexToPlay.Value], __instance);
                 }
 
             }
@@ -924,7 +925,7 @@ namespace Wendigos
         public static int get_clips_count()
         {
             int clips_count = 0;
-            foreach (var audioList in WendigosMessageHandler.audioClips.Values)
+            foreach (var audioList in audioClips.Values)
             {
                 clips_count += audioList.Count;
             }
@@ -938,12 +939,12 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
-                    if (!WendigosMessageHandler.audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
-                        WendigosMessageHandler.audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
+                    if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
+                        audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
 
                     foreach (AudioClip clip in myClips)
                     {
-                        WendigosMessageHandler.audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
+                        audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
                         byte[] audioData = ConvertToByteArr(clip);
                         WendigosMessageHandler.Instance.SendMessage(audioData);
                     }
