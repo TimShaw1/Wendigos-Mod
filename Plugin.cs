@@ -471,6 +471,8 @@ namespace Wendigos
         {
             static void Prefix(int playerObjectNumber, ulong clientId)
             {
+                WriteToConsole($"Removing {clientId}'s ID from list of valid IDs");
+
                 WriteToConsole($"Clearing {clientId}'s audio clips");
                 audioClips[clientId].Clear();
                 WriteToConsole($"Removed {audioClips[clientId].Count} Clips");
@@ -605,7 +607,9 @@ namespace Wendigos
             if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
             {
                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                WendigosMessageHandler.random_clientID.Value = (ulong)(serverRand.Next() % audioClips.Keys.Count);
+                WendigosMessageHandler.random_clientID.Value = NetworkManager.Singleton.ConnectedClientsIds[
+                        serverRand.Next() % NetworkManager.Singleton.ConnectedClientsIds.Count
+                    ];
                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % audioClips[WendigosMessageHandler.random_clientID.Value].Count;
             }
         }
