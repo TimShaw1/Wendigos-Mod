@@ -785,7 +785,7 @@ namespace Wendigos
             return clip;
         }
 
-        public static void GenerateClips()
+        public static void GeneratePlayerAudioClips()
         {
             // Generate audio clips
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
@@ -803,6 +803,7 @@ namespace Wendigos
                 AudioClip clip = LoadWavFile(line);
                 myClips.Add(clip);
             }
+            WriteToConsole("Generated Player Clips. Count: " + myClips.Count);
         }
 
         [HarmonyPatch(typeof(MenuManager), "Start")]
@@ -812,7 +813,7 @@ namespace Wendigos
             {
                 if (__instance.isInitScene)
                 {
-                    Task.Factory.StartNew(GenerateClips);
+                    Task.Factory.StartNew(GeneratePlayerAudioClips);
                     return;
                 }
                 try
