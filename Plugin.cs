@@ -471,6 +471,7 @@ namespace Wendigos
             {
                 WriteToConsole($"Clearing {clientId}'s audio clips");
                 audioClips[clientId].Clear();
+                WriteToConsole($"Removed {audioClips[clientId].Count} Clips");
                 WriteToConsole("AudioClip count is now " + get_clips_count());
             }
         }
