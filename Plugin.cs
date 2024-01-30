@@ -471,8 +471,6 @@ namespace Wendigos
         {
             static void Prefix(int playerObjectNumber, ulong clientId)
             {
-                WriteToConsole($"Removing {clientId}'s ID from list of valid IDs");
-
                 WriteToConsole($"Clearing {clientId}'s audio clips");
                 audioClips[clientId].Clear();
                 WriteToConsole($"Removed {audioClips[clientId].Count} Clips");
