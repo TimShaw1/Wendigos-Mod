@@ -1145,6 +1145,8 @@ namespace Wendigos
 
                     //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
                     sent_audio_clips = true;
+
+                    WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Value.Count.ToString());
                 }
                 
             }
