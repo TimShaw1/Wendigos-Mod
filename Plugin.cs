@@ -840,11 +840,12 @@ namespace Wendigos
             public string id;
         }
 
-        [HarmonyPatch(nameof(MaskedPlayerEnemy), "Start")]
+        [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Start))]
         class MaskedStartPatch
         {
             static void Postfix(MaskedPlayerEnemy __instance)
             {
+
                 __instance.gameObject.AddComponent<MaskedEnemyIdentifier>();
 
                 // id is starting position since only 1 enemy can spawn per vent
@@ -866,7 +867,7 @@ namespace Wendigos
 
                     ulong randomClientID = unassignedClientIDs[serverRand.Next() % unassignedClientIDs.Count];
 
-                    WendigosMessageHandler.masked_client_dict.Value.Add(
+                    WendigosMessageHandler.masked_client_dict.Value.TryAdd(
                             __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
                             randomClientID
                         );
