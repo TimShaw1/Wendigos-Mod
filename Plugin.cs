@@ -229,6 +229,9 @@ namespace Wendigos
                     totalOffset += fragment.Length;
                 }
 
+                // clear buffer for next clip
+                clipFragmentBuffers[senderId].Clear();
+
                 // decompress audioclip
                 receivedMessageContent = Decompress(receivedMessageContent);
 
