@@ -614,11 +614,15 @@ namespace Wendigos
         {
             if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
             {
+                WriteToConsole("In IF statement");
                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
+                WriteToConsole("Set rand");
                 WendigosMessageHandler.random_clientID.Value = NetworkManager.Singleton.ConnectedClientsIds[
                         serverRand.Next() % NetworkManager.Singleton.ConnectedClientsIds.Count
                     ];
+                WriteToConsole("Set random client value");
                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % audioClips[WendigosMessageHandler.random_clientID.Value].Count;
+                WriteToConsole("Set index");
             }
         }
 
