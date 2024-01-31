@@ -1205,7 +1205,7 @@ namespace Wendigos
 
                     WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Value.Count.ToString());
                     WriteToConsole("Test connected list: " + WendigosMessageHandler.per_masked_ready_values.Value.Count.ToString());
-                    WriteToConsole("Test connected list 2: " + WendigosMessageHandler.per_masked_ready_values.Value[0].Count.ToString());
+                    WriteToConsole("Test connected list 2: " + WendigosMessageHandler.per_masked_ready_values.Value[0].Length.ToString());
                 }
                 
             }
