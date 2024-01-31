@@ -50,6 +50,7 @@ namespace Wendigos
             public static string MessageName = "clipSender";
             private static Dictionary<ulong, List<byte[]>> clipFragmentBuffers = new Dictionary<ulong, List<byte[]>>();
             private static int numberOfFragments = 10;
+            public static int maxNumPlayers = 64;
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> randomInt;
@@ -871,6 +872,16 @@ namespace Wendigos
                             __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
                             randomClientID
                         );
+
+                    WendigosMessageHandler.per_masked_ready_dict.Value.TryAdd(
+                            __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
+                            new bool[WendigosMessageHandler.maxNumPlayers]
+                        );
+
+                    for(int i = 0; i < WendigosMessageHandler.maxNumPlayers; i++)
+                    {
+                        WendigosMessageHandler.per_masked_ready_dict.Value[__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id][i] = true;
+                    }
                 }
             }
         }
