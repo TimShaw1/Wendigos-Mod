@@ -78,6 +78,9 @@ namespace Wendigos
             [PublicNetworkVariable]
             public static LethalNetworkVariable<Dictionary<ulong, bool[]>> ready_dict; // TODO: Multiple masked?
 
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<List<ulong>> ConnectedClientIDs;
+
 
             public static WendigosMessageHandler Instance { get; private set; }
 
@@ -102,6 +105,13 @@ namespace Wendigos
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay") { Value = 0 };
                     random_clientID = new LethalNetworkVariable<ulong>("randomClientID") { Value = 0 };
                     ready_players = new LethalNetworkVariable<bool[]>("readyPlayers") { Value = new bool[64] };
+
+                    ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs") { Value = new List<ulong>() };
+                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        ConnectedClientIDs.Value.Add(clientID);
+                    }
+
                     for (int i = 0; i < ready_players.Value.Length; i++)
                     {
                         ready_players.Value[i] = true;
@@ -120,6 +130,7 @@ namespace Wendigos
                     indexToPlay = new LethalNetworkVariable<int>("indexToPlay");
                     random_clientID = new LethalNetworkVariable<ulong>("randomClientID");
                     ready_players = new LethalNetworkVariable<bool[]>("readyPlayers");
+                    ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs");
 
                     WriteToConsole("Created Client rand");
                 }
@@ -152,6 +163,15 @@ namespace Wendigos
                     SendMessage(ConvertToByteArr(clip));
                 }
 
+                if (IsServer)
+                {
+                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        if (!ConnectedClientIDs.Value.Contains(clientID))
+                            ConnectedClientIDs.Value.Add(clientID);
+                    }
+                }
+
             }
 
             public override void OnNetworkDespawn()
@@ -160,11 +180,12 @@ namespace Wendigos
                 foreach (var clipList in audioClips.Values)
                     clipList.Clear(); 
                 sent_audio_clips = false;
+                ConnectedClientIDs.Value.Clear();
                 // De-register when the associated NetworkObject is despawned.
                 //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
                 //NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
-                
+
             }
 
             /// <summary>
@@ -235,6 +256,7 @@ namespace Wendigos
                 var messageContent = Compress(audioClip);
                 WriteToConsole("Writing message...");
                 // BIG BUFFER - 2^23 bytes
+                // Steam has max size of 512kb (C)
                 var writer = new FastBufferWriter(8388608, Unity.Collections.Allocator.Temp);
                 WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
@@ -349,21 +371,67 @@ namespace Wendigos
             WriteToConsole("deleted temporary sentences text file");
         }
 
-        static void GenerateAllPlayerSentences(bool new_idle, bool new_nearby, bool new_chasing)
+        static void GenerateAllPlayerSentences()
         {
+            bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
+            bool new_idle, new_nearby, new_chasing;
+            new_idle = new_nearby = new_chasing = false;
+
+            if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
+            {
+                File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt",
+                    "Help me\n" +
+                    "Stop Sign Over Here\n" +
+                    "Where is everyone?"
+                    );
+            }
+
+            if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
+            {
+                new_idle = true;
+                WriteToConsole($"generating idle sentences");
+            }
             if (new_idle) 
                 GeneratePlayerSentences("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
 
+
+            if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt"))
+            {
+                File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt",
+                    "What's up?\n" +
+                    "Find anything?\n" +
+                    "haha yeah"
+                );
+            }
+            if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt"))
+            {
+                new_nearby = true;
+                WriteToConsole($"generating nearby sentences");
+            }
             if (new_nearby)
                 GeneratePlayerSentences("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
 
+
+            if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt"))
+            {
+                File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt",
+                "wait come back\n" +
+                "where are you going?\n" +
+                "AAAAAAAAAAAAAAAAAAA"
+                );
+            }
+            if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt"))
+            {
+                new_chasing = true;
+                WriteToConsole($"generating chasing sentences");
+            }
             if (new_chasing)
                 GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
 
             WriteToConsole("Finished generating voice lines.");
         }
 
-        private bool isFileChanged(string path)
+        private static bool isFileChanged(string path)
         {
             DateTime timestamp = File.GetLastWriteTime(path);
 
@@ -419,56 +487,8 @@ namespace Wendigos
             bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
             Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: {(found_sample_audio ? "found" : "didn't find")} player sample audio");
 
-            bool new_idle, new_nearby, new_chasing;
-            new_idle = new_nearby = new_chasing = false;
-
-            if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
-            {
-                File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt",
-                    "Help me\n" +
-                    "Stop Sign Over Here\n" +
-                    "Where is everyone?"
-                    );
-            }
-
-            if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
-            {
-                new_idle = true;
-                Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: generated idle sentences");
-            }
-
-            if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt"))
-            {
-                File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt",
-                    "What's up?\n" +
-                    "Find anything?\n" +
-                    "haha yeah"
-                );
-            }
-
-            if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt"))
-            {
-                new_nearby = true;
-                Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: generated nearby sentences");
-            }
-
-            if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt"))
-            {
-                File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt",
-                "wait come back\n" +
-                "where are you going?\n" +
-                "AAAAAAAAAAAAAAAAAAA"
-                );
-            }
-
-            if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt"))
-            {
-                new_chasing=true;
-                Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: generated chasing sentences");
-            }
-
             // start generating voice lines async
-            Task.Factory.StartNew(() => GenerateAllPlayerSentences(new_idle, new_nearby, new_chasing));
+            Task.Factory.StartNew(GenerateAllPlayerSentences);
 
             //maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
 
@@ -485,6 +505,15 @@ namespace Wendigos
                 audioClips[clientId].Clear();
                 WriteToConsole($"Removed {audioClips[clientId].Count} Clips");
                 WriteToConsole("AudioClip count is now " + get_clips_count());
+
+                if (WendigosMessageHandler.Instance.IsServer)
+                {
+                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        if (!WendigosMessageHandler.ConnectedClientIDs.Value.Contains(clientID))
+                            WendigosMessageHandler.ConnectedClientIDs.Value.Add(clientID);
+                    }
+                }
             }
         }
 
@@ -616,9 +645,8 @@ namespace Wendigos
             {
                 WriteToConsole("In IF statement");
                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                WriteToConsole("Set rand");
-                WendigosMessageHandler.random_clientID.Value = NetworkManager.Singleton.ConnectedClientsIds[
-                        serverRand.Next() % NetworkManager.Singleton.ConnectedClientsIds.Count
+                WendigosMessageHandler.random_clientID.Value = WendigosMessageHandler.ConnectedClientIDs.Value[
+                        serverRand.Next() % WendigosMessageHandler.ConnectedClientIDs.Value.Count
                     ];
                 WriteToConsole("Set random client value");
                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % audioClips[WendigosMessageHandler.random_clientID.Value].Count;
@@ -849,7 +877,7 @@ namespace Wendigos
                 }
                 try
                 {
-                    steamID = Steamworks.SteamClient.SteamId.Value;
+                    steamID = Steamworks.SteamClient.SteamId.Value;                
                 }
                 catch {
                     steamID = 1;
@@ -899,6 +927,9 @@ namespace Wendigos
                         ac = SavWav.TrimSilence(ac, 0.01f);
                         need_new_player_audio.Value = false;
                         SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", ac);
+                        Task.Factory.StartNew(GenerateAllPlayerSentences);
+
+
                     }
                     else if (UnityInput.Current.GetKeyUp("N"))
                     {
@@ -915,6 +946,8 @@ namespace Wendigos
                             need_new_player_audio.Value = false;
                             ac = SavWav.TrimSilence(ac, 0.01f);
                             SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", ac);
+                            Task.Factory.StartNew(GenerateAllPlayerSentences);
+
                         }
                     }
                 }
