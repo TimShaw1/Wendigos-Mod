@@ -100,8 +100,11 @@ namespace Wendigos
                     }
 
                     per_masked_ready_dict = new LethalNetworkVariable<Dictionary<string, bool[]>>("perMaskedReadyDict");
+                    per_masked_ready_dict.Value = new Dictionary<string, bool[]>();
 
                     masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
+                    masked_client_dict.Value = new Dictionary<string, ulong>();
+                    WriteToConsole(masked_client_dict.Value.ToString());
                     WriteToConsole("Random seed is " + randomInt.Value);
                 }
                 else
@@ -856,11 +859,15 @@ namespace Wendigos
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
                     List<ulong> unassignedClientIDs = new List<ulong>();
+                    WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Value.ToString());
+                    WriteToConsole(WendigosMessageHandler.masked_client_dict.Value.ToString());
+
                     foreach(var clientID in WendigosMessageHandler.ConnectedClientIDs.Value)
                     {
                         if (!WendigosMessageHandler.masked_client_dict.Value.Values.Contains(clientID))
                             unassignedClientIDs.Add(clientID);
                     }
+                    WriteToConsole("Created unasssigned list");
 
                     // All clients have been assigned a masked
                     if (unassignedClientIDs.Count == 0)
@@ -872,17 +879,22 @@ namespace Wendigos
                             __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
                             randomClientID
                         );
+                    WriteToConsole("added masked to masked_client_dict");
 
                     WendigosMessageHandler.per_masked_ready_dict.Value.TryAdd(
                             __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
                             new bool[WendigosMessageHandler.maxNumPlayers]
                         );
+                    WriteToConsole("added masked to per_masked_ready_dict");
 
-                    for(int i = 0; i < WendigosMessageHandler.maxNumPlayers; i++)
+                    for (int i = 0; i < WendigosMessageHandler.maxNumPlayers; i++)
                     {
                         WendigosMessageHandler.per_masked_ready_dict.Value[__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id][i] = true;
                     }
+                    WriteToConsole("Set all values to true");
                 }
+
+                WriteToConsole("Finished Spawning Masked");
             }
         }
 
