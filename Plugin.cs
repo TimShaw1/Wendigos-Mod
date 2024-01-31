@@ -895,6 +895,8 @@ namespace Wendigos
                 }
 
                 WriteToConsole("Finished Spawning Masked");
+                WriteToConsole(WendigosMessageHandler.masked_client_dict.Value.Keys.Count.ToString());
+                WriteToConsole(WendigosMessageHandler.per_masked_ready_dict.Value.Keys.Count.ToString());
             }
         }
 
