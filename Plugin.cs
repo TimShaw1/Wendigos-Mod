@@ -59,12 +59,24 @@ namespace Wendigos
             public static LethalNetworkVariable<int> randomInt2;
 
             // { masked_identifier : ready_players }
+            //[PublicNetworkVariable]
+            //public static LethalNetworkVariable<Dictionary<string, bool[]>> per_masked_ready_dict; // TODO: Multiple masked?
+
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<Dictionary<string, bool[]>> per_masked_ready_dict; // TODO: Multiple masked?
+            public static LethalNetworkVariable<List<string>> per_masked_ready_keys;
+
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<List<bool[]>> per_masked_ready_values;
 
             // { masked_identifier : player_to_mimic }
+            //[PublicNetworkVariable]
+            //public static LethalNetworkVariable<Dictionary<string, ulong>> masked_client_dict;
+
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<Dictionary<string, ulong>> masked_client_dict;
+            public static LethalNetworkVariable<List<string>> masked_client_keys;
+
+            [PublicNetworkVariable]
+            public static LethalNetworkVariable<List<ulong>> masked_client_values;
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<List<ulong>> ConnectedClientIDs;
@@ -99,12 +111,19 @@ namespace Wendigos
                         ConnectedClientIDs.Value.Add(clientID);
                     }
 
-                    per_masked_ready_dict = new LethalNetworkVariable<Dictionary<string, bool[]>>("perMaskedReadyDict");
-                    per_masked_ready_dict.Value = new Dictionary<string, bool[]>();
+                    //per_masked_ready_dict = new LethalNetworkVariable<Dictionary<string, bool[]>>("perMaskedReadyDict");
+                    //per_masked_ready_dict.Value = new Dictionary<string, bool[]>();
 
-                    masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
-                    masked_client_dict.Value = new Dictionary<string, ulong>();
-                    WriteToConsole(masked_client_dict.Value.ToString());
+                    per_masked_ready_keys = new LethalNetworkVariable<List<string>>("perMaskedReadyKeys") { Value = new List<string>() };
+                    per_masked_ready_values = new LethalNetworkVariable<List<bool[]>>("perMaskedReadyValues") { Value = new List<bool[]>() };
+
+                    //masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
+                    //masked_client_dict.Value = new Dictionary<string, ulong>();
+
+                    masked_client_keys = new LethalNetworkVariable<List<string>>("maskedClientKeys") { Value = new List<string>() };
+                    masked_client_values = new LethalNetworkVariable<List<ulong>>("maskedClientValues") { Value = new List<ulong>() };
+
+                    //WriteToConsole(masked_client_dict.Value.ToString());
                     WriteToConsole("Random seed is " + randomInt.Value);
                 }
                 else
@@ -119,8 +138,12 @@ namespace Wendigos
                     randomInt = new LethalNetworkVariable<int>("randomInt");
                     randomInt2 = new LethalNetworkVariable<int>("randomInt");
                     ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs");
-                    per_masked_ready_dict = new LethalNetworkVariable<Dictionary<string, bool[]>>("perMaskedReadyDict");
-                    masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
+                    //per_masked_ready_dict = new LethalNetworkVariable<Dictionary<string, bool[]>>("perMaskedReadyDict");
+                    per_masked_ready_keys = new LethalNetworkVariable<List<string>>("perMaskedReadyKeys");
+                    per_masked_ready_values = new LethalNetworkVariable<List<bool[]>>("perMaskedReadyValues");
+                    //masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
+                    masked_client_keys = new LethalNetworkVariable<List<string>>("maskedClientKeys");
+                    masked_client_values = new LethalNetworkVariable<List<ulong>>("maskedClientValues");
 
                     WriteToConsole("Created Client rand");
                 }
@@ -170,8 +193,13 @@ namespace Wendigos
                     clipList.Clear(); 
                 sent_audio_clips = false;
                 ConnectedClientIDs.Value.Clear();
-                masked_client_dict.Value.Clear();
-                per_masked_ready_dict.Value.Clear();
+                //masked_client_dict.Value.Clear();
+                masked_client_keys.Value.Clear();
+                masked_client_values.Value.Clear();
+
+                //per_masked_ready_dict.Value.Clear();
+                per_masked_ready_keys.Value.Clear();
+                per_masked_ready_values.Value.Clear();
                 // De-register when the associated NetworkObject is despawned.
                 //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
@@ -567,16 +595,20 @@ namespace Wendigos
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
                     WendigosMessageHandler.ConnectedClientIDs.Value.Remove(clientId);
-                    foreach(var maskedID in WendigosMessageHandler.masked_client_dict.Value.Keys)
-                    {
-                        if (WendigosMessageHandler.masked_client_dict.Value[maskedID] == clientId)
-                            WendigosMessageHandler.masked_client_dict.Value.Remove(maskedID);
-                    }
+                    var client_index = WendigosMessageHandler.masked_client_values.Value.IndexOf(clientId);
+
+                    // remove client
+                    WendigosMessageHandler.masked_client_values.Value.Remove(clientId);
+
+                    // remove masked associated with client
+                    WendigosMessageHandler.masked_client_keys.Value.RemoveAt(client_index);
+
 
                     // When player leaves, they are always ready
-                    foreach(var maskedID in WendigosMessageHandler.per_masked_ready_dict.Value.Keys)
+                    for (var masked_index = 0; masked_index < WendigosMessageHandler.per_masked_ready_keys.Value.Count; masked_index++)
                     {
-                        WendigosMessageHandler.per_masked_ready_dict.Value[maskedID][clientId] = true;
+                        // Set disconnected client to ready for all masked
+                        WendigosMessageHandler.per_masked_ready_values.Value[masked_index][clientId] = true;
                     }
                 }
             }
@@ -697,7 +729,8 @@ namespace Wendigos
         static bool are_all_ready(string MaskedID)
         {
             bool ready = true;
-            foreach(bool readyVal in WendigosMessageHandler.per_masked_ready_dict.Value[MaskedID])
+            var masked_ready_index = WendigosMessageHandler.per_masked_ready_keys.Value.IndexOf(MaskedID);
+            foreach(bool readyVal in WendigosMessageHandler.per_masked_ready_values.Value[masked_ready_index])
             {
                 ready = ready && readyVal;
             }
@@ -728,15 +761,19 @@ namespace Wendigos
                 string type = types[serverRand.Next(types.Length)];
 
                 string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
-                if (!WendigosMessageHandler.masked_client_dict.Value.Keys.Contains(thisMaskedID))
+                if (!WendigosMessageHandler.masked_client_keys.Value.Contains(thisMaskedID))
                     return;
 
-                ulong MimickingClientID = WendigosMessageHandler.masked_client_dict.Value[thisMaskedID];
+                var masked_client_index = WendigosMessageHandler.masked_client_keys.Value.IndexOf(thisMaskedID);
+
+                ulong MimickingClientID = WendigosMessageHandler.masked_client_values.Value[masked_client_index];
+
+                var masked_ready_index = WendigosMessageHandler.per_masked_ready_keys.Value.IndexOf(thisMaskedID);
 
                 if (!__instance.creatureVoice.isPlaying)
-                    WendigosMessageHandler.per_masked_ready_dict.Value[thisMaskedID][NetworkManager.Singleton.LocalClientId] = true;
+                    WendigosMessageHandler.per_masked_ready_values.Value[masked_ready_index][NetworkManager.Singleton.LocalClientId] = true;
                 else
-                    WendigosMessageHandler.per_masked_ready_dict.Value[thisMaskedID][NetworkManager.Singleton.LocalClientId] = false;
+                    WendigosMessageHandler.per_masked_ready_values.Value[masked_ready_index][NetworkManager.Singleton.LocalClientId] = false;
 
                 /* worked with this, should work without
                 int count = 0;
@@ -812,15 +849,19 @@ namespace Wendigos
                 string type = "chasing";
 
                 string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
-                if (!WendigosMessageHandler.masked_client_dict.Value.Keys.Contains(thisMaskedID))
+                if (!WendigosMessageHandler.masked_client_keys.Value.Contains(thisMaskedID))
                     return;
 
-                ulong MimickingClientID = WendigosMessageHandler.masked_client_dict.Value[thisMaskedID];
+                var masked_client_index = WendigosMessageHandler.masked_client_keys.Value.IndexOf(thisMaskedID);
+
+                ulong MimickingClientID = WendigosMessageHandler.masked_client_values.Value[masked_client_index];
+
+                var masked_ready_index = WendigosMessageHandler.per_masked_ready_keys.Value.IndexOf(thisMaskedID);
 
                 if (!__instance.creatureVoice.isPlaying)
-                    WendigosMessageHandler.per_masked_ready_dict.Value[thisMaskedID][NetworkManager.Singleton.LocalClientId] = true;
+                    WendigosMessageHandler.per_masked_ready_values.Value[masked_ready_index][NetworkManager.Singleton.LocalClientId] = true;
                 else
-                    WendigosMessageHandler.per_masked_ready_dict.Value[thisMaskedID][NetworkManager.Singleton.LocalClientId] = false;
+                    WendigosMessageHandler.per_masked_ready_values.Value[masked_ready_index][NetworkManager.Singleton.LocalClientId] = false;
 
                 //TODO: null reference?
                 if (WendigosMessageHandler.Instance.IsServer)
@@ -860,11 +901,12 @@ namespace Wendigos
                 {
                     List<ulong> unassignedClientIDs = new List<ulong>();
                     WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Value.ToString());
-                    WriteToConsole(WendigosMessageHandler.masked_client_dict.Value.ToString());
+                    WriteToConsole("Keys " + WendigosMessageHandler.masked_client_keys.Value.ToString());
+                    WriteToConsole("Values " + WendigosMessageHandler.masked_client_values.Value.ToString());
 
-                    foreach(var clientID in WendigosMessageHandler.ConnectedClientIDs.Value)
+                    foreach (var clientID in WendigosMessageHandler.ConnectedClientIDs.Value)
                     {
-                        if (!WendigosMessageHandler.masked_client_dict.Value.Values.Contains(clientID))
+                        if (!WendigosMessageHandler.masked_client_values.Value.Contains(clientID))
                             unassignedClientIDs.Add(clientID);
                     }
                     WriteToConsole("Created unasssigned list");
@@ -875,30 +917,31 @@ namespace Wendigos
 
                     ulong randomClientID = unassignedClientIDs[serverRand.Next() % unassignedClientIDs.Count];
 
-                    WendigosMessageHandler.masked_client_dict.Value.TryAdd(
-                            __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
-                            randomClientID
-                        );
+                    WendigosMessageHandler.masked_client_keys.Value.Add(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id);
+                    WendigosMessageHandler.masked_client_values.Value.Add(randomClientID);
+
                     WriteToConsole("added masked to masked_client_dict");
 
-                    WendigosMessageHandler.per_masked_ready_dict.Value.TryAdd(
-                            __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
-                            new bool[WendigosMessageHandler.maxNumPlayers]
-                        );
+                    WendigosMessageHandler.per_masked_ready_keys.Value.Add(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id);
+                    WendigosMessageHandler.per_masked_ready_values.Value.Add(new bool[WendigosMessageHandler.maxNumPlayers]);
+
                     WriteToConsole("added masked to per_masked_ready_dict");
 
+                    var masked_ready_index = WendigosMessageHandler.per_masked_ready_keys.Value.IndexOf(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id);
                     for (int i = 0; i < WendigosMessageHandler.maxNumPlayers; i++)
                     {
-                        WendigosMessageHandler.per_masked_ready_dict.Value[__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id][i] = true;
+                        WendigosMessageHandler.per_masked_ready_values.Value[masked_ready_index][i] = true;
                     }
                     WriteToConsole("Set all values to true");
                 }
 
                 WriteToConsole("Finished Spawning Masked");
 
-                // not synced on client
-                WriteToConsole(WendigosMessageHandler.masked_client_dict.Value.Keys.Count.ToString());
-                WriteToConsole(WendigosMessageHandler.per_masked_ready_dict.Value.Keys.Count.ToString());
+                // dict synced on client
+                WriteToConsole("masked_client_keys count: " + WendigosMessageHandler.masked_client_keys.Value.Count.ToString());
+                WriteToConsole("masked_client_values count: " + WendigosMessageHandler.masked_client_values.Value.Count.ToString());
+                WriteToConsole("per_masked_ready_keys count: " + WendigosMessageHandler.per_masked_ready_keys.Value.Count.ToString());
+                WriteToConsole("per_masked_ready_values count: " + WendigosMessageHandler.per_masked_ready_values.Value.Count.ToString());
             }
         }
 
