@@ -62,6 +62,7 @@ namespace Wendigos
         {
             [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
+            private static Dictionary<ulong, List<byte[]>> clipFragmentBuffers = new Dictionary<ulong, List<byte[]>>();
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> randomInt;
@@ -195,7 +196,42 @@ namespace Wendigos
             {
                 byte[] receivedMessageContent;
                 messagePayload.ReadValueSafe(out receivedMessageContent);
+
+                if (!clipFragmentBuffers.ContainsKey(senderId))
+                {
+                    clipFragmentBuffers.Add(senderId, new List<byte[]>());
+                }
+                clipFragmentBuffers[senderId].Add(receivedMessageContent);
+                CombineAudioFragments(senderId);
+                
+
+            }
+
+            private void CombineAudioFragments(ulong senderId)
+            {
+                // Haven't recieved all fragments
+                if (clipFragmentBuffers[senderId].Count != 10)
+                    return;
+
+                // Get size of original audioclip
+                int sizeOfFullMessage = 0;
+                foreach (var fragment in clipFragmentBuffers[senderId])
+                {
+                    sizeOfFullMessage += fragment.Length;
+                }
+                byte[] receivedMessageContent = new byte[sizeOfFullMessage];
+
+                // Block copy fragments into one big byte array
+                int totalOffset = 0;
+                foreach (var fragment in clipFragmentBuffers[senderId])
+                {
+                    Buffer.BlockCopy(fragment, 0, receivedMessageContent, totalOffset, fragment.Length);
+                    totalOffset += fragment.Length;
+                }
+
+                // decompress audioclip
                 receivedMessageContent = Decompress(receivedMessageContent);
+
                 AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
                 bool doWeHaveTheClip = false;
 
@@ -244,45 +280,75 @@ namespace Wendigos
 
                 // Cant be async with latecompany
                 sort_audioclips();
-
             }
 
             /// <summary>
             /// Invoke this with a Guid by a client or server-host to send a
             /// custom named message.
             /// </summary>
-            public void SendMessage(byte[] audioClip)
+            public void SendMessage(byte[] audioClipFragment)
             {
-                var messageContent = Compress(audioClip);
-                WriteToConsole("Writing message...");
-                // BIG BUFFER - 2^23 bytes
+                var messageContent = audioClipFragment;
+                //WriteToConsole("Writing message...");
+
                 // Steam has max size of 512kb (C)
-                var writer = new FastBufferWriter(8388608, Unity.Collections.Allocator.Temp);
-                WriteToConsole("Wrote Message");
+                var writer = new FastBufferWriter(512000, Unity.Collections.Allocator.Temp);
+                //WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
 
                 using (writer)
                 {
-                    WriteToConsole($"Writing {messageContent.Length} bytes of data...");
+                    //WriteToConsole($"Writing {messageContent.Length} bytes of data...");
                     // Issue is here
                     writer.WriteValueSafe(messageContent);
-                    WriteToConsole("Wrote data");
+                    //WriteToConsole("Wrote data");
                     if (NetworkManager.Singleton.IsServer)
                     {
                         // This is a server-only method that will broadcast the named message.
                         // Caution: Invoking this method on a client will throw an exception!
-                        WriteToConsole("Sending Message...");
+                        //WriteToConsole("Sending Message...");
                         customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableFragmentedSequenced);
-                        WriteToConsole("Sent Message");
+                        //WriteToConsole("Sent Message");
                     }
                     else
                     {
                         // This is a client or server method that sends a named message to one target destination
                         // (client to server or server to client)
-                        WriteToConsole("Sending Message...");
+                        //WriteToConsole("Sending Message...");
                         customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
-                        WriteToConsole("Sent Message");
+                        //WriteToConsole("Sent Message");
                     }
+                }
+            }
+
+            public void SendFragmentedMessage(byte[] audioClip)
+            {
+                var message = Compress(audioClip);
+                if (message.Length > 5120000)
+                {
+                    throw new Exception("clip is too large to send!");
+                }
+
+                int offset = (int)Math.Ceiling(message.Length / 10f);
+                WriteToConsole("Offset size is " + offset);
+                List<byte[]> fragments = new List<byte[]>();
+                for (int i = 0; i < 10; i++)
+                {
+                    if (i != 9)
+                    {
+                        fragments.Add(new byte[offset]);
+                        Buffer.BlockCopy(message, offset * i, fragments[i], 0, offset);
+                    }
+                    else
+                    {
+                        fragments.Add(new byte[message.Length - 9*offset]);
+                        Buffer.BlockCopy(message, offset * i, fragments[i], 0, message.Length - 9 * offset);
+                    }
+                }
+                foreach (var fragment in fragments)
+                {
+                    WriteToConsole("Sending fragment of length " + fragment.Length);
+                    SendMessage(fragment);
                 }
             }
         }
@@ -643,15 +709,11 @@ namespace Wendigos
         {
             if (WendigosMessageHandler.Instance.IsServer && are_all_ready())
             {
-                WriteToConsole("In IF statement");
                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                WriteToConsole("Set random value");
                 WendigosMessageHandler.random_clientID.Value = WendigosMessageHandler.ConnectedClientIDs.Value[
                         serverRand.Next() % WendigosMessageHandler.ConnectedClientIDs.Value.Count
                     ];
-                WriteToConsole("Set random client value");
                 WendigosMessageHandler.indexToPlay.Value = serverRand.Next() % audioClips[WendigosMessageHandler.random_clientID.Value].Count;
-                WriteToConsole("Set index");
             }
         }
 
@@ -666,7 +728,6 @@ namespace Wendigos
                     return;
                 }
 
-                WriteToConsole("Wendigos random seed is: " + WendigosMessageHandler.randomInt.Value);
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[serverRand.Next(types.Length)];
 
@@ -1001,7 +1062,7 @@ namespace Wendigos
                     {
                         audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
                         byte[] audioData = ConvertToByteArr(clip);
-                        WendigosMessageHandler.Instance.SendMessage(audioData);
+                        WendigosMessageHandler.Instance.SendFragmentedMessage(audioData);
                     }
 
                     var clips_count = get_clips_count();
