@@ -498,7 +498,6 @@ namespace Wendigos
 
         public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
-        public static List<MaskedPlayerEnemy> maskedEnemies;
 
         private static string config_path;
         private static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
