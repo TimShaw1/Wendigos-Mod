@@ -645,6 +645,7 @@ namespace Wendigos
             {
                 WriteToConsole("In IF statement");
                 WendigosMessageHandler.randomInt.Value = serverRand.Next();
+                WriteToConsole("Set random value");
                 WendigosMessageHandler.random_clientID.Value = WendigosMessageHandler.ConnectedClientIDs.Value[
                         serverRand.Next() % WendigosMessageHandler.ConnectedClientIDs.Value.Count
                     ];
