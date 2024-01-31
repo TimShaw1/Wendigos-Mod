@@ -759,6 +759,12 @@ namespace Wendigos
                     return;
                 }
 
+                // dict synced on client
+                WriteToConsole("masked_client_keys count: " + WendigosMessageHandler.masked_client_keys.Value.Count.ToString());
+                WriteToConsole("masked_client_values count: " + WendigosMessageHandler.masked_client_values.Value.Count.ToString());
+                WriteToConsole("per_masked_ready_keys count: " + WendigosMessageHandler.per_masked_ready_keys.Value.Count.ToString());
+                WriteToConsole("per_masked_ready_values count: " + WendigosMessageHandler.per_masked_ready_values.Value.Count.ToString());
+
                 string[] types = ["idle", "nearby", "chasing"];
                 string type = types[serverRand.Next(types.Length)];
 
