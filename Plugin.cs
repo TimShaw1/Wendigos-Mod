@@ -118,7 +118,6 @@ namespace Wendigos
 
                     per_masked_ready_keys = new LethalNetworkVariable<List<string>>("perMaskedReadyKeys") { Value = new List<string>() };
                     per_masked_ready_values = new LethalNetworkVariable<List<bool[]>>("perMaskedReadyValues") { Value = new List<bool[]>()};
-                    per_masked_ready_values.Value.Add(new bool[64]);
 
                     //masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
                     //masked_client_dict.Value = new Dictionary<string, ulong>();
@@ -1204,6 +1203,8 @@ namespace Wendigos
                     sent_audio_clips = true;
 
                     WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Value.Count.ToString());
+
+                    WendigosMessageHandler.per_masked_ready_values.Value.Add(new bool[64]);
                     WriteToConsole("Test connected list: " + WendigosMessageHandler.per_masked_ready_values.Value.Count.ToString());
                     WriteToConsole("Test connected list 2: " + WendigosMessageHandler.per_masked_ready_values.Value[0].Length.ToString());
                 }
