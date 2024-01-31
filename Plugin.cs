@@ -65,7 +65,8 @@ namespace Wendigos
             [PublicNetworkVariable]
             public static LethalNetworkVariable<List<string>> per_masked_ready_keys;
 
-            // could also be List<ulong> with only 64 players and bit magic
+            // could also be List<ulong> or List<string> with only 64 players and bit magic
+            // string could cause desync
             [PublicNetworkVariable]
             public static LethalNetworkVariable<List<bool[]>> per_masked_ready_values;
 
