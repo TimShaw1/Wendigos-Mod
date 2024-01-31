@@ -887,6 +887,7 @@ namespace Wendigos
             public string id;
         }
 
+        // Also finishKillAnimation? -- Start should run regardless tho
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Start))]
         class MaskedStartPatch
         {
