@@ -340,7 +340,7 @@ namespace Wendigos
                 WriteToConsole($"added masked {maskedID} to masked_client_dict");
             }
 
-            [ServerRpc]
+            [ServerRpc(RequireOwnership = false)]
             public void TryPlayAudioServerRpc(ulong MimickingID, string maskedID)
             {
                 bool ready = true;
