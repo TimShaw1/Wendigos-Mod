@@ -595,8 +595,8 @@ namespace Wendigos
             static void Prefix(int playerObjectNumber, ulong clientId)
             {
                 WriteToConsole($"Clearing {clientId}'s audio clips");
-                audioClips[clientId].Clear();
                 WriteToConsole($"Removed {audioClips[clientId].Count} Clips");
+                audioClips[clientId].Clear();
                 WriteToConsole("AudioClip count is now " + get_clips_count());
 
                 if (WendigosMessageHandler.Instance.IsServer)
