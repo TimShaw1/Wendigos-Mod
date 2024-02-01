@@ -56,6 +56,7 @@ namespace Wendigos
             public override bool Equals(object obj)
             {
                 if (obj == null) return false;
+                WriteToConsole(obj.GetType().ToString());
                 if (obj.GetType() != typeof(ComparableList<T>))
                     return false;
                 return SequenceEqual(((ComparableList<T>)obj).innerList);
