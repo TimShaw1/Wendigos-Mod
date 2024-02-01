@@ -51,6 +51,7 @@ namespace Wendigos
             private static Dictionary<ulong, List<byte[]>> clipFragmentBuffers = new Dictionary<ulong, List<byte[]>>();
             private static int numberOfFragments = 10;
             public static int maxNumPlayers = 64;
+            public static int maxMasked = 10;
 
             [PublicNetworkVariable]
             public static LethalNetworkVariable<int> randomInt;
@@ -160,6 +161,7 @@ namespace Wendigos
                     GameObject val = new GameObject("WendigosMessageHandler");
                     val.AddComponent<NetworkObject>();
                     val.AddComponent<WendigosMessageHandler>();
+                    WriteToConsole("Made network manager");
                 }
             }
 
@@ -529,6 +531,7 @@ namespace Wendigos
 
         private static ConfigEntry<bool> need_new_player_audio;
         static System.Random serverRand = new System.Random();
+        static int maskedIdCounter = 0;
 
         public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
@@ -1204,9 +1207,8 @@ namespace Wendigos
 
                     WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Value.Count.ToString());
 
-                    WendigosMessageHandler.per_masked_ready_values.Value.Add(new bool[64]);
                     WriteToConsole("Test connected list: " + WendigosMessageHandler.per_masked_ready_values.Value.Count.ToString());
-                    WriteToConsole("Test connected list 2: " + WendigosMessageHandler.per_masked_ready_values.Value[0].Length.ToString());
+                    WriteToConsole("Test connected list 2: " + WendigosMessageHandler.per_masked_ready_values.Value.Count.ToString());
                 }
                 
             }
