@@ -40,6 +40,27 @@ using Steamworks.ServerList;
 
 namespace Wendigos
 {
+    public class ComparableList<T> : List<T>
+    {
+        public override bool Equals(object obj)
+        {
+            if (obj.GetType() != typeof(ComparableList<T>))
+                return false;
+            return SequenceEqual((ComparableList<T>)obj);
+        }
+
+        public bool SequenceEqual(ComparableList<T> obj)
+        {
+            if (this.Count != obj.Count)
+                return false;
+            for (int i = 0; i < this.Count; i++)
+            {
+                if (!this[i].Equals(obj[i]))
+                    return false;
+            }
+            return true;
+        }
+    }
 
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
@@ -64,25 +85,25 @@ namespace Wendigos
             //public static LethalNetworkVariable<Dictionary<string, bool[]>> per_masked_ready_dict; // TODO: Multiple masked?
 
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<List<string>> per_masked_ready_keys;
+            public static LethalNetworkVariable<ComparableList<string>> per_masked_ready_keys;
 
             // could also be List<ulong> or List<string> with only 64 players and bit magic
             // both could cause desync if written to while another is editing
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<List<bool[]>> per_masked_ready_values;
+            public static LethalNetworkVariable<ComparableList<bool[]>> per_masked_ready_values;
 
             // { masked_identifier : player_to_mimic }
             //[PublicNetworkVariable]
             //public static LethalNetworkVariable<Dictionary<string, ulong>> masked_client_dict;
 
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<List<string>> masked_client_keys;
+            public static LethalNetworkVariable<ComparableList<string>> masked_client_keys;
 
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<List<ulong>> masked_client_values;
+            public static LethalNetworkVariable<ComparableList<ulong>> masked_client_values;
 
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<List<ulong>> ConnectedClientIDs;
+            public static LethalNetworkVariable<ComparableList<ulong>> ConnectedClientIDs;
 
 
             public static WendigosMessageHandler Instance { get; private set; }
@@ -108,7 +129,7 @@ namespace Wendigos
                     randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
                     randomInt2 = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
 
-                    ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs") { Value = new List<ulong>() };
+                    ConnectedClientIDs = new LethalNetworkVariable<ComparableList<ulong>>("ConnectedClientIDs") { Value = new ComparableList<ulong>() };
                     foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
                     {
                         ConnectedClientIDs.Value.Add(clientID);
@@ -117,14 +138,14 @@ namespace Wendigos
                     //per_masked_ready_dict = new LethalNetworkVariable<Dictionary<string, bool[]>>("perMaskedReadyDict");
                     //per_masked_ready_dict.Value = new Dictionary<string, bool[]>();
 
-                    per_masked_ready_keys = new LethalNetworkVariable<List<string>>("perMaskedReadyKeys") { Value = new List<string>() };
-                    per_masked_ready_values = new LethalNetworkVariable<List<bool[]>>("perMaskedReadyValues") { Value = new List<bool[]>()};
+                    per_masked_ready_keys = new LethalNetworkVariable<ComparableList<string>>("perMaskedReadyKeys") { Value = new ComparableList<string>() };
+                    per_masked_ready_values = new LethalNetworkVariable<ComparableList<bool[]>>("perMaskedReadyValues") { Value = new ComparableList<bool[]>()};
 
                     //masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
                     //masked_client_dict.Value = new Dictionary<string, ulong>();
 
-                    masked_client_keys = new LethalNetworkVariable<List<string>>("maskedClientKeys") { Value = new List<string>() };
-                    masked_client_values = new LethalNetworkVariable<List<ulong>>("maskedClientValues") { Value = new List<ulong>() };
+                    masked_client_keys = new LethalNetworkVariable<ComparableList<string>>("maskedClientKeys") { Value = new ComparableList<string>() };
+                    masked_client_values = new LethalNetworkVariable<ComparableList<ulong>>("maskedClientValues") { Value = new ComparableList<ulong>() };
 
                     //WriteToConsole(masked_client_dict.Value.ToString());
                     WriteToConsole("Random seed is " + randomInt.Value);
@@ -140,13 +161,13 @@ namespace Wendigos
                     // Client inits
                     randomInt = new LethalNetworkVariable<int>("randomInt");
                     randomInt2 = new LethalNetworkVariable<int>("randomInt");
-                    ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs");
+                    ConnectedClientIDs = new LethalNetworkVariable<ComparableList<ulong>>("ConnectedClientIDs");
                     //per_masked_ready_dict = new LethalNetworkVariable<Dictionary<string, bool[]>>("perMaskedReadyDict");
-                    per_masked_ready_keys = new LethalNetworkVariable<List<string>>("perMaskedReadyKeys");
-                    per_masked_ready_values = new LethalNetworkVariable<List<bool[]>>("perMaskedReadyValues");
+                    per_masked_ready_keys = new LethalNetworkVariable<ComparableList<string>>("perMaskedReadyKeys");
+                    per_masked_ready_values = new LethalNetworkVariable<ComparableList<bool[]>>("perMaskedReadyValues");
                     //masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
-                    masked_client_keys = new LethalNetworkVariable<List<string>>("maskedClientKeys");
-                    masked_client_values = new LethalNetworkVariable<List<ulong>>("maskedClientValues");
+                    masked_client_keys = new LethalNetworkVariable<ComparableList<string>>("maskedClientKeys");
+                    masked_client_values = new LethalNetworkVariable<ComparableList<ulong>>("maskedClientValues");
 
                     WriteToConsole("Created Client rand");
                 }
