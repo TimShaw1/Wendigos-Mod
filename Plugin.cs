@@ -50,7 +50,7 @@ namespace Wendigos
             public List<T> innerList;
             public ComparableList() : base()
             {
-
+                innerList = new List<T>();
             }
 
             public override bool Equals(object obj)
@@ -80,7 +80,7 @@ namespace Wendigos
             public List<bool[]> innerList;
             public ComparableBoolArr() : base()
             {
-
+                innerList = new List<bool[]>();
             }
 
             public override bool Equals(object obj)
