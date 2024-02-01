@@ -1030,10 +1030,6 @@ namespace Wendigos
 
                 WriteToConsole("Finished Spawning Masked");
 
-                if (!WendigosMessageHandler.Instance.IsServer)
-                {
-                    WendigosMessageHandler.masked_client_keys.Value.innerList = new List<string>(){"hi", "bye", "bruh"};
-                }
                 // dict synced on client
                 WriteToConsole("masked_client_keys count: " + WendigosMessageHandler.masked_client_keys.Value.innerList.Count.ToString());
                 WriteToConsole("masked_client_values count: " + WendigosMessageHandler.masked_client_values.Value.innerList.Count.ToString());
