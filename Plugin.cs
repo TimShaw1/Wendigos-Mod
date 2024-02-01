@@ -375,6 +375,12 @@ namespace Wendigos
                 WriteToConsole("Set isEveryoneReady to " + ready);
             }
 
+            [ServerRpc]
+            public void AddToMaskedClientDictServerRpc(string maskedID, ulong clientID)
+            {
+                AddToMaskedClientDictClientRpc(maskedID, clientID);
+            }
+
             [ClientRpc]
             public void AddToMaskedClientDictClientRpc(string maskedID, ulong clientID)
             {
@@ -900,7 +906,7 @@ namespace Wendigos
 
                     ulong randomClientID = unassignedClientIDs[serverRand.Next() % unassignedClientIDs.Count];
 
-                    WendigosMessageHandler.Instance.AddToMaskedClientDictClientRpc(
+                    WendigosMessageHandler.Instance.AddToMaskedClientDictServerRpc(
                                 __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
                                 randomClientID
                             );
