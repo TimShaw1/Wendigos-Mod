@@ -360,7 +360,8 @@ namespace Wendigos
             [ClientRpc]
             public void PlayAudioClientRpc(ulong MimickingID, int indexToPlay, string maskedID)
             {
-                TryToPlayAudio(audioClips[MimickingID][indexToPlay], maskedInstanceLookup[maskedID]);
+                WriteToConsole($"Masked {maskedID} playing {MimickingID}[{indexToPlay}]");
+                TryToPlayAudio(audioClips[MimickingID][indexToPlay], maskedID);
             }
         }
 
@@ -601,7 +602,10 @@ namespace Wendigos
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
                     WendigosMessageHandler.ConnectedClientIDs.Value.Remove(clientId);
-                    foreach (var maskedID in sharedMaskedClientDict.Keys)
+
+                    var sharedMaskedClientDictCopy = new Dictionary<string, ulong>(sharedMaskedClientDict);
+
+                    foreach (var maskedID in sharedMaskedClientDictCopy.Keys)
                     {
                         if (sharedMaskedClientDict[maskedID] == clientId)
                             sharedMaskedClientDict.Remove(maskedID);
@@ -695,10 +699,12 @@ namespace Wendigos
             return null;
         }
 
-        static void TryToPlayAudio(AudioClip clip, MaskedPlayerEnemy __instance)
+        static void TryToPlayAudio(AudioClip clip, string maskedID)
         {
             try
             {
+                WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, false);
+                var __instance = maskedInstanceLookup[maskedID];
                 if (clip && !__instance.creatureVoice.isPlaying)
                     __instance.creatureVoice.PlayOneShot(clip);
             }
