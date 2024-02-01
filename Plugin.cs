@@ -1032,7 +1032,7 @@ namespace Wendigos
 
                 if (!WendigosMessageHandler.Instance.IsServer)
                 {
-                    WendigosMessageHandler.masked_client_keys.Value.innerList = new List<string>() ("hi", "bye", "bruh");
+                    WendigosMessageHandler.masked_client_keys.Value.innerList = new List<string>(){"hi", "bye", "bruh"};
                 }
                 // dict synced on client
                 WriteToConsole("masked_client_keys count: " + WendigosMessageHandler.masked_client_keys.Value.innerList.Count.ToString());
