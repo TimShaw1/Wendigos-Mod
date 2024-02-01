@@ -55,6 +55,7 @@ namespace Wendigos
 
             public override bool Equals(object obj)
             {
+                if (obj == null) return false;
                 if (obj.GetType() != typeof(ComparableList<T>))
                     return false;
                 return SequenceEqual(((ComparableList<T>)obj).innerList);
@@ -62,6 +63,7 @@ namespace Wendigos
 
             public bool SequenceEqual(List<T> obj)
             {
+                WriteToConsole("Into sequenceEqual");
                 if (this.innerList.Count != obj.Count)
                     return false;
 
@@ -85,6 +87,7 @@ namespace Wendigos
 
             public override bool Equals(object obj)
             {
+                if (obj == null) return false;
                 if (obj.GetType() != typeof(ComparableBoolArr))
                     return false;
                 return SequenceEqual(((ComparableBoolArr)obj).innerList);
