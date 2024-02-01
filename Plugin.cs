@@ -54,20 +54,6 @@ namespace Wendigos
             public static bool isEveryoneReady = false;
 
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<int> randomInt;
-
-            [PublicNetworkVariable]
-            public static LethalNetworkVariable<int> randomInt2;
-
-            // { masked_identifier : ready_players }
-            //[PublicNetworkVariable]
-            //public static LethalNetworkVariable<Dictionary<string, bool[]>> per_masked_ready_dict; // TODO: Multiple masked?
-
-            // { masked_identifier : player_to_mimic }
-            //[PublicNetworkVariable]
-            //public static LethalNetworkVariable<Dictionary<string, ulong>> masked_client_dict;
-
-            [PublicNetworkVariable]
             public static LethalNetworkVariable<List<ulong>> ConnectedClientIDs;
 
 
@@ -90,34 +76,16 @@ namespace Wendigos
                     // Server broadcasts to all clients when a new client connects (just for example purposes)
                     NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
 
-                    // Server inits
-                    randomInt = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
-                    randomInt2 = new LethalNetworkVariable<int>("randomInt") { Value = serverRand.Next() };
-
                     ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs") { Value = new List<ulong>() };
                     foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
                     {
                         ConnectedClientIDs.Value.Add(clientID);
                     }
-
-                    //masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
-                    //masked_client_dict.Value = new Dictionary<string, ulong>();
-                    //WriteToConsole(masked_client_dict.Value.ToString());
-                    WriteToConsole("Random seed is " + randomInt.Value);
                 }
                 else
                 {
-                    // Clients send a unique Guid to the server
-                    //SendMessage(Guid.NewGuid());
 
-                    //indexToPlay.OnValueChanged += UpdateIndexValue;
-                    //randomValue.OnValueChanged += UpdateRandomValue;
-
-                    // Client inits
-                    randomInt = new LethalNetworkVariable<int>("randomInt");
-                    randomInt2 = new LethalNetworkVariable<int>("randomInt");
                     ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs");
-                    //masked_client_dict = new LethalNetworkVariable<Dictionary<string, ulong>>("maskedClientDict");
 
                     WriteToConsole("Created Client rand");
                 }
@@ -359,22 +327,6 @@ namespace Wendigos
                 }
             }
 
-            [ServerRpc(RequireOwnership = false)]
-            public void IsEveryoneReadyToSendServerRpc(string maskedID)
-            {
-                bool ready = true;
-                foreach (bool clientReady in serverReadyDict[maskedID].Values)
-                    ready = clientReady & ready;
-                IsEveryoneReadyToSendClientRpc(ready);
-            }
-
-            [ClientRpc]
-            public void IsEveryoneReadyToSendClientRpc(bool ready)
-            {
-                isEveryoneReady = ready;
-                WriteToConsole("Set isEveryoneReady to " + ready);
-            }
-
             [ServerRpc]
             public void AddToMaskedClientDictServerRpc(string maskedID, ulong clientID)
             {
@@ -386,6 +338,29 @@ namespace Wendigos
             {
                 sharedMaskedClientDict[maskedID] = clientID;
                 WriteToConsole($"added masked {maskedID} to masked_client_dict");
+            }
+
+            [ServerRpc]
+            public void TryPlayAudioServerRpc(ulong MimickingID, string maskedID)
+            {
+                bool ready = true;
+                foreach (bool clientReady in serverReadyDict[maskedID].Values)
+                    ready = clientReady & ready;
+
+                if (ready)
+                {
+                    if (serverRand.Next() % 10 == 0)
+                    {
+                        int indexToPlay = serverRand.Next() % audioClips[MimickingID].Count;
+                        PlayAudioClientRpc(MimickingID, indexToPlay, maskedID);
+                    }
+                }
+            }
+
+            [ClientRpc]
+            public void PlayAudioClientRpc(ulong MimickingID, int indexToPlay, string maskedID)
+            {
+                TryToPlayAudio(audioClips[MimickingID][indexToPlay], maskedInstanceLookup[maskedID]);
             }
         }
 
@@ -753,15 +728,6 @@ namespace Wendigos
             return Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly).Length;
         }
 
-        static void prep_server(string MaskedID)
-        {
-            if (WendigosMessageHandler.isEveryoneReady)
-            {
-                WendigosMessageHandler.randomInt.Value = serverRand.Next();
-                WendigosMessageHandler.randomInt2.Value = serverRand.Next();
-            }
-        }
-
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
         class MaskedPlayerEnemyAIPatch
         {
@@ -794,34 +760,11 @@ namespace Wendigos
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
 
-                            WendigosMessageHandler.Instance.IsEveryoneReadyToSendServerRpc(thisMaskedID);
-
-                            if (WendigosMessageHandler.Instance.IsServer)
-                                prep_server(thisMaskedID);
-
-                            if (WendigosMessageHandler.randomInt.Value % 10 == 0
-                                && !__instance.creatureVoice.isPlaying
-                                && WendigosMessageHandler.isEveryoneReady)
-                            {
-                                int indexToPlay = WendigosMessageHandler.randomInt2.Value % audioClips[MimickingClientID].Count;
-                                WriteToConsole("Playing Index " + indexToPlay);
-                                TryToPlayAudio(audioClips[MimickingClientID][indexToPlay], __instance);
-                            }
+                            WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
                         }
                         else
                         {
-                            WendigosMessageHandler.Instance.IsEveryoneReadyToSendServerRpc(thisMaskedID);
-
-                            if (WendigosMessageHandler.Instance.IsServer)
-                                prep_server(thisMaskedID);
-                            if (WendigosMessageHandler.randomInt.Value % 10 == 0
-                                && !__instance.creatureVoice.isPlaying
-                                && WendigosMessageHandler.isEveryoneReady)
-                            {
-                                int indexToPlay = WendigosMessageHandler.randomInt2.Value % audioClips[MimickingClientID].Count;
-                                WriteToConsole("Playing Index " + indexToPlay);
-                                TryToPlayAudio(audioClips[MimickingClientID][indexToPlay], __instance);
-                            }
+                            WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
                         }
 
                         break;
@@ -868,18 +811,7 @@ namespace Wendigos
                     WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(thisMaskedID, false);
 
 
-                WendigosMessageHandler.Instance.IsEveryoneReadyToSendServerRpc(thisMaskedID);
-                if (WendigosMessageHandler.Instance.IsServer)
-                    prep_server(thisMaskedID);
-
-                if (WendigosMessageHandler.randomInt.Value % 10 == 0
-                    && !__instance.creatureVoice.isPlaying
-                    && WendigosMessageHandler.isEveryoneReady)
-                {
-                    int indexToPlay = WendigosMessageHandler.randomInt2.Value % audioClips[MimickingClientID].Count;
-                    WriteToConsole("Playing Index " + indexToPlay);
-                    TryToPlayAudio(audioClips[MimickingClientID][indexToPlay], __instance);
-                }
+                WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
 
             }
 
@@ -889,6 +821,8 @@ namespace Wendigos
         {
             public string id;
         }
+
+        static Dictionary<string, MaskedPlayerEnemy> maskedInstanceLookup = new Dictionary<string, MaskedPlayerEnemy>();
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Start))]
         class MaskedStartPatch
@@ -900,6 +834,7 @@ namespace Wendigos
 
                 // id is starting position since only 1 enemy can spawn per vent
                 __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id = __instance.transform.position.ToString();
+                maskedInstanceLookup.TryAdd(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id, __instance);
                 WriteToConsole("Spawned Masked. ID: " + __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id);
 
                 if (WendigosMessageHandler.Instance.IsServer)
