@@ -572,6 +572,20 @@ namespace Wendigos
             harmonyInstance.PatchAll();
             SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
 
+            var types = Assembly.GetExecutingAssembly().GetTypes();
+            foreach (var type in types)
+            {
+                var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                foreach (var method in methods)
+                {
+                    var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+                    if (attributes.Length > 0)
+                    {
+                        method.Invoke(null, null);
+                    }
+                }
+            }
+
             need_new_player_audio = Config.Bind<bool>(
                 "General",
                 "Record new player sample audio?",
