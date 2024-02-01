@@ -844,7 +844,6 @@ namespace Wendigos
                 }
 
                 // dict synced on client
-                WendigosMessageHandler.masked_client_keys.Value.innerList = new List<string>() { "hi", "bye" };
                 WriteToConsole("masked_client_keys count: " + WendigosMessageHandler.masked_client_keys.Value.innerList.Count.ToString());
                 WriteToConsole("masked_client_values count: " + WendigosMessageHandler.masked_client_values.Value.innerList.Count.ToString());
                 WriteToConsole("per_masked_ready_keys count: " + WendigosMessageHandler.per_masked_ready_keys.Value.innerList.Count.ToString());
@@ -1032,6 +1031,7 @@ namespace Wendigos
                 WriteToConsole("Finished Spawning Masked");
 
                 // dict synced on client
+                WendigosMessageHandler.masked_client_keys.Value.innerList = new List<string>() { "hi", "bye" };
                 WriteToConsole("masked_client_keys count: " + WendigosMessageHandler.masked_client_keys.Value.innerList.Count.ToString());
                 WriteToConsole("masked_client_values count: " + WendigosMessageHandler.masked_client_values.Value.innerList.Count.ToString());
                 WriteToConsole("per_masked_ready_keys count: " + WendigosMessageHandler.per_masked_ready_keys.Value.innerList.Count.ToString());
