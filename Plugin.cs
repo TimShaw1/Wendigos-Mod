@@ -78,6 +78,14 @@ namespace Wendigos
             private void OnClientConnectedCallback(ulong obj)
             {
                 //SendMessage(Guid.NewGuid());
+                try
+                {
+                    SteamNetworkingUtils.SendBufferSize = 2048 * 2048;
+                }
+                catch
+                {
+                    WriteToConsole("Error increasing buffer size");
+                }
                 WriteToConsole("Server sending " + get_clips_count() + " clips");
                 List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
                 foreach (AudioClip clip in clipsCopy)
