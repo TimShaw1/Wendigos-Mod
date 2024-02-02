@@ -71,23 +71,12 @@ namespace Wendigos
                 // Both the server-host and client(s) register the custom named message.
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
 
+                ConnectedClientIDs = new List<ulong>() { 0 };
+
                 if (IsServer)
                 {
                     // Server broadcasts to all clients when a new client connects (just for example purposes)
                     NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
-
-                    ConnectedClientIDs = new List<ulong>();
-                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
-                    {
-                        ConnectedClientIDs.Add(clientID);
-                    }
-                }
-                else
-                {
-
-                    ConnectedClientIDs = new List<ulong>();
-
-                    WriteToConsole("Created Client rand");
                 }
             }
 
