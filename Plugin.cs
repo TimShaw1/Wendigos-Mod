@@ -78,7 +78,7 @@ namespace Wendigos
                 {
                     // Server broadcasts to all clients when a new client connects (just for example purposes)
                     //WriteToConsole("SUB");
-                    //NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
+                    NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
                 }
             }
 
@@ -111,8 +111,8 @@ namespace Wendigos
 
                 if (IsServer)
                 {
-                    WriteToConsole("Starting callback");
-                    UpdateClientListClientRpc(obj);
+                    //WriteToConsole("Starting callback");
+                    //UpdateClientListClientRpc(obj);
                 }
 
 
@@ -303,10 +303,15 @@ namespace Wendigos
                 }
             }
 
+            [ServerRpc]
+            public void UpdateClientListServerRpc(ulong newClient)
+            {
+                UpdateClientListClientRpc(newClient);
+            }
+
             [ClientRpc]
             public void UpdateClientListClientRpc(ulong newClient)
             {
-                WriteToConsole("In RPC");
                 if (!ConnectedClientIDs.Contains(newClient))
                     ConnectedClientIDs.Add(newClient);
                 WriteToConsole("New ClientID list is: [" + string.Join(",", ConnectedClientIDs.Select(x => x.ToString()).ToArray()) + "]");
@@ -1104,6 +1109,8 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
+                    WendigosMessageHandler.Instance.UpdateClientListServerRpc(NetworkManager.Singleton.LocalClientId);
+
                     if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
                         audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
 
