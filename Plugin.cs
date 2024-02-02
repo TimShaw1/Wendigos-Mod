@@ -54,7 +54,7 @@ namespace Wendigos
             public static bool isEveryoneReady = false;
 
             [PublicNetworkVariable]
-            public static LethalNetworkVariable<List<ulong>> ConnectedClientIDs;
+            public static List<ulong> ConnectedClientIDs;
 
 
             public static WendigosMessageHandler Instance { get; private set; }
@@ -76,16 +76,16 @@ namespace Wendigos
                     // Server broadcasts to all clients when a new client connects (just for example purposes)
                     NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
 
-                    ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs") { Value = new List<ulong>() };
+                    ConnectedClientIDs = new List<ulong>();
                     foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
                     {
-                        ConnectedClientIDs.Value.Add(clientID);
+                        ConnectedClientIDs.Add(clientID);
                     }
                 }
                 else
                 {
 
-                    ConnectedClientIDs = new LethalNetworkVariable<List<ulong>>("ConnectedClientIDs");
+                    ConnectedClientIDs = new List<ulong>();
 
                     WriteToConsole("Created Client rand");
                 }
@@ -120,12 +120,9 @@ namespace Wendigos
 
                 if (IsServer)
                 {
-                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
-                    {
-                        if (!ConnectedClientIDs.Value.Contains(clientID))
-                            ConnectedClientIDs.Value.Add(clientID);
-                    }
+                    UpdateClientListClientRpc(obj);
                 }
+
 
             }
 
@@ -134,7 +131,7 @@ namespace Wendigos
                 foreach (var clipList in audioClips.Values)
                     clipList.Clear();
                 sent_audio_clips = false;
-                ConnectedClientIDs.Value.Clear();
+                ConnectedClientIDs.Clear();
 
                 if (IsServer)
                 {
@@ -312,6 +309,14 @@ namespace Wendigos
                     WriteToConsole("Sending fragment of length " + fragment.Length);
                     SendMessage(fragment);
                 }
+            }
+
+            [ClientRpc]
+            public void UpdateClientListClientRpc(ulong newClient)
+            {
+                if (!ConnectedClientIDs.Contains(newClient))
+                    ConnectedClientIDs.Add(newClient);
+                WriteToConsole("New ClientID list is: [" + string.Join(",", ConnectedClientIDs.Select(x => x.ToString()).ToArray()) + "]");
             }
 
             [ServerRpc(RequireOwnership = false)]
@@ -601,7 +606,7 @@ namespace Wendigos
 
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
-                    WendigosMessageHandler.ConnectedClientIDs.Value.Remove(clientId);
+                    WendigosMessageHandler.ConnectedClientIDs.Remove(clientId);
 
                     var sharedMaskedClientDictCopy = new Dictionary<string, ulong>(sharedMaskedClientDict);
 
@@ -846,9 +851,9 @@ namespace Wendigos
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
                     List<ulong> unassignedClientIDs = new List<ulong>();
-                    WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Value.ToString());
+                    WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.ToString());
 
-                    foreach (var clientID in WendigosMessageHandler.ConnectedClientIDs.Value)
+                    foreach (var clientID in WendigosMessageHandler.ConnectedClientIDs)
                     {
                         if (!sharedMaskedClientDict.Values.Contains(clientID))
                             unassignedClientIDs.Add(clientID);
@@ -1031,7 +1036,7 @@ namespace Wendigos
 
                         ac = Microphone.Start(mic_name, false, 100, maxfreq);
                         __instance.menuNotificationButtonText.text = "Recording...";
-                        __instance.menuNotificationText.text = "Press S to finish recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
+                        __instance.menuNotificationText.text = "Press Q to quit recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
                     }
                 }
                 else
@@ -1053,7 +1058,7 @@ namespace Wendigos
                         if (index + 1 < lines_to_read.Length)
                         {
                             index++;
-                            __instance.menuNotificationText.text = "Press S to finish recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
+                            __instance.menuNotificationText.text = "Press Q to quit recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
                         }
                         else
                         {
@@ -1127,7 +1132,7 @@ namespace Wendigos
                     //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
                     sent_audio_clips = true;
 
-                    WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Value.Count.ToString());
+                    WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.Count.ToString());
                 }
 
             }
