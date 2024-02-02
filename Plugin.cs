@@ -46,11 +46,9 @@ namespace Wendigos
     {
         public class WendigosMessageHandler : NetworkBehaviour
         {
-            [Tooltip("The name identifier used for this custom message handler.")]
             public static string MessageName = "clipSender";
             private static Dictionary<ulong, List<byte[]>> clipFragmentBuffers = new Dictionary<ulong, List<byte[]>>();
             private static int numberOfFragments = 10;
-            public static int maxNumPlayers = 64;
             public static bool isEveryoneReady = false;
 
             public static List<ulong> ConnectedClientIDs;
@@ -66,18 +64,15 @@ namespace Wendigos
             public override void OnNetworkSpawn()
             {
                 base.OnNetworkSpawn();
-                //WriteToConsole(NetworkManager.Singleton.LocalClientId.ToString());
                 // Both the server-host and client(s) register the custom named message.
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
 
                 
                 ConnectedClientIDs = new List<ulong>() { 0 };
-                WriteToConsole("Created id list");
 
                 if (IsServer)
                 {
-                    // Server broadcasts to all clients when a new client connects (just for example purposes)
-                    //WriteToConsole("SUB");
+                    // Server broadcasts to all clients when a new client connects 
                     NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
                 }
             }
@@ -109,12 +104,6 @@ namespace Wendigos
                     SendFragmentedMessage(ConvertToByteArr(clip));
                 }
 
-                if (IsServer)
-                {
-                    //WriteToConsole("Starting callback");
-                    //UpdateClientListClientRpc(obj);
-                }
-
 
             }
 
@@ -130,11 +119,6 @@ namespace Wendigos
                     sharedMaskedClientDict.Clear();
                     serverReadyDict.Clear();
                 }
-                // De-register when the associated NetworkObject is despawned.
-                //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
-                // Whether server or not, unregister this.
-                //WriteToConsole("UNSUB");
-                //NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
 
             }
 
