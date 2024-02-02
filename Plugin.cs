@@ -303,7 +303,7 @@ namespace Wendigos
                 }
             }
 
-            [ServerRpc]
+            [ServerRpc(RequireOwnership = false)]
             public void UpdateClientListServerRpc(ulong newClient)
             {
                 UpdateClientListClientRpc(newClient);
