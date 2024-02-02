@@ -53,7 +53,6 @@ namespace Wendigos
             public static int maxNumPlayers = 64;
             public static bool isEveryoneReady = false;
 
-            [PublicNetworkVariable]
             public static List<ulong> ConnectedClientIDs;
 
 
@@ -72,6 +71,7 @@ namespace Wendigos
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
 
                 ConnectedClientIDs = new List<ulong>() { 0 };
+                WriteToConsole("Created id list");
 
                 if (IsServer)
                 {
