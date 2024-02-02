@@ -289,7 +289,7 @@ namespace Wendigos
                 }
 
                 int offset = (int)Math.Ceiling(message.Length / (float)numberOfFragments);
-                WriteToConsole("Offset size is " + offset);
+                //WriteToConsole("Offset size is " + offset);
                 List<byte[]> fragments = new List<byte[]>();
                 for (int i = 0; i < numberOfFragments; i++)
                 {
@@ -306,7 +306,6 @@ namespace Wendigos
                 }
                 foreach (var fragment in fragments)
                 {
-                    WriteToConsole("Sending fragment of length " + fragment.Length);
                     SendMessage(fragment);
                 }
             }
@@ -587,10 +586,6 @@ namespace Wendigos
 
             // start generating voice lines async
             Task.Factory.StartNew(GenerateAllPlayerSentences);
-
-            //maskedEnemies = UnityEngine.Object.FindObjectsOfType<MaskedPlayerEnemy>(false).ToList();
-
-            WriteToConsole("AudioClip dict is: " + audioClips.ToString());
 
         }
 
