@@ -958,7 +958,6 @@ namespace Wendigos
                 try
                 {
                     steamID = Steamworks.SteamClient.SteamId.Value;
-                    SteamNetworkingUtils.SendBufferSize = 1024 * 1024;
                 }
                 catch
                 {
@@ -1090,6 +1089,14 @@ namespace Wendigos
                     var clips_count = get_clips_count();
                     WriteToConsole("Sent " + clips_count + " Clips");
 
+                    try
+                    {
+                        SteamNetworkingUtils.SendBufferSize = 2048 * 2048;
+                    }
+                    catch
+                    {
+                        WriteToConsole("Error increasing buffer size");
+                    }
 
                     //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
                     sent_audio_clips = true;
