@@ -70,6 +70,7 @@ namespace Wendigos
                 // Both the server-host and client(s) register the custom named message.
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
 
+                
                 ConnectedClientIDs = new List<ulong>() { 0 };
                 WriteToConsole("Created id list");
 
@@ -106,6 +107,9 @@ namespace Wendigos
                 {
                     SendFragmentedMessage(ConvertToByteArr(clip));
                 }
+
+                if (obj == 0)
+                    return;
 
                 if (IsServer)
                 {
@@ -302,6 +306,7 @@ namespace Wendigos
             [ClientRpc]
             public void UpdateClientListClientRpc(ulong newClient)
             {
+                WriteToConsole("In RPC");
                 if (!ConnectedClientIDs.Contains(newClient))
                     ConnectedClientIDs.Add(newClient);
                 WriteToConsole("New ClientID list is: [" + string.Join(",", ConnectedClientIDs.Select(x => x.ToString()).ToArray()) + "]");
