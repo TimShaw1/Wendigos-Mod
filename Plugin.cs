@@ -240,6 +240,7 @@ namespace Wendigos
             public void SendFragmentedMessage(byte[] audioClip)
             {
                 var message = Compress(audioClip);
+                WriteToConsole($"Sending message of length {message.Length}");
                 if (message.Length > Math.Ceiling(5120000 / (float)numberOfFragments))
                 {
                     throw new Exception("clip is too large to send! Try increasing the number of message fragments.");
