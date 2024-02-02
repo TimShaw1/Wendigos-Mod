@@ -77,7 +77,8 @@ namespace Wendigos
                 if (IsServer)
                 {
                     // Server broadcasts to all clients when a new client connects (just for example purposes)
-                    NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
+                    //WriteToConsole("SUB");
+                    //NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
                 }
             }
 
@@ -108,11 +109,9 @@ namespace Wendigos
                     SendFragmentedMessage(ConvertToByteArr(clip));
                 }
 
-                if (obj == 0)
-                    return;
-
                 if (IsServer)
                 {
+                    WriteToConsole("Starting callback");
                     UpdateClientListClientRpc(obj);
                 }
 
@@ -134,6 +133,7 @@ namespace Wendigos
                 // De-register when the associated NetworkObject is despawned.
                 //NetworkManager.CustomMessagingManager.UnregisterNamedMessageHandler(MessageName);
                 // Whether server or not, unregister this.
+                //WriteToConsole("UNSUB");
                 //NetworkManager.OnClientDisconnectCallback -= OnClientConnectedCallback;
 
             }
