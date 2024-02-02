@@ -29,7 +29,7 @@ namespace Wendigos
         {
             public static string MessageName = "clipSender";
             private static Dictionary<ulong, List<byte[]>> clipFragmentBuffers = new Dictionary<ulong, List<byte[]>>();
-            private static int numberOfFragments = 100;
+            private static int numberOfFragments = 128;
             public static bool isEveryoneReady = false;
 
             public static List<ulong> ConnectedClientIDs;
@@ -78,14 +78,6 @@ namespace Wendigos
             private void OnClientConnectedCallback(ulong obj)
             {
                 //SendMessage(Guid.NewGuid());
-                try
-                {
-                    SteamNetworkingUtils.SendBufferSize = 2048 * 2048;
-                }
-                catch
-                {
-                    WriteToConsole("Error increasing buffer size");
-                }
                 WriteToConsole("Server sending " + get_clips_count() + " clips");
                 List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
                 foreach (AudioClip clip in clipsCopy)
@@ -155,7 +147,7 @@ namespace Wendigos
                 clipFragmentBuffers[senderId].Clear();
 
                 // decompress audioclip
-                receivedMessageContent = Decompress(receivedMessageContent);
+                //receivedMessageContent = Decompress(receivedMessageContent);
 
                 AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
                 bool doWeHaveTheClip = false;
@@ -217,7 +209,7 @@ namespace Wendigos
                 //WriteToConsole("Writing message...");
 
                 // Steam has max size of 512kb (C)
-                var writer = new FastBufferWriter(audioClipFragment.Length * 2, Unity.Collections.Allocator.Temp);
+                var writer = new FastBufferWriter(messageContent.Length * 2, Unity.Collections.Allocator.Temp);
                 //WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
 
@@ -232,7 +224,7 @@ namespace Wendigos
                         // This is a server-only method that will broadcast the named message.
                         // Caution: Invoking this method on a client will throw an exception!
                         //WriteToConsole("Sending Message...");
-                        customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                        customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.Reliable);
                         //WriteToConsole("Sent Message");
                     }
                     else
@@ -240,7 +232,7 @@ namespace Wendigos
                         // This is a client or server method that sends a named message to one target destination
                         // (client to server or server to client)
                         //WriteToConsole("Sending Message...");
-                        customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                        customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.Reliable);
                         //WriteToConsole("Sent Message");
                     }
                 }
@@ -248,7 +240,9 @@ namespace Wendigos
 
             public void SendFragmentedMessage(byte[] audioClip)
             {
-                var message = Compress(audioClip);
+                //var message = Compress(audioClip);
+                var message = audioClip;
+                WriteToConsole($"Sending message of length {message.Length}");
                 if (message.Length > Math.Ceiling(512000 * (float)numberOfFragments))
                 {
                     throw new Exception("clip is too large to send! Try increasing the number of message fragments.");
@@ -1082,14 +1076,6 @@ namespace Wendigos
             {
                 if (!sent_audio_clips)
                 {
-                    try
-                    {
-                        SteamNetworkingUtils.SendBufferSize = 2048 * 2048;
-                    }
-                    catch
-                    {
-                        WriteToConsole("Error increasing buffer size");
-                    }
 
                     WendigosMessageHandler.Instance.UpdateClientListServerRpc(NetworkManager.Singleton.LocalClientId);
 
