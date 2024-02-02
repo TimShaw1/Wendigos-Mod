@@ -2,12 +2,8 @@
 using BepInEx.Configuration;
 using GameNetcodeStuff;
 using HarmonyLib;
-using LC_API;
-using MonoMod.RuntimeDetour;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -15,26 +11,10 @@ using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
-using TMPro;
-using UnityEngine.UIElements;
-using UnityEngine.XR;
-using static System.Net.Mime.MediaTypeNames;
 using Unity.Netcode;
-using LC_API.GameInterfaceAPI.Features;
-using LC_API.GameInterfaceAPI.Events.Handlers;
-using LC_API.ServerAPI;
-using System.Runtime.Serialization.Json;
-using System.Xml;
-using Newtonsoft.Json;
 using UnityEngine.SceneManagement;
 using System.IO.Compression;
-using LethalNetworkAPI;
-using System.Xml.Linq;
-using System.Security.Claims;
 using System.Buffers;
-using static Wendigos.Plugin;
-using System.Text;
-using Steamworks.ServerList;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
