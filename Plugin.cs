@@ -209,7 +209,7 @@ namespace Wendigos
                 //WriteToConsole("Writing message...");
 
                 // Steam has max size of 512kb (C)
-                var writer = new FastBufferWriter(messageContent.Length * 2, Unity.Collections.Allocator.Temp);
+                var writer = new FastBufferWriter(messageContent.Length, Unity.Collections.Allocator.Temp, 512000);
                 //WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
 
@@ -224,7 +224,7 @@ namespace Wendigos
                         // This is a server-only method that will broadcast the named message.
                         // Caution: Invoking this method on a client will throw an exception!
                         //WriteToConsole("Sending Message...");
-                        customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.Reliable);
+                        customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableSequenced);
                         //WriteToConsole("Sent Message");
                     }
                     else
@@ -232,7 +232,7 @@ namespace Wendigos
                         // This is a client or server method that sends a named message to one target destination
                         // (client to server or server to client)
                         //WriteToConsole("Sending Message...");
-                        customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.Reliable);
+                        customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableSequenced);
                         //WriteToConsole("Sent Message");
                     }
                 }
