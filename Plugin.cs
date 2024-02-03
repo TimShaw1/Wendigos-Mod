@@ -427,11 +427,12 @@ namespace Wendigos
             WriteToConsole("deleted temporary sentences text file");
         }
 
-        static void GenerateAllPlayerSentences()
+        static bool doneGenerating = false;
+        static void GenerateAllPlayerSentences(bool new_player_audio = false)
         {
             bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
             bool new_idle, new_nearby, new_chasing;
-            new_idle = new_nearby = new_chasing = false;
+            new_idle = new_nearby = new_chasing = new_player_audio;
 
             if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
             {
@@ -445,10 +446,12 @@ namespace Wendigos
             if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
             {
                 new_idle = true;
-                WriteToConsole($"generating idle sentences");
             }
             if (new_idle)
+            {
+                WriteToConsole($"generating idle sentences");
                 GeneratePlayerSentences("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
+            }
 
 
             if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt"))
@@ -462,10 +465,12 @@ namespace Wendigos
             if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt"))
             {
                 new_nearby = true;
-                WriteToConsole($"generating nearby sentences");
             }
             if (new_nearby)
+            {
+                WriteToConsole($"generating nearby sentences");
                 GeneratePlayerSentences("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
+            }
 
 
             if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt"))
@@ -473,17 +478,20 @@ namespace Wendigos
                 File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt",
                 "wait come back\n" +
                 "where are you going?\n" +
-                "AAAAAAAAAAAAAAAAAAA"
+                "bye"
                 );
             }
             if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt"))
             {
                 new_chasing = true;
-                WriteToConsole($"generating chasing sentences");
             }
             if (new_chasing)
+            {
+                WriteToConsole($"generating chasing sentences");
                 GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
+            }
 
+            doneGenerating = true;
             WriteToConsole("Finished generating voice lines.");
         }
 
@@ -512,7 +520,7 @@ namespace Wendigos
 
         internal static ulong steamID;
 
-        static AudioClip ac;
+        static AudioClip mic_audio_clip;
 
         static List<AudioClip> myClips = new List<AudioClip>();
         public static Dictionary<ulong, List<AudioClip>> audioClips = new Dictionary<ulong, List<AudioClip>>() { { 0, new List<AudioClip>() } };
@@ -559,7 +567,8 @@ namespace Wendigos
             Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: {(found_sample_audio ? "found" : "didn't find")} player sample audio");
 
             // start generating voice lines async
-            Task.Factory.StartNew(GenerateAllPlayerSentences);
+            doneGenerating = false;
+            Task.Factory.StartNew(() => GenerateAllPlayerSentences(false));
 
         }
 
@@ -978,6 +987,7 @@ namespace Wendigos
                 __instance.NewsPanel.SetActive(false);
                 if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
                 {
+                    need_new_player_audio.Value = true;
                     __instance.DisplayMenuNotification($"Press R to record some voice lines.\nSelected Mic is {mic_name}", "[ Done ]");
                     Transform responseButton = __instance.menuNotification.transform.Find("Panel").Find("ResponseButton");
                     responseButton.transform.position = new Vector3(responseButton.transform.position.x, responseButton.transform.position.y - 10, responseButton.transform.position.z);
@@ -1003,26 +1013,27 @@ namespace Wendigos
                         int maxfreq;
                         Microphone.GetDeviceCaps(mic_name, out minfreq, out maxfreq);
 
-                        ac = Microphone.Start(mic_name, false, 100, maxfreq);
+                        mic_audio_clip = Microphone.Start(mic_name, false, 100, maxfreq);
                         __instance.menuNotificationButtonText.text = "Recording...";
                         __instance.menuNotificationText.text = "Press Q to quit recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
                     }
                 }
                 else
                 {
-                    if (UnityInput.Current.GetKeyUp("S"))
+                    if (UnityInput.Current.GetKeyUp("Q") && need_new_player_audio.Value)
                     {
                         Microphone.End(mic_name);
-                        __instance.menuNotificationButtonText.text = "[ done ]";
-                        __instance.menuNotificationText.text = "Recording stopped";
-                        ac = SavWav.TrimSilence(ac, 0.01f);
+                        __instance.menuNotificationButtonText.text = "[ close ]";
+                        __instance.menuNotificationText.text = "Recording stopped.\nPlease wait for audio clips to finish generating";
+                        mic_audio_clip = SavWav.TrimSilence(mic_audio_clip, 0.01f);
+                        SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", mic_audio_clip);
+                        doneGenerating = false;
+                        Task.Factory.StartNew(() => GenerateAllPlayerSentences(true));
                         need_new_player_audio.Value = false;
-                        SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", ac);
-                        Task.Factory.StartNew(GenerateAllPlayerSentences);
 
 
                     }
-                    else if (UnityInput.Current.GetKeyUp("N"))
+                    else if (UnityInput.Current.GetKeyUp("N") && need_new_player_audio.Value)
                     {
                         if (index + 1 < lines_to_read.Length)
                         {
@@ -1032,15 +1043,22 @@ namespace Wendigos
                         else
                         {
                             Microphone.End(mic_name);
-                            __instance.menuNotificationButtonText.text = "[ done ]";
-                            __instance.menuNotificationText.text = "Recording stopped";
+                            __instance.menuNotificationButtonText.text = "[ close ]";
+                            __instance.menuNotificationText.text = "Recording stopped.\nPlease wait for audio clips to finish generating";
+                            mic_audio_clip = SavWav.TrimSilence(mic_audio_clip, 0.01f);
+                            SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", mic_audio_clip);
+                            doneGenerating = false;
+                            Task.Factory.StartNew(() => GenerateAllPlayerSentences(true));
                             need_new_player_audio.Value = false;
-                            ac = SavWav.TrimSilence(ac, 0.01f);
-                            SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", ac);
-                            Task.Factory.StartNew(GenerateAllPlayerSentences);
 
                         }
                     }
+                }
+
+                if (doneGenerating && !need_new_player_audio.Value)
+                {
+                    __instance.menuNotificationButtonText.text = "[ close ]";
+                    __instance.menuNotificationText.text = "Voice lines finished generating!";
                 }
             }
         }
