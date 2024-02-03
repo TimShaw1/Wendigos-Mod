@@ -80,10 +80,7 @@ namespace Wendigos
                 //SendMessage(Guid.NewGuid());
                 WriteToConsole("Server sending " + get_clips_count() + " clips");
                 List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
-                foreach (AudioClip clip in clipsCopy)
-                {
-                    SendFragmentedMessage(ConvertToByteArr(clip));
-                }
+                SendClipListAsync(clipsCopy);
 
 
             }
@@ -267,6 +264,15 @@ namespace Wendigos
                 foreach (var fragment in fragments)
                 {
                     SendMessage(fragment);
+                }
+            }
+
+            public async Task SendClipListAsync(List<AudioClip> clips)
+            {
+                foreach (var clip in clips)
+                {
+                    SendFragmentedMessage(ConvertToByteArr(clip));
+                    await Task.Delay(1000);
                 }
             }
 
@@ -1085,9 +1091,8 @@ namespace Wendigos
                     foreach (AudioClip clip in myClips)
                     {
                         audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
-                        byte[] audioData = ConvertToByteArr(clip);
-                        WendigosMessageHandler.Instance.SendFragmentedMessage(audioData);
                     }
+                    WendigosMessageHandler.Instance.SendClipListAsync(myClips);
 
                     var clips_count = get_clips_count();
                     WriteToConsole("Sent " + clips_count + " Clips");
