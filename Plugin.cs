@@ -82,7 +82,7 @@ namespace Wendigos
                 List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
                 foreach (AudioClip clip in clipsCopy)
                 {
-                    SendFragmentedMessage(ConvertToByteArr(clip));
+                    SendFragmentedMessage(ConvertToByteArr(clip), clip.name);
                 }
 
 
@@ -203,7 +203,7 @@ namespace Wendigos
             /// Invoke this with a Guid by a client or server-host to send a
             /// custom named message.
             /// </summary>
-            private void SendMessage(byte[] audioClipFragment)
+            private void SendMessage(byte[] audioClipFragment, string clipName)
             {
                 var messageContent = audioClipFragment;
                 //WriteToConsole("Writing message...");
@@ -238,7 +238,7 @@ namespace Wendigos
                 }
             }
 
-            public void SendFragmentedMessage(byte[] audioClip)
+            public void SendFragmentedMessage(byte[] audioClip, string clipName)
             {
                 var message = Compress(audioClip);
                 //var message = audioClip;
@@ -266,7 +266,7 @@ namespace Wendigos
                 }
                 foreach (var fragment in fragments)
                 {
-                    SendMessage(fragment);
+                    SendMessage(fragment, clipName);
                 }
             }
 
@@ -1086,7 +1086,7 @@ namespace Wendigos
                     {
                         audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
                         byte[] audioData = ConvertToByteArr(clip);
-                        WendigosMessageHandler.Instance.SendFragmentedMessage(audioData);
+                        WendigosMessageHandler.Instance.SendFragmentedMessage(audioData, clip.name);
                     }
 
                     var clips_count = get_clips_count();
