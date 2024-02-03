@@ -224,7 +224,7 @@ namespace Wendigos
                         // This is a server-only method that will broadcast the named message.
                         // Caution: Invoking this method on a client will throw an exception!
                         //WriteToConsole("Sending Message...");
-                        customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                        customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.Reliable);
                         //WriteToConsole("Sent Message");
                     }
                     else
@@ -232,7 +232,7 @@ namespace Wendigos
                         // This is a client or server method that sends a named message to one target destination
                         // (client to server or server to client)
                         //WriteToConsole("Sending Message...");
-                        customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                        customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.Reliable);
                         //WriteToConsole("Sent Message");
                     }
                 }
