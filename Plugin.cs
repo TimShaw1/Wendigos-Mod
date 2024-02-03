@@ -988,9 +988,16 @@ namespace Wendigos
                 if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
                 {
                     need_new_player_audio.Value = true;
-                    __instance.DisplayMenuNotification($"Press R to record some voice lines.\nSelected Mic is {mic_name}", "[ Done ]");
+                    __instance.DisplayMenuNotification($"Press R to record some voice lines.\nSelected Mic is {mic_name}", "[ Close ]");
                     Transform responseButton = __instance.menuNotification.transform.Find("Panel").Find("ResponseButton");
                     responseButton.transform.position = new Vector3(responseButton.transform.position.x, responseButton.transform.position.y - 10, responseButton.transform.position.z);
+                }
+                else
+                {
+                    if (doneGenerating == false)
+                    {
+                        __instance.DisplayMenuNotification($"Please wait for audio clips to finish generating", "[ close ]");
+                    }
                 }
             }
         }
