@@ -16,6 +16,7 @@ using UnityEngine.SceneManagement;
 using System.IO.Compression;
 using System.Buffers;
 using Steamworks;
+using LCSoundTool;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -79,11 +80,14 @@ namespace Wendigos
             {
                 //SendMessage(Guid.NewGuid());
                 WriteToConsole("Server sending " + get_clips_count() + " clips");
+                /*
                 List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
                 foreach (AudioClip clip in clipsCopy)
                 {
                     SendFragmentedMessage(ConvertToByteArr(clip));
                 }
+                */
+                SoundTool.SyncNetworkedAudioClips();
 
 
             }
@@ -1085,15 +1089,16 @@ namespace Wendigos
                     foreach (AudioClip clip in myClips)
                     {
                         audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
-                        byte[] audioData = ConvertToByteArr(clip);
-                        WendigosMessageHandler.Instance.SendFragmentedMessage(audioData);
+                        SoundTool.SendNetworkedAudioClip(clip);
+                        //byte[] audioData = ConvertToByteArr(clip);
+                        //WendigosMessageHandler.Instance.SendFragmentedMessage(audioData);
                     }
 
                     var clips_count = get_clips_count();
                     WriteToConsole("Sent " + clips_count + " Clips");
 
 
-                    //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
+                    WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
                     sent_audio_clips = true;
                 }
 
