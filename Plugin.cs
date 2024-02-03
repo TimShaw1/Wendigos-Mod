@@ -29,7 +29,7 @@ namespace Wendigos
         {
             public static string MessageName = "clipSender";
             private static Dictionary<ulong, List<byte[]>> clipFragmentBuffers = new Dictionary<ulong, List<byte[]>>();
-            private static int numberOfFragments = 128;
+            private static int numberOfFragments = 1;
             public static bool isEveryoneReady = false;
 
             public static List<ulong> ConnectedClientIDs;
@@ -272,6 +272,8 @@ namespace Wendigos
                 foreach (var clip in clips)
                 {
                     SendFragmentedMessage(ConvertToByteArr(clip));
+
+                    // Wait so steam doesnt lump all messages together and yell at me
                     await Task.Delay(1000);
                 }
             }
