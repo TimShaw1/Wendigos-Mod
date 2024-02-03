@@ -209,7 +209,7 @@ namespace Wendigos
                 //WriteToConsole("Writing message...");
 
                 // Steam has max size of 512kb (C)
-                var writer = new FastBufferWriter(messageContent.Length, Unity.Collections.Allocator.Temp, 512000);
+                var writer = new FastBufferWriter(messageContent.Length, Unity.Collections.Allocator.Temp, 5120000);
                 //WriteToConsole("Wrote Message");
                 var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
 
