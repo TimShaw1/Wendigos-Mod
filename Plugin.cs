@@ -147,7 +147,7 @@ namespace Wendigos
                 clipFragmentBuffers[senderId].Clear();
 
                 // decompress audioclip
-                //receivedMessageContent = Decompress(receivedMessageContent);
+                receivedMessageContent = Decompress(receivedMessageContent);
 
                 AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
                 bool doWeHaveTheClip = false;
@@ -240,8 +240,8 @@ namespace Wendigos
 
             public void SendFragmentedMessage(byte[] audioClip)
             {
-                //var message = Compress(audioClip);
-                var message = audioClip;
+                var message = Compress(audioClip);
+                //var message = audioClip;
                 WriteToConsole($"Sending message of length {message.Length}");
                 if (message.Length > Math.Ceiling(512000 * (float)numberOfFragments))
                 {
