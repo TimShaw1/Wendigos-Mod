@@ -12,6 +12,7 @@ The Masked have learned how to copy the voices of your friends. Can you tell who
 
 2. Once you stop the recording or finish the list of voice lines, the mod will start generating your voice lines.
     - This step can take a long time. The game will prompt you when the generation has finished!
+    - The first time this happens, the mod will download the voice cloning model (1.75GB) to the Wendigos mod folder. Any subsequent line generations will be much faster since this model will already be downloaded.
 
 3. If you make a mistake and need to record your voice lines again, exit the game and set "Record new player sample audio?" to true in "BepInEx/config/Wendigos.cfg" in your Thunderstone config.
 
@@ -30,6 +31,8 @@ Each player can have their own unique set of voice lines to better suit things t
 - players hear different sounds (rare, but can happen due to lag spikes)
 - `Writing past end of buffer` unity error (you have a generated line that is too large)
 - Game crashes when joining lobby (this happens when someone joins the lobby very quickly, should be rare on non-LAN games)
+- Your PC doesn't have enough storage space for the model and voice lines
+    - Each player stores the voice cloning model (1.75GB), their sample audio (~10MB) and their own voice lines (<500KB each) locally.
 
 ## TODO
   - [ ] Possessed players should have their own voices.
