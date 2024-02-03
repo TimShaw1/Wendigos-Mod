@@ -1102,6 +1102,15 @@ namespace Wendigos
             return clips_count;
         }
 
+        [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.ShowNameBillboard))]
+        class HidePlayerNamePatch
+        {
+            static void Postfix(PlayerControllerB __instance)
+            {
+                __instance.usernameAlpha.alpha = 0f;
+            }
+        }
+
         [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
         class PlayerConnectPatch
         {
