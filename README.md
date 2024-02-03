@@ -37,6 +37,7 @@ Each player can have their own unique set of voice lines to better suit things t
   - [ ] Allow players to use an ElevenLabs API key for better voice cloning results.
 
 ## Credits
+- https://github.com/coqui-ai/tts
 - RugbugRedfern's Skinwalkers mod
 - @Kalthun and @notgarrett for helping me test this mod
 - The Lethal Company Modding Discord 
