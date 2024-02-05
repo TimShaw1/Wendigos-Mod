@@ -80,7 +80,9 @@ namespace Wendigos
                 //SendMessage(Guid.NewGuid());
                 WriteToConsole("Server sending " + get_clips_count() + " clips");
                 List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
-                SendClipListAsync(clipsCopy);
+
+                // Send server's local clips to client
+                SendClipListAsync(clipsCopy, obj, true);
 
 
             }
@@ -89,7 +91,7 @@ namespace Wendigos
             {
                 foreach (var clipList in audioClips.Values)
                     clipList.Clear();
-                sent_audio_clips = false;
+                sent_localID = false;
                 ConnectedClientIDs.Clear();
 
                 if (IsServer)
@@ -200,7 +202,7 @@ namespace Wendigos
             /// Invoke this with a Guid by a client or server-host to send a
             /// custom named message.
             /// </summary>
-            private void SendMessage(byte[] audioClipFragment)
+            private void SendMessage(byte[] audioClipFragment, ulong destClient = 0, bool specificClient = false)
             {
                 var messageContent = audioClipFragment;
                 //WriteToConsole("Writing message...");
@@ -216,26 +218,35 @@ namespace Wendigos
                     // Issue is here
                     writer.WriteValueSafe(messageContent);
                     //WriteToConsole("Wrote data");
-                    if (NetworkManager.Singleton.IsServer)
+
+                    if (specificClient)
                     {
-                        // This is a server-only method that will broadcast the named message.
-                        // Caution: Invoking this method on a client will throw an exception!
-                        //WriteToConsole("Sending Message...");
-                        customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableFragmentedSequenced);
-                        //WriteToConsole("Sent Message");
+                        customMessagingManager.SendNamedMessage(MessageName, destClient, writer, NetworkDelivery.ReliableFragmentedSequenced);
                     }
                     else
                     {
-                        // This is a client or server method that sends a named message to one target destination
-                        // (client to server or server to client)
-                        //WriteToConsole("Sending Message...");
-                        customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
-                        //WriteToConsole("Sent Message");
+
+                        if (NetworkManager.Singleton.IsServer)
+                        {
+                            // This is a server-only method that will broadcast the named message.
+                            // Caution: Invoking this method on a client will throw an exception!
+                            //WriteToConsole("Sending Message...");
+                            customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                            //WriteToConsole("Sent Message");
+                        }
+                        else
+                        {
+                            // This is a client or server method that sends a named message to one target destination
+                            // (client to server or server to client)
+                            //WriteToConsole("Sending Message...");
+                            customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
+                            //WriteToConsole("Sent Message");
+                        }
                     }
                 }
             }
 
-            public void SendFragmentedMessage(byte[] audioClip)
+            public void SendFragmentedMessage(byte[] audioClip, ulong destClient = 0, bool specificClient = false)
             {
                 var message = Compress(audioClip);
                 //var message = audioClip;
@@ -263,18 +274,39 @@ namespace Wendigos
                 }
                 foreach (var fragment in fragments)
                 {
-                    SendMessage(fragment);
+                    SendMessage(fragment, destClient, specificClient);
                 }
             }
 
-            public async Task SendClipListAsync(List<AudioClip> clips)
+            public async Task SendClipListAsync(List<AudioClip> clips, ulong destClient = 0, bool specificClient = false, bool shouldSync = false)
             {
                 foreach (var clip in clips)
                 {
-                    SendFragmentedMessage(ConvertToByteArr(clip));
+                    SendFragmentedMessage(ConvertToByteArr(clip), destClient, specificClient);
 
                     // Wait so steam doesnt lump all messages together and yell at me
-                    await Task.Delay(1000);
+                    await Task.Delay(100);
+                }
+                if (IsServer && specificClient)
+                {
+                    ClientRpcParams clientRpcParams = new ClientRpcParams
+                    {
+                        Send = new ClientRpcSendParams
+                        {
+                            TargetClientIds = new ulong[] { destClient }
+                        }
+                    };
+
+                    // Send connected client's clips to server
+                    SendServerMyClipsClientRpc(clientRpcParams);
+                }
+                else if (!IsServer && shouldSync)
+                {
+                    var clips_count = get_clips_count();
+                    WriteToConsole("Sent " + clips_count + " Clips");
+
+                    // Send all new clips to everyone
+                    BroadcastAllNewClipsServerRpc(NetworkManager.Singleton.LocalClientId);
                 }
             }
 
@@ -290,6 +322,27 @@ namespace Wendigos
                 if (!ConnectedClientIDs.Contains(newClient))
                     ConnectedClientIDs.Add(newClient);
                 WriteToConsole("New ClientID list is: [" + string.Join(",", ConnectedClientIDs.Select(x => x.ToString()).ToArray()) + "]");
+            }
+
+            [ServerRpc]
+            public void BroadcastAllNewClipsServerRpc(ulong senderID)
+            {
+                // Send new clips to everyone
+                SendClipListAsync(audioClips[senderID]);
+            }
+
+            [ClientRpc]
+            public void SendServerMyClipsClientRpc(ClientRpcParams p = default)
+            {
+                foreach (AudioClip clip in myClips)
+                {
+                    audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
+                }
+
+                // Send server client's clips and tell it to sync them with everyone
+                SendClipListAsync(myClips, shouldSync:true);
+
+                
             }
 
             [ServerRpc(RequireOwnership = false)]
@@ -639,7 +692,7 @@ namespace Wendigos
             {
                 foreach (var clipList in audioClips.Values)
                     clipList.Clear();
-                sent_audio_clips = false;
+                sent_localID = false;
             }
         }
 
@@ -1090,7 +1143,7 @@ namespace Wendigos
             }
             return output.ToArray();
         }
-        static bool sent_audio_clips = false;
+        static bool sent_localID = false;
 
         public static int get_clips_count()
         {
@@ -1116,7 +1169,7 @@ namespace Wendigos
         {
             static void Postfix()
             {
-                if (!sent_audio_clips)
+                if (!sent_localID)
                 {
 
                     WendigosMessageHandler.Instance.UpdateClientListServerRpc(NetworkManager.Singleton.LocalClientId);
@@ -1124,18 +1177,8 @@ namespace Wendigos
                     if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
                         audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
 
-                    foreach (AudioClip clip in myClips)
-                    {
-                        audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
-                    }
-                    WendigosMessageHandler.Instance.SendClipListAsync(myClips);
-
-                    var clips_count = get_clips_count();
-                    WriteToConsole("Sent " + clips_count + " Clips");
-
-
                     //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
-                    sent_audio_clips = true;
+                    sent_localID = true;
                 }
 
             }
