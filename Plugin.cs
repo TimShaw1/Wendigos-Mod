@@ -334,6 +334,9 @@ namespace Wendigos
             [ClientRpc]
             public void SendServerMyClipsClientRpc(ClientRpcParams p = default)
             {
+                if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
+                    audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
+
                 foreach (AudioClip clip in myClips)
                 {
                     audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
