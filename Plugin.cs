@@ -56,6 +56,15 @@ namespace Wendigos
                     // Server broadcasts to all clients when a new client connects 
                     NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
                 }
+
+
+                if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
+                    audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
+
+                foreach (AudioClip clip in myClips)
+                {
+                    audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
+                }
             }
 
             internal static void ClientConnectInitializer(Scene sceneName, LoadSceneMode sceneEnum)
@@ -1009,14 +1018,6 @@ namespace Wendigos
                 myClips.Add(clip);
             }
             WriteToConsole("Generated Player Clips. Count: " + myClips.Count);
-
-            if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
-                audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
-
-            foreach (AudioClip clip in myClips)
-            {
-                audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
-            }
         }
 
         [HarmonyPatch(typeof(MenuManager), "Start")]
