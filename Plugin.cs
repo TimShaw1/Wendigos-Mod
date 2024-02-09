@@ -324,7 +324,7 @@ namespace Wendigos
                 WriteToConsole("New ClientID list is: [" + string.Join(",", ConnectedClientIDs.Select(x => x.ToString()).ToArray()) + "]");
             }
 
-            [ServerRpc]
+            [ServerRpc(RequireOwnership = false)]
             public void BroadcastAllNewClipsServerRpc(ulong senderID)
             {
                 // Send new clips to everyone
@@ -334,17 +334,8 @@ namespace Wendigos
             [ClientRpc]
             public void SendServerMyClipsClientRpc(ClientRpcParams p = default)
             {
-                if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
-                    audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
-
-                foreach (AudioClip clip in myClips)
-                {
-                    audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
-                }
-
                 // Send server client's clips and tell it to sync them with everyone
                 SendClipListAsync(myClips, shouldSync:true);
-
                 
             }
 
@@ -1018,6 +1009,14 @@ namespace Wendigos
                 myClips.Add(clip);
             }
             WriteToConsole("Generated Player Clips. Count: " + myClips.Count);
+
+            if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
+                audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
+
+            foreach (AudioClip clip in myClips)
+            {
+                audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
+            }
         }
 
         [HarmonyPatch(typeof(MenuManager), "Start")]
