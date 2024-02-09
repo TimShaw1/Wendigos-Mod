@@ -670,6 +670,8 @@ namespace Wendigos
 
                 //RoundManager.Instance.currentLevel.Enemies.Add(new SpawnableEnemyWithRarity());
 
+                // TODO: Killed player can see mask mesh on new masked, new masked isnt playing audio
+
 
                 var players = startOfRound.allPlayerScripts;
 
@@ -681,7 +683,7 @@ namespace Wendigos
                     if (!deadPlayers.Contains(player) && player.isPlayerDead)
                     {
                         deadPlayers.Add(player);
-                        WriteToConsole("player died -- ID: " + player.playerSteamId + " -- name: " + player.name);
+                        WriteToConsole("player died -- ID: " + player.actualClientId + " -- name: " + player.name);
                     }
                 }
 
@@ -910,6 +912,9 @@ namespace Wendigos
                             __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
                             new Dictionary<ulong, bool>()
                         );
+
+                    // TODO: Set masked suit to player's suit
+                    // __instance.SetSuit();
                     WriteToConsole("added masked to per_masked_ready_dict");
                 }
 
