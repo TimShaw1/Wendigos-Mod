@@ -96,10 +96,14 @@ namespace Wendigos
                     {
                         if (connectedClient == obj) continue;
 
-                        List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[connectedClient]);
-
                         // Send ALL clips the server has to new client
-                        SendClipListAsync(clipsCopy, obj, true);
+                        try
+                        {
+                            List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[connectedClient]);
+
+                            SendClipListAsync(clipsCopy, obj, true);
+                        }
+                        catch { continue; }
                     }
                 }
                 else
