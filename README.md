@@ -38,6 +38,7 @@ Each player can have their own unique set of voice lines to better suit things t
   - [ ] Possessed players should have their own voices.
   - [ ] Masked should play certain line categories (i.e. chasing or idle) based on what they're doing.
   - [ ] Allow players to use an ElevenLabs API key for better voice cloning results.
+  - [ ] AI generates new voice lines between rounds
 
 ## Credits
 - https://github.com/coqui-ai/tts
