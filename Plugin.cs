@@ -86,12 +86,29 @@ namespace Wendigos
 
             private void OnClientConnectedCallback(ulong obj)
             {
-                //SendMessage(Guid.NewGuid());
-                WriteToConsole("Server sending " + get_clips_count() + " clips");
-                List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
+                if (IsServer)
+                {
+                    //SendMessage(Guid.NewGuid());
+                    WriteToConsole("Server sending " + get_clips_count() + " clips");
 
-                // Send server's local clips to client
-                SendClipListAsync(clipsCopy, obj, true);
+
+                    foreach (ulong connectedClient in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        if (connectedClient == obj) continue;
+
+                        List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[connectedClient]);
+
+                        // Send ALL clips the server has to new client
+                        SendClipListAsync(clipsCopy, obj, true);
+                    }
+                }
+                else
+                {
+                    List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
+
+                    // Send client's clips
+                    SendClipListAsync(clipsCopy, obj, true);
+                }
 
 
             }
@@ -215,6 +232,7 @@ namespace Wendigos
             {
                 var messageContent = audioClipFragment;
                 //WriteToConsole("Writing message...");
+                specificClient = false;
 
                 // Steam has max size of 512kb (C)
                 var writer = new FastBufferWriter(messageContent.Length, Unity.Collections.Allocator.Temp, 512000);
@@ -361,7 +379,7 @@ namespace Wendigos
                 }
             }
 
-            [ServerRpc]
+            [ServerRpc(RequireOwnership = false)]
             public void AddToMaskedClientDictServerRpc(string maskedID, ulong clientID)
             {
                 AddToMaskedClientDictClientRpc(maskedID, clientID);
