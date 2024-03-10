@@ -101,7 +101,7 @@ namespace Wendigos
                         {
                             List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[connectedClient]);
 
-                            SendClipListAsync(clipsCopy, obj, true);
+                            SendClipListAsync(clipsCopy, obj, true, originClient: connectedClient);
                         }
                         catch { continue; }
                     }
@@ -111,7 +111,7 @@ namespace Wendigos
                     List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
 
                     // Send client's clips
-                    SendClipListAsync(clipsCopy, obj, true);
+                    SendClipListAsync(clipsCopy, obj, false, true, NetworkManager.Singleton.LocalClientId);
                 }
 
 
@@ -177,19 +177,32 @@ namespace Wendigos
 
                 // decompress audioclip
                 receivedMessageContent = Decompress(receivedMessageContent);
+                ulong realSenderId = 0;
 
-                AudioClip recievedClip = LoadAudioClip(receivedMessageContent);
+                // convert first 8 bytes to ulong
+                for (int i = 0; i < 8; i++)
+                {
+                    realSenderId |= (ulong)receivedMessageContent[i] << (i * 8);
+                }
+                print("Sender ID is: " + senderId);
+                print("Real sender ID is: " + realSenderId);
+
+                // remove sender id header
+                byte[] receivedMessageContentNoHeader = new byte[receivedMessageContent.Length - 8];
+                Buffer.BlockCopy(receivedMessageContent, 8, receivedMessageContentNoHeader, 0, receivedMessageContentNoHeader.Length);
+
+                AudioClip recievedClip = LoadAudioClip(receivedMessageContentNoHeader);
                 bool doWeHaveTheClip = false;
 
-                if (!audioClips.Keys.Contains(senderId))
-                    audioClips.Add(senderId, new List<AudioClip>());
+                if (!audioClips.Keys.Contains(realSenderId))
+                    audioClips.Add(realSenderId, new List<AudioClip>());
 
                 if (IsServer)
                 {
-                    WriteToConsole($"Sever received ({receivedMessageContent}) from client ({senderId})");
-                    foreach (AudioClip clip in audioClips[senderId])
+                    WriteToConsole($"Sever received ({receivedMessageContentNoHeader}) from client ({realSenderId})");
+                    foreach (AudioClip clip in audioClips[realSenderId])
                     {
-                        if (clip.name == recievedClip.name)
+                        if (clip.name == recievedClip.name || senderId == 0)
                         {
                             WriteToConsole(clip.name);
                             WriteToConsole("We already have this clip!");
@@ -199,17 +212,17 @@ namespace Wendigos
                     }
                     if (!doWeHaveTheClip)
                     {
-                        audioClips[senderId].Add(recievedClip);
+                        audioClips[realSenderId].Add(recievedClip);
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + get_clips_count());
                     }
                 }
                 else
                 {
-                    WriteToConsole($"Client received ({receivedMessageContent}) from the server.");
-                    foreach (AudioClip clip in audioClips[senderId])
+                    WriteToConsole($"Client received ({receivedMessageContentNoHeader}) from the server.");
+                    foreach (AudioClip clip in audioClips[realSenderId])
                     {
-                        if (clip.name == recievedClip.name)
+                        if (clip.name == recievedClip.name || realSenderId == NetworkManager.Singleton.LocalClientId)
                         {
                             WriteToConsole("We already have this clip!");
                             doWeHaveTheClip = true;
@@ -218,7 +231,7 @@ namespace Wendigos
                     }
                     if (!doWeHaveTheClip)
                     {
-                        audioClips[senderId].Add(recievedClip);
+                        audioClips[realSenderId].Add(recievedClip);
                         WriteToConsole("Added Clip.");
                         WriteToConsole("AudioClip count is now: " + get_clips_count());
                     }
@@ -277,9 +290,10 @@ namespace Wendigos
                 }
             }
 
-            public void SendFragmentedMessage(byte[] audioClip, ulong destClient = 0, bool specificClient = false)
+            public void SendFragmentedMessage(byte[] audioClip, ulong destClient = 0, bool specificClient = false, ulong originClient = 0)
             {
-                var message = Compress(audioClip);
+                print("Compressing...");
+                var message = Compress(audioClip, originClient);
                 //var message = audioClip;
                 WriteToConsole($"Sending message of length {message.Length}");
                 if (message.Length > Math.Ceiling(512000 * (float)numberOfFragments))
@@ -309,11 +323,12 @@ namespace Wendigos
                 }
             }
 
-            public async Task SendClipListAsync(List<AudioClip> clips, ulong destClient = 0, bool specificClient = false, bool shouldSync = false)
+            public async Task SendClipListAsync(List<AudioClip> clips, ulong destClient = 0, bool specificClient = false, bool shouldSync = false, ulong originClient = 0)
             {
                 foreach (var clip in clips)
                 {
-                    SendFragmentedMessage(ConvertToByteArr(clip), destClient, specificClient);
+                    WriteToConsole("Sending " + originClient + "'s clips");
+                    SendFragmentedMessage(ConvertToByteArr(clip), destClient, specificClient, originClient);
 
                     // Wait so steam doesnt lump all messages together and yell at me
                     await Task.Delay(100);
@@ -337,7 +352,7 @@ namespace Wendigos
                     WriteToConsole("Sent " + clips_count + " Clips");
 
                     // Send all new clips to everyone
-                    BroadcastAllNewClipsServerRpc(NetworkManager.Singleton.LocalClientId);
+                    BroadcastAllNewClipsServerRpc(originClient);
                 }
             }
 
@@ -358,15 +373,17 @@ namespace Wendigos
             [ServerRpc(RequireOwnership = false)]
             public void BroadcastAllNewClipsServerRpc(ulong senderID)
             {
+                WriteToConsole("Broadcasting " + senderID + "'s clips - " + audioClips[senderID].Count);
+                List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[senderID]);
                 // Send new clips to everyone
-                SendClipListAsync(audioClips[senderID]);
+                SendClipListAsync(clipsCopy, originClient:senderID);
             }
 
             [ClientRpc]
             public void SendServerMyClipsClientRpc(ClientRpcParams p = default)
             {
                 // Send server client's clips and tell it to sync them with everyone
-                SendClipListAsync(myClips, shouldSync:true);
+                SendClipListAsync(myClips, shouldSync:true, originClient:NetworkManager.Singleton.LocalClientId);
                 
             }
 
@@ -1153,11 +1170,12 @@ namespace Wendigos
             }
         }
 
-        public static byte[] Compress(byte[] data)
+        public static byte[] Compress(byte[] data, ulong realID)
         {
             MemoryStream output = new MemoryStream();
             using (DeflateStream dstream = new DeflateStream(output, System.IO.Compression.CompressionLevel.Optimal))
             {
+                dstream.Write(BitConverter.GetBytes(realID), 0, 8);
                 dstream.Write(data, 0, data.Length);
             }
             return output.ToArray();
@@ -1178,10 +1196,18 @@ namespace Wendigos
         public static int get_clips_count()
         {
             int clips_count = 0;
-            foreach (var audioList in audioClips.Values)
+            string outputString = "";
+            foreach (var audioListKey in audioClips.Keys)
             {
-                clips_count += audioList.Count;
+                clips_count += audioClips[audioListKey].Count;
+                outputString += "{";
+                foreach (var clip in audioClips[audioListKey])
+                {
+                    outputString += audioListKey + ":" + clip.name[1] + ", ";
+                }
+                outputString += "} -- ";
             }
+            print(outputString);
             return clips_count;
         }
 
