@@ -178,9 +178,15 @@ namespace Wendigos
                 // decompress audioclip
                 receivedMessageContent = Decompress(receivedMessageContent);
                 ulong realSenderId = 0;
+                byte firstChar = receivedMessageContent[7];
+                byte num = receivedMessageContent[6];
+
+                string clipN = "" + Convert.ToChar(firstChar) + num;
+
+                WriteToConsole("ClipN is " + clipN);
 
                 // convert first 8 bytes to ulong
-                for (int i = 0; i < 8; i++)
+                for (int i = 0; i < 6; i++)
                 {
                     realSenderId |= (ulong)receivedMessageContent[i] << (i * 8);
                 }
@@ -192,6 +198,7 @@ namespace Wendigos
                 Buffer.BlockCopy(receivedMessageContent, 8, receivedMessageContentNoHeader, 0, receivedMessageContentNoHeader.Length);
 
                 AudioClip recievedClip = LoadAudioClip(receivedMessageContentNoHeader);
+                recievedClip.name = clipN;
                 bool doWeHaveTheClip = false;
 
                 if (!audioClips.Keys.Contains(realSenderId))
@@ -290,10 +297,10 @@ namespace Wendigos
                 }
             }
 
-            public void SendFragmentedMessage(byte[] audioClip, ulong destClient = 0, bool specificClient = false, ulong originClient = 0)
+            public void SendFragmentedMessage(AudioClip audioClip, ulong destClient = 0, bool specificClient = false, ulong originClient = 0)
             {
                 print("Compressing...");
-                var message = Compress(audioClip, originClient);
+                var message = Compress(ConvertToByteArr(audioClip), originClient, audioClip.name);
                 //var message = audioClip;
                 WriteToConsole($"Sending message of length {message.Length}");
                 if (message.Length > Math.Ceiling(512000 * (float)numberOfFragments))
@@ -328,7 +335,7 @@ namespace Wendigos
                 foreach (var clip in clips)
                 {
                     WriteToConsole("Sending " + originClient + "'s clips");
-                    SendFragmentedMessage(ConvertToByteArr(clip), destClient, specificClient, originClient);
+                    SendFragmentedMessage(clip, destClient, specificClient, originClient);
 
                     // Wait so steam doesnt lump all messages together and yell at me
                     await Task.Delay(100);
@@ -1046,20 +1053,31 @@ namespace Wendigos
         public static void GeneratePlayerAudioClips()
         {
             // Generate audio clips
+            byte count = 0;
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
             {
                 AudioClip clip = LoadWavFile(line);
+                clip.name = "i" + count;
                 myClips.Add(clip);
+                count++;
             }
+
+            count = 0;
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
             {
                 AudioClip clip = LoadWavFile(line);
+                clip.name = "n" + count;
                 myClips.Add(clip);
+                count++;
             }
+
+            count = 0;
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
             {
                 AudioClip clip = LoadWavFile(line);
+                clip.name = "c" + count;
                 myClips.Add(clip);
+                count++;
             }
             WriteToConsole("Generated Player Clips. Count: " + myClips.Count);
         }
@@ -1170,8 +1188,14 @@ namespace Wendigos
             }
         }
 
-        public static byte[] Compress(byte[] data, ulong realID)
+        public static byte[] Compress(byte[] data, ulong realID, string name = "b0")
         {
+            ulong firstChar = Convert.ToUInt64(name[0]);
+            ulong num = Convert.ToUInt64(name.Substring(1));
+
+            realID |= firstChar << 7 * 8;
+            realID |= num << 6 * 8;
+
             MemoryStream output = new MemoryStream();
             using (DeflateStream dstream = new DeflateStream(output, System.IO.Compression.CompressionLevel.Optimal))
             {
@@ -1203,7 +1227,7 @@ namespace Wendigos
                 outputString += "{";
                 foreach (var clip in audioClips[audioListKey])
                 {
-                    outputString += audioListKey + ":" + clip.name[1] + ", ";
+                    outputString += audioListKey + ":" + clip.name + ", ";
                 }
                 outputString += "} -- ";
             }
