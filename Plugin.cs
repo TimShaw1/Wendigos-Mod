@@ -433,7 +433,7 @@ namespace Wendigos
             [ClientRpc]
             public void PlayAudioClientRpc(ulong MimickingID, int indexToPlay, string maskedID)
             {
-                WriteToConsole($"Masked {maskedID} playing {MimickingID}[{indexToPlay}]");
+                WriteToConsole($"Masked {maskedID} playing {MimickingID}[{indexToPlay}] - {audioClips[MimickingID][indexToPlay].name}");
                 TryToPlayAudio(audioClips[MimickingID][indexToPlay], maskedID);
             }
         }
