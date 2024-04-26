@@ -478,8 +478,7 @@ namespace Wendigos
                         }
                         if (resend)
                         {
-                            SendClipListAsync(missingClips, 0, false, originClient: originId);
-                            BroadcastAllNewClipsServerRpc(originId);
+                            SendClipListAsync(missingClips, 0, false, true, originId);
                         }
                     }
 
