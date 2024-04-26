@@ -38,7 +38,6 @@ namespace Wendigos
 
             public NetworkList<FixedString128Bytes> clipNamesArr;
 
-
             /// <summary>
             /// For most cases, you want to register once your NetworkBehaviour's
             /// NetworkObject (typically in-scene placed) is spawned.
@@ -421,8 +420,8 @@ namespace Wendigos
                             TargetClientIds = new ulong[] { senderID }
                         }
                     };
-                    var task2 = waitForMSeconds(200);
-                    task2.Wait();
+                    //var task2 = waitForMSeconds(200);
+                    //task2.Wait();
                     ValidateClipsClientRpc(clientRpcParams);
                 }
             }
@@ -441,6 +440,16 @@ namespace Wendigos
                 await Task.Delay(Mseconds);
             }
 
+            public async Task askServerResendList(List<(ulong COrID, FixedString128Bytes cname)> clipTuples)
+            {
+                foreach (var tup in clipTuples)
+                {
+                    AskServerResendClipServerRpc(tup.COrID, tup.cname, NetworkManager.Singleton.LocalClientId);
+                    await Task.Delay(200);
+                }
+
+            }
+
             [ClientRpc]
             public void ValidateClipsClientRpc(ClientRpcParams param = default)
             {
@@ -448,6 +457,7 @@ namespace Wendigos
                 try
                 {
                     List<FixedString128Bytes> allClipNames = new List<FixedString128Bytes>();
+                    List<AudioClip> missingClips = new List<AudioClip>();
                     foreach (var originId in audioClips.Keys)
                     {
                         bool resend = false;
@@ -459,15 +469,21 @@ namespace Wendigos
 
                             // send server missing clip
                             WriteToConsole("Client resending " + originId + clip.name);
-                            SendFragmentedMessage(clip, 0, false, originId);
-                            var task = waitForMSeconds(200);
-                            task.Wait();
+                            missingClips.Add(clip);
+                            //SendClipListAsync(new List<AudioClip>() { clip }, 0, false, originClient: originId);
+                            //SendFragmentedMessage(clip, 0, false, originId);
+                            //var task = waitForMSeconds(200);
+                            //task.Wait();
                             resend = true;
                         }
                         if (resend)
+                        {
+                            SendClipListAsync(missingClips, 0, false, originClient: originId);
                             BroadcastAllNewClipsServerRpc(originId);
+                        }
                     }
 
+                    List<(ulong COrID, FixedString128Bytes cname)> clipTuples = new List<(ulong COrID, FixedString128Bytes cname)>();
                     // pass 2 - validate we got all clips from server
                     foreach (var clipName in clipNamesArr)
                     {
@@ -481,11 +497,13 @@ namespace Wendigos
                                 clipOrigID *= 10;
                                 clipOrigID += (ulong)(c - '0');
                             }
-                            AskServerResendClipServerRpc(clipOrigID, (FixedString128Bytes)(clipName.ToString().Substring(1)), NetworkManager.Singleton.LocalClientId);
-                            var task = waitForMSeconds(200);
-                            task.Wait();
+                            clipTuples.Add((clipOrigID, (FixedString128Bytes)(clipName.ToString().Substring(1))));
+                            //AskServerResendClipServerRpc(clipOrigID, (FixedString128Bytes)(clipName.ToString().Substring(1)), NetworkManager.Singleton.LocalClientId);
+                            //var task = waitForMSeconds(200);
+                            //task.Wait();
                         }
                     }
+                    askServerResendList(clipTuples);
                 }
                 catch
                 {
@@ -496,15 +514,23 @@ namespace Wendigos
             [ServerRpc(RequireOwnership = false)]
             public void AskServerResendClipServerRpc(ulong originClipId, FixedString128Bytes name, ulong senderID)
             {
+                WriteToConsole("Resending...");
+                List<AudioClip> missingClips = new List<AudioClip>();   
                 foreach (var clip in audioClips[originClipId])
                 {
                     if (clip.name == name)
                     {
                         WriteToConsole("Server Resending " + originClipId + clip.name);
-                        SendFragmentedMessage(clip, senderID, false, originClipId);
-                        var task = waitForMSeconds(200);
-                        task.Wait();
+                        missingClips.Add(clip);
+                        
+                        //SendFragmentedMessage(clip, senderID, false, originClipId);
+                        //var task = waitForMSeconds(200);
+                        //task.Wait();
                     }
+                }
+                if (missingClips.Count > 0)
+                {
+                    SendClipListAsync(missingClips, senderID, false, originClient: originClipId);
                 }
             }
 
@@ -565,6 +591,7 @@ namespace Wendigos
             {
                 clipList.Sort((c1, c2) => c1.name.CompareTo(c2.name));
             }
+            WriteToConsole("sorted");
         }
 
 
