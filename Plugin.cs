@@ -154,17 +154,14 @@ namespace Wendigos
                     clipFragmentBuffers.Add(senderId, new List<byte[]>());
                 }
                 clipFragmentBuffers[senderId].Add(receivedMessageContent);
-                CombineAudioFragments(senderId);
+                if (clipFragmentBuffers[senderId].Count == numberOfFragments)
+                    Task.Factory.StartNew(() => CombineAudioFragments(senderId));
 
 
             }
 
-            private void CombineAudioFragments(ulong senderId)
+            private async Task CombineAudioFragments(ulong senderId)
             {
-                // Haven't recieved all fragments
-                if (clipFragmentBuffers[senderId].Count != numberOfFragments)
-                    return;
-
                 // Get size of original audioclip
                 int sizeOfFullMessage = 0;
                 foreach (var fragment in clipFragmentBuffers[senderId])
@@ -255,9 +252,6 @@ namespace Wendigos
                         WriteToConsole("AudioClip count is now: " + get_clips_count());
                     }
                 }
-
-                // Cant be async with latecompany
-                sort_audioclips();
             }
 
             /// <summary>
@@ -571,6 +565,13 @@ namespace Wendigos
             {
                 sharedMaskedClientDict[maskedID] = clientID;
                 WriteToConsole($"added masked {maskedID} to masked_client_dict");
+            }
+
+            [ClientRpc]
+            public void SortAudioClipsClientRpc()
+            {
+                // Cant be async with latecompany
+                sort_audioclips();
             }
 
             [ServerRpc(RequireOwnership = false)]
@@ -1153,6 +1154,11 @@ namespace Wendigos
                 WriteToConsole("Clearing chared masked dict");
                 serverReadyDict.Clear();
                 sharedMaskedClientDict.Clear();
+
+                WriteToConsole("Sorting Audioclips");
+                sort_audioclips();
+                if (NetworkManager.Singleton.IsServer)
+                    WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
             }
         }
 
@@ -1441,13 +1447,6 @@ namespace Wendigos
                 outputString += "} -- ";
             }
             print(outputString);
-            print("clipNamesArr:");
-            try
-            {
-                foreach (var name in WendigosMessageHandler.Instance.clipNamesArr)
-                    print(name + ", ");
-            }
-            catch { }
             return clips_count;
         }
 
