@@ -687,8 +687,14 @@ namespace Wendigos
         }
 
         static bool doneGenerating = false;
+        static int sentenceTypesCompleted = 0;
         static void GenerateAllPlayerSentences(bool new_player_audio = false)
         {
+            if (doneGenerating)
+            {
+                WriteToConsole("Already Generated");
+                return;
+            }
             bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
             bool new_idle, new_nearby, new_chasing;
             new_idle = new_nearby = new_chasing = new_player_audio;
@@ -710,6 +716,7 @@ namespace Wendigos
             {
                 WriteToConsole($"generating idle sentences");
                 GeneratePlayerSentences("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
+                sentenceTypesCompleted++;
             }
 
 
@@ -729,6 +736,7 @@ namespace Wendigos
             {
                 WriteToConsole($"generating nearby sentences");
                 GeneratePlayerSentences("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
+                sentenceTypesCompleted++;
             }
 
 
@@ -748,6 +756,7 @@ namespace Wendigos
             {
                 WriteToConsole($"generating chasing sentences");
                 GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
+                sentenceTypesCompleted++;
             }
 
             doneGenerating = true;
@@ -1299,27 +1308,46 @@ namespace Wendigos
             }
         }
 
+        static async void GeneratingAnimation(MenuManager __instance)
+        {
+            string[] characterList = ["/", "-", "\\", "|"];
+            __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/3] |";
+            while (!doneGenerating)
+            {
+                foreach (string c in characterList)
+                {
+                    __instance.menuNotificationText.text = __instance.menuNotificationText.text.Remove(__instance.menuNotificationText.text.Length-7);
+                    __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/3] "+ c;
+                    await Task.Delay(200);
+                }
+            }
+        }
+
         [HarmonyPatch(typeof(MenuManager), "Update")]
         class MenuManagerUpdatePatch
         {
             static int index = 0;
+            static bool recorded = false;
+            static Task task1 = null;
             static void Postfix(MenuManager __instance)
             {
                 if (__instance.isInitScene) { return; }
                 if (!__instance.menuNotification.activeInHierarchy) { return; }
 
-                if (!Microphone.IsRecording(mic_name))
+                if (!Microphone.IsRecording(mic_name) && !recorded)
                 {
                     if (UnityInput.Current.GetKeyUp("R"))
                     {
+                        recorded = true;
                         // Get max frequency of mic device
                         int minfreq;
                         int maxfreq;
                         Microphone.GetDeviceCaps(mic_name, out minfreq, out maxfreq);
 
-                        mic_audio_clip = Microphone.Start(mic_name, false, 100, maxfreq);
+                        // Max 10 minutes
+                        mic_audio_clip = Microphone.Start(mic_name, false, 600, maxfreq);
                         __instance.menuNotificationButtonText.text = "Recording...";
-                        __instance.menuNotificationText.text = "Press Q to quit recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
+                        __instance.menuNotificationText.text = "Press Q to quit recording\nPress N for next line\n- - "+ (index+1) + "/" +lines_to_read.Length +" - -\n" + lines_to_read[index];
                     }
                 }
                 else
@@ -1327,13 +1355,14 @@ namespace Wendigos
                     if (UnityInput.Current.GetKeyUp("Q") && need_new_player_audio.Value)
                     {
                         Microphone.End(mic_name);
-                        __instance.menuNotificationButtonText.text = "[ close ]";
-                        __instance.menuNotificationText.text = "Recording stopped.\nPlease wait for audio clips to finish generating";
-                        mic_audio_clip = SavWav.TrimSilence(mic_audio_clip, 0.01f);
-                        SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", mic_audio_clip);
+                        __instance.menuNotificationButtonText.text = "[ don't close ]";
+                        __instance.menuNotificationText.text = "Recording stopped.\nPlease wait for audio clips to finish generating ";
+                        SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", mic_audio_clip, true);
                         doneGenerating = false;
-                        Task.Factory.StartNew(() => GenerateAllPlayerSentences(true));
+                        if (task1 == null)
+                            task1 = Task.Factory.StartNew(() => GenerateAllPlayerSentences(true));
                         need_new_player_audio.Value = false;
+                        GeneratingAnimation(__instance);
 
 
                     }
@@ -1342,18 +1371,19 @@ namespace Wendigos
                         if (index + 1 < lines_to_read.Length)
                         {
                             index++;
-                            __instance.menuNotificationText.text = "Press Q to quit recording\nPress N for next line\n- - - - -\n" + lines_to_read[index];
+                            __instance.menuNotificationText.text = "Press Q to quit recording\nPress N for next line\n- - " + (index+1) + "/" + lines_to_read.Length + " - -\n" + lines_to_read[index];
                         }
                         else
                         {
                             Microphone.End(mic_name);
-                            __instance.menuNotificationButtonText.text = "[ close ]";
-                            __instance.menuNotificationText.text = "Recording stopped.\nPlease wait for audio clips to finish generating";
-                            mic_audio_clip = SavWav.TrimSilence(mic_audio_clip, 0.01f);
-                            SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", mic_audio_clip);
+                            __instance.menuNotificationButtonText.text = "[ don't close ]";
+                            __instance.menuNotificationText.text = "Recording stopped.\nPlease wait for audio clips to finish generating ";
+                            SavWav.Save(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav", mic_audio_clip, true);
                             doneGenerating = false;
-                            Task.Factory.StartNew(() => GenerateAllPlayerSentences(true));
+                            if (task1 == null)
+                                task1 = Task.Factory.StartNew(() => GenerateAllPlayerSentences(true));
                             need_new_player_audio.Value = false;
+                            GeneratingAnimation(__instance);
 
                         }
                     }
