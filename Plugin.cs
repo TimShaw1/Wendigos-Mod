@@ -536,13 +536,27 @@ namespace Wendigos
             [ServerRpc(RequireOwnership = false)]
             public void TellServerReadyToSendServerRpc(string maskedID, bool ready, ServerRpcParams serverRpcParams = default)
             {
+                WriteToConsole("Server got ready signal");
                 var clientId = serverRpcParams.Receive.SenderClientId;
-                if (IsServer)
+                WriteToConsole("Recieved " + ready + " from " + clientId);
+
+                try
                 {
                     if (!serverReadyDict[maskedID].ContainsKey(clientId))
+                    {
                         serverReadyDict[maskedID].Add(clientId, ready);
+                    }
                     else
+                    {
                         serverReadyDict[maskedID][clientId] = ready;
+                    }
+                }
+                catch (Exception e)
+                {
+                    WriteToConsole("ERROR HERE");
+                    WriteToConsole(e.Message);
+                    foreach (var id in serverReadyDict.Keys)
+                        WriteToConsole("" + id);
                 }
             }
 
@@ -564,12 +578,15 @@ namespace Wendigos
             {
                 bool ready = true;
                 foreach (bool clientReady in serverReadyDict[maskedID].Values)
+                {
                     ready = clientReady & ready;
+                }
 
                 if (ready)
                 {
                     if (serverRand.Next() % 10 == 0)
                     {
+                        WriteToConsole("Trying to play audio");
                         int indexToPlay = serverRand.Next() % audioClips[MimickingID].Count;
                         PlayAudioClientRpc(MimickingID, indexToPlay, maskedID);
                     }
@@ -931,12 +948,27 @@ namespace Wendigos
                 WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, false);
                 var __instance = maskedInstanceLookup[maskedID];
                 if (clip && !__instance.creatureVoice.isPlaying)
+                {
                     __instance.creatureVoice.PlayOneShot(clip);
+                    waitThenSayReady(__instance, maskedID);
+                }
             }
             catch (Exception e)
             {
                 WriteToConsole("Playing audio failed: " + e.Message + ": " + e.Source);
             }
+        }
+
+        static async void waitThenSayReady(MaskedPlayerEnemy __instance, string maskedID)
+        {
+            WriteToConsole("WAITING");
+            while (__instance.creatureVoice.isPlaying)
+                await Task.Delay(10);
+
+            WriteToConsole("SAYING READY");
+            WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, true);
+            return;
+
         }
 
         static string GetPathOfWav(string type, int lineNum = -1)
@@ -974,15 +1006,16 @@ namespace Wendigos
                 string type = types[serverRand.Next(types.Length)];
 
                 string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
+                ulong MimickingClientID = 0;
                 if (!sharedMaskedClientDict.Keys.Contains(thisMaskedID))
+                {
+                    WriteToConsole("Masked not in dict");
                     return;
-
-                ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
-
-                if (!__instance.creatureVoice.isPlaying)
-                    WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(thisMaskedID, true);
+                }
                 else
-                    WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(thisMaskedID, false);
+                {
+                    MimickingClientID = sharedMaskedClientDict[thisMaskedID];
+                }
 
 
                 switch (__instance.currentBehaviourStateIndex)
@@ -1036,12 +1069,6 @@ namespace Wendigos
 
                 ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
 
-                if (!__instance.creatureVoice.isPlaying)
-                    WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(thisMaskedID, true);
-                else
-                    WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(thisMaskedID, false);
-
-
                 WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
 
             }
@@ -1092,10 +1119,13 @@ namespace Wendigos
                             );
 
                     // clientID add and check is done in network manager
-                    serverReadyDict.TryAdd(
+                    var result = serverReadyDict.TryAdd(
                             __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
                             new Dictionary<ulong, bool>()
                         );
+
+                    if (!result)
+                        WriteToConsole("Failed to add masked");
 
                     // TODO: Set masked suit to player's suit
                     // __instance.SetSuit();
@@ -1103,6 +1133,17 @@ namespace Wendigos
                 }
 
                 WriteToConsole("Finished Spawning Masked");
+            }
+        }
+
+        [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.LoadNewLevel))]
+        class RoundManagerSpawnPatch
+        {
+            static void Prefix()
+            {
+                WriteToConsole("Clearing chared masked dict");
+                serverReadyDict.Clear();
+                sharedMaskedClientDict.Clear();
             }
         }
 
@@ -1371,8 +1412,12 @@ namespace Wendigos
             }
             print(outputString);
             print("clipNamesArr:");
-            foreach (var name in WendigosMessageHandler.Instance.clipNamesArr)
-                print(name + ", ");
+            try
+            {
+                foreach (var name in WendigosMessageHandler.Instance.clipNamesArr)
+                    print(name + ", ");
+            }
+            catch { }
             return clips_count;
         }
 
