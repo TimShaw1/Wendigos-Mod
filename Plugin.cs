@@ -687,6 +687,33 @@ namespace Wendigos
             WriteToConsole("deleted temporary sentences text file");
         }
 
+        static async void GeneratePlayerSentencesElevenlabs(string file_name, string sentences_file_path)
+        {
+            WriteToConsole("IN ELEVENLABS GEN");
+            File.WriteAllText(assembly_path + "\\player_sentences\\player0_sentences.txt", File.ReadAllText(sentences_file_path));
+            WriteToConsole("wrote to sentences text file");
+
+
+            if (Directory.Exists(assembly_path + $"\\audio_output\\player0\\{file_name}"))
+            {
+                Directory.Delete(assembly_path + $"\\audio_output\\player0\\{file_name}", true);
+                WriteToConsole($"deleted old wav files for {file_name}");
+            }
+            Directory.CreateDirectory(assembly_path + $"\\audio_output\\player0\\{file_name}");
+            WriteToConsole($"created directory \\audio_output\\player0\\{file_name}");
+
+            var elevenlabs_client = new ElevenLabs(elevenlabs_api_key.Value);
+
+            string[] readText = File.ReadAllLines(sentences_file_path);
+            int i = 0;
+            foreach (string s in readText)
+            {
+                //Task.Factory.StartNew(() => elevenlabs_client.RequestAudio(s, elevenlabs_voice_id.Value, file_name + "0_line", assembly_path + $"\\audio_output\\player0\\{file_name}\\"));
+                await elevenlabs_client.RequestAudio(s, elevenlabs_voice_id.Value, file_name + "0_line", assembly_path + $"\\audio_output\\player0\\{file_name}\\", i);
+                i++;
+            }
+        }
+
         static bool doneGenerating = false;
         static int sentenceTypesCompleted = 0;
         static void GenerateAllPlayerSentences(bool new_player_audio = false)
@@ -699,6 +726,13 @@ namespace Wendigos
             bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
             bool new_idle, new_nearby, new_chasing;
             new_idle = new_nearby = new_chasing = new_player_audio;
+
+            if (elevenlabs_enabled.Value)
+            {
+                // TODO - switch to true
+                found_sample_audio = false;
+                WriteToConsole("ELEVENLABS ENABLED");
+            }
 
             if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
             {
@@ -716,7 +750,10 @@ namespace Wendigos
             if (new_idle)
             {
                 WriteToConsole($"generating idle sentences");
-                GeneratePlayerSentences("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
+                if (!elevenlabs_enabled.Value)
+                    GeneratePlayerSentences("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
+                else
+                    GeneratePlayerSentencesElevenlabs("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
                 sentenceTypesCompleted++;
             }
 
@@ -736,7 +773,10 @@ namespace Wendigos
             if (new_nearby)
             {
                 WriteToConsole($"generating nearby sentences");
-                GeneratePlayerSentences("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
+                if (!elevenlabs_enabled.Value)
+                    GeneratePlayerSentences("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
+                else
+                    GeneratePlayerSentencesElevenlabs("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
                 sentenceTypesCompleted++;
             }
 
@@ -756,7 +796,10 @@ namespace Wendigos
             if (new_chasing)
             {
                 WriteToConsole($"generating chasing sentences");
-                GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
+                if (!elevenlabs_enabled.Value)
+                    GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
+                else
+                    GeneratePlayerSentencesElevenlabs("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
                 sentenceTypesCompleted++;
             }
 
@@ -771,7 +814,11 @@ namespace Wendigos
             return timestamp > main_last_accessed;
         }
 
+        private static ConfigEntry<bool> mod_enabled;
         private static ConfigEntry<bool> need_new_player_audio;
+        private static ConfigEntry<bool> elevenlabs_enabled;
+        private static ConfigEntry<string> elevenlabs_api_key;
+        private static ConfigEntry<string> elevenlabs_voice_id;
         static System.Random serverRand = new System.Random();
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
         private static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
@@ -800,22 +847,12 @@ namespace Wendigos
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 
-            harmonyInstance.PatchAll();
-            SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
-
-            var types = Assembly.GetExecutingAssembly().GetTypes();
-            foreach (var type in types)
-            {
-                var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-                foreach (var method in methods)
-                {
-                    var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
-                    if (attributes.Length > 0)
-                    {
-                        method.Invoke(null, null);
-                    }
-                }
-            }
+            mod_enabled = Config.Bind<bool>(
+                "General",
+                "Enable mod?",
+                false,
+                "Enables the mod"
+                );
 
             need_new_player_audio = Config.Bind<bool>(
                 "General",
@@ -824,20 +861,66 @@ namespace Wendigos
                 "Whether the record audio prompt should show up"
                 );
 
-            config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
+            // TODO - Silent audio clips
+            elevenlabs_enabled = Config.Bind<bool>(
+                "Elevenlabs",
+                "Enabled",
+                false,
+                "Whether to use elevenlabs for ai voice generation"
+                );
 
-            System.IO.Directory.CreateDirectory(config_path + "Wendigos\\player_sentences");
-            System.IO.Directory.CreateDirectory(assembly_path + "\\player_sentences");
-            System.IO.Directory.CreateDirectory(assembly_path + "\\sample_player_audio");
-            System.IO.Directory.CreateDirectory(assembly_path + "\\audio_output");
-            Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: Created/found config directories");
+            if (elevenlabs_enabled.Value)
+                need_new_player_audio.Value = false;
 
-            bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
-            Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: {(found_sample_audio ? "found" : "didn't find")} player sample audio");
+            elevenlabs_api_key = Config.Bind<string>(
+                "Elevenlabs",
+                "API key",
+                "",
+                "Your elevenlabs API key"
+                );
 
-            // start generating voice lines async
-            doneGenerating = false;
-            Task.Factory.StartNew(() => GenerateAllPlayerSentences(false));
+            elevenlabs_voice_id = Config.Bind<string>(
+                "Elevenlabs",
+                "Voice id",
+                "",
+                "Your elevenlabs voice id"
+                );
+
+            if (mod_enabled.Value)
+            {
+                harmonyInstance.PatchAll();
+                SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
+
+                var types = Assembly.GetExecutingAssembly().GetTypes();
+                foreach (var type in types)
+                {
+                    var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                    foreach (var method in methods)
+                    {
+                        var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+                        if (attributes.Length > 0)
+                        {
+                            method.Invoke(null, null);
+                        }
+                    }
+                }
+
+
+                config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
+
+                System.IO.Directory.CreateDirectory(config_path + "Wendigos\\player_sentences");
+                System.IO.Directory.CreateDirectory(assembly_path + "\\player_sentences");
+                System.IO.Directory.CreateDirectory(assembly_path + "\\sample_player_audio");
+                System.IO.Directory.CreateDirectory(assembly_path + "\\audio_output");
+                Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: Created/found config directories");
+
+                bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
+                Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: {(found_sample_audio ? "found" : "didn't find")} player sample audio");
+
+                // start generating voice lines async
+                doneGenerating = false;
+                Task.Factory.StartNew(() => GenerateAllPlayerSentences(false));
+            }
 
         }
 
