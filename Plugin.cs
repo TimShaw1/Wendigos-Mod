@@ -17,6 +17,7 @@ using System.IO.Compression;
 using System.Buffers;
 using Steamworks;
 using Unity.Collections;
+using Newtonsoft.Json;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -602,6 +603,38 @@ namespace Wendigos
             }
         }
 
+        public class WendigosLog
+        {
+            public bool generation_successful { get; set; }
+
+            public DateTime last_successful_generation { get; set; }
+
+            public string message { get; set; }
+
+            public WendigosLog()
+            {
+                generation_successful = false;
+                last_successful_generation = DateTime.MinValue;
+                message = string.Empty;
+            }
+
+            public void Load()
+            {
+                if (File.Exists(assembly_path + "\\WendigosLog.json"))
+                {
+                    WendigosLog oldLog = ReadFromJsonFile<WendigosLog>(assembly_path + "\\WendigosLog.json");
+                    generation_successful = oldLog.generation_successful;
+                    last_successful_generation = oldLog.last_successful_generation;
+                    message = oldLog.message;
+                }
+            }
+
+            public void Save()
+            {
+                WriteToJsonFile<WendigosLog>(assembly_path + "\\WendigosLog.json", this);
+            }
+        }
+
         static void sort_audioclips()
         {
             foreach (var clipList in audioClips.Values)
@@ -690,9 +723,6 @@ namespace Wendigos
         static async void GeneratePlayerSentencesElevenlabs(string file_name, string sentences_file_path)
         {
             WriteToConsole("IN ELEVENLABS GEN");
-            File.WriteAllText(assembly_path + "\\player_sentences\\player0_sentences.txt", File.ReadAllText(sentences_file_path));
-            WriteToConsole("wrote to sentences text file");
-
 
             if (Directory.Exists(assembly_path + $"\\audio_output\\player0\\{file_name}"))
             {
@@ -723,6 +753,10 @@ namespace Wendigos
                 WriteToConsole("Already Generated");
                 return;
             }
+
+            log.generation_successful = false;
+            log.Save();
+
             bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
             bool new_idle, new_nearby, new_chasing;
             new_idle = new_nearby = new_chasing = new_player_audio;
@@ -730,7 +764,7 @@ namespace Wendigos
             if (elevenlabs_enabled.Value)
             {
                 // TODO - switch to true
-                found_sample_audio = false;
+                found_sample_audio = true;
                 WriteToConsole("ELEVENLABS ENABLED");
             }
 
@@ -755,6 +789,7 @@ namespace Wendigos
                 else
                     GeneratePlayerSentencesElevenlabs("idle", config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt");
                 sentenceTypesCompleted++;
+                log.last_successful_generation = DateTime.Now;
             }
 
 
@@ -778,6 +813,7 @@ namespace Wendigos
                 else
                     GeneratePlayerSentencesElevenlabs("nearby", config_path + "Wendigos\\player_sentences\\player0_nearby_sentences.txt");
                 sentenceTypesCompleted++;
+                log.last_successful_generation = DateTime.Now;
             }
 
 
@@ -801,8 +837,11 @@ namespace Wendigos
                 else
                     GeneratePlayerSentencesElevenlabs("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
                 sentenceTypesCompleted++;
+                log.last_successful_generation = DateTime.Now;
             }
 
+            log.generation_successful = true;
+            log.Save();
             doneGenerating = true;
             WriteToConsole("Finished generating voice lines.");
         }
@@ -811,7 +850,39 @@ namespace Wendigos
         {
             DateTime timestamp = File.GetLastWriteTime(path);
 
-            return timestamp > main_last_accessed;
+            return timestamp > last_successful_generation;
+        }
+
+        public static void WriteToJsonFile<T>(string filePath, T objectToWrite, bool append = false) where T : new()
+        {
+            TextWriter writer = null;
+            try
+            {
+                var contentsToWriteToFile = JsonConvert.SerializeObject(objectToWrite);
+                writer = new StreamWriter(filePath, append);
+                writer.Write(contentsToWriteToFile);
+            }
+            finally
+            {
+                if (writer != null)
+                    writer.Close();
+            }
+        }
+
+        public static T ReadFromJsonFile<T>(string filePath) where T : new()
+        {
+            TextReader reader = null;
+            try
+            {
+                reader = new StreamReader(filePath);
+                var fileContents = reader.ReadToEnd();
+                return JsonConvert.DeserializeObject<T>(fileContents);
+            }
+            finally
+            {
+                if (reader != null)
+                    reader.Close();
+            }
         }
 
         private static ConfigEntry<bool> mod_enabled;
@@ -830,7 +901,8 @@ namespace Wendigos
         private static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
         // used to track if we need to generate new audio files
-        private static DateTime main_last_accessed = File.GetLastAccessTime(assembly_path + "\\main.exe");
+        private static DateTime last_successful_generation;
+        private static WendigosLog log = new WendigosLog();
 
         internal static string mic_name;
 
@@ -861,7 +933,6 @@ namespace Wendigos
                 "Whether the record audio prompt should show up"
                 );
 
-            // TODO - Silent audio clips
             elevenlabs_enabled = Config.Bind<bool>(
                 "Elevenlabs",
                 "Enabled",
@@ -888,6 +959,14 @@ namespace Wendigos
 
             if (mod_enabled.Value)
             {
+                log.Load();
+                log.Save();
+
+                if (log.generation_successful)
+                    last_successful_generation = log.last_successful_generation;
+                else
+                    last_successful_generation = DateTime.MinValue;
+
                 harmonyInstance.PatchAll();
                 SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
 
@@ -1005,11 +1084,48 @@ namespace Wendigos
             }
         }
 
+        static AudioClip LoadAudioFile(string audioFilePath)
+        {
+            if (elevenlabs_enabled.Value)
+                return LoadMP3File(audioFilePath);
+            else
+                return LoadWavFile(audioFilePath);
+        }
+
         static AudioClip LoadWavFile(string audioFilePath)
         {
             if (File.Exists(audioFilePath))
             {
                 using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.WAV))
+                {
+                    request.SendWebRequest();
+
+                    while (request.result == UnityWebRequest.Result.InProgress)
+                        continue;
+                    if (request.result != UnityWebRequest.Result.Success)
+                    {
+                        WriteToConsole("www.error " + request.error);
+                        WriteToConsole(" www.uri " + request.uri);
+                        WriteToConsole(" www.url " + request.url);
+                        WriteToConsole(" www.result " + request.result);
+                        return null;
+                    }
+                    else
+                    {
+                        AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
+                        return myClip;
+                    }
+                }
+            }
+            WriteToConsole("AUDIO FILE NOT FOUND");
+            return null;
+        }
+
+        static AudioClip LoadMP3File(string audioFilePath)
+        {
+            if (File.Exists(audioFilePath))
+            {
+                using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.MPEG))
                 {
                     request.SendWebRequest();
 
@@ -1333,7 +1449,7 @@ namespace Wendigos
             byte count = 0;
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
             {
-                AudioClip clip = LoadWavFile(line);
+                AudioClip clip = LoadAudioFile(line);
                 clip.name = "i" + count;
                 myClips.Add(clip);
                 count++;
@@ -1342,7 +1458,7 @@ namespace Wendigos
             count = 0;
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
             {
-                AudioClip clip = LoadWavFile(line);
+                AudioClip clip = LoadAudioFile(line);
                 clip.name = "n" + count;
                 myClips.Add(clip);
                 count++;
@@ -1351,7 +1467,7 @@ namespace Wendigos
             count = 0;
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
             {
-                AudioClip clip = LoadWavFile(line);
+                AudioClip clip = LoadAudioFile(line);
                 clip.name = "c" + count;
                 myClips.Add(clip);
                 count++;
