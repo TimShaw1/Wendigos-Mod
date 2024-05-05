@@ -27,7 +27,7 @@ namespace Wendigos
             HttpClient client = new HttpClient();
 
             client.DefaultRequestHeaders.Add("xi-api-key", API_KEY); // Add API Key header
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/wav")); // Add accepted file extension header
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/mpeg")); // Add accepted file extension header
 
             var data = new
             {
@@ -64,7 +64,7 @@ namespace Wendigos
                     {
                         // Stream response as binary data into a file
                         using (Stream stream = await response.Content.ReadAsStreamAsync())
-                        using (FileStream fileStream = File.Create(dir + fileName + fileNameExtension.ToString() + ".wav"))
+                        using (FileStream fileStream = File.Create(dir + fileName + fileNameExtension.ToString() + ".mp3"))
                         {
                             await stream.CopyToAsync(fileStream);
                         }
@@ -82,7 +82,7 @@ namespace Wendigos
                 }
 
                 if (fileNameValid)
-                    return dir + fileName + fileNameExtension.ToString() + ".wav";
+                    return dir + fileName + fileNameExtension.ToString() + ".mp3";
             }
 
             // Return Directory to file
