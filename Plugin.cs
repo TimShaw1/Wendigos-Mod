@@ -755,6 +755,7 @@ namespace Wendigos
             }
 
             log.generation_successful = false;
+            log.message = "Not finished generating player sentences";
             log.Save();
 
             bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
