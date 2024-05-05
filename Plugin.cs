@@ -842,6 +842,7 @@ namespace Wendigos
             }
 
             log.generation_successful = true;
+            log.message = "";
             log.Save();
             doneGenerating = true;
             WriteToConsole("Finished generating voice lines.");
