@@ -18,6 +18,7 @@ using System.Buffers;
 using Steamworks;
 using Unity.Collections;
 using Newtonsoft.Json;
+using UnityEngine.XR;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -430,6 +431,19 @@ namespace Wendigos
                 
             }
 
+            [ClientRpc]
+            public void SetMaskedSuitClientRpc(string maskedId, int suitid)
+            {
+                try
+                {
+                    maskedInstanceLookup[maskedId].SetSuit(suitid);
+                }
+                catch (Exception ex)
+                {
+                    WriteToConsole(ex.Message);
+                }
+            }
+
             public async Task waitForMSeconds(int Mseconds)
             {
                 await Task.Delay(Mseconds);
@@ -764,7 +778,6 @@ namespace Wendigos
 
             if (elevenlabs_enabled.Value)
             {
-                // TODO - switch to true
                 found_sample_audio = true;
                 WriteToConsole("ELEVENLABS ENABLED");
             }
@@ -1047,7 +1060,7 @@ namespace Wendigos
 
                 //RoundManager.Instance.currentLevel.Enemies.Add(new SpawnableEnemyWithRarity());
 
-                // TODO: Killed player can see mask mesh on new masked, new masked isnt playing audio
+                // TODO: Killed player can see mask mesh on new masked
 
 
                 var players = startOfRound.allPlayerScripts;
@@ -1338,9 +1351,17 @@ namespace Wendigos
                     if (!result)
                         WriteToConsole("Failed to add masked");
 
-                    // TODO: Set masked suit to player's suit
-                    // __instance.SetSuit();
                     WriteToConsole("added masked to per_masked_ready_dict");
+
+                    var players = StartOfRound.Instance.allPlayerScripts;
+                    foreach (var player in players)
+                    {
+                        if (player.actualClientId == randomClientID)
+                        {
+                            WendigosMessageHandler.Instance.SetMaskedSuitClientRpc(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id, player.currentSuitID);
+                            break;
+                        }
+                    }
                 }
 
                 WriteToConsole("Finished Spawning Masked");
