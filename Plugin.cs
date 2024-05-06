@@ -19,6 +19,7 @@ using Steamworks;
 using Unity.Collections;
 using Newtonsoft.Json;
 using UnityEngine.XR;
+using System.Net;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -664,9 +665,44 @@ namespace Wendigos
             Console.WriteLine("Wendigos: " + output);
         }
 
-        private void Open_YT_URL()
+        private static void Open_YT_URL()
         {
             UnityEngine.Application.OpenURL("https://www.youtube.com/@Tim-Shaw");
+        }
+
+        static bool main_downloaded = false;
+        private static async Task download_main_exe()
+        {
+            if (File.Exists(assembly_path + "\\main.exe"))
+            {
+                main_downloaded = true;
+                sentenceTypesCompleted++;
+                return;
+            }
+
+            WriteToConsole("Downloading main.exe for voice generation");
+
+            using (WebClient wc = new WebClient())
+            {
+                //wc.Headers.Add("a", "a");
+                try
+                {
+                    wc.DownloadFile("https://github.com/TimShaw1/Wendigos-Mod/releases/download/v0.0.4/main.exe", assembly_path + "\\main.exe");
+                }
+                catch (Exception ex)
+                {
+                    WriteToConsole(ex.Message);
+                }
+            }
+
+            if (File.Exists(assembly_path + "\\main.exe"))
+            {
+                main_downloaded = true;
+                sentenceTypesCompleted++;
+                WriteToConsole("main.exe finished downloading");
+            }
+            else
+                WriteToConsole("main.exe failed to download");
         }
 
         /// <summary>
@@ -687,6 +723,9 @@ namespace Wendigos
             }
             Directory.CreateDirectory(assembly_path + $"\\audio_output\\player0\\{file_name}");
             WriteToConsole($"created directory \\audio_output\\player0\\{file_name}");
+
+            while (!main_downloaded)
+                continue;
 
 
             // Use ProcessStartInfo class
@@ -858,6 +897,8 @@ namespace Wendigos
             log.message = "";
             log.Save();
             doneGenerating = true;
+            GeneratePlayerAudioClips();
+            sentenceTypesCompleted++;
             WriteToConsole("Finished generating voice lines.");
         }
 
@@ -909,7 +950,6 @@ namespace Wendigos
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
         private static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
 
-        public static List<PlayerControllerB> deadPlayers = new List<PlayerControllerB>();
         Harmony harmonyInstance = new Harmony("my-instance");
 
         private static string config_path;
@@ -1066,16 +1106,6 @@ namespace Wendigos
                 var players = startOfRound.allPlayerScripts;
 
                 //AudioSource voice = MaskedPlayerEnemy.voice;
-
-                // Get all dead players
-                foreach (var player in players)
-                {
-                    if (!deadPlayers.Contains(player) && player.isPlayerDead)
-                    {
-                        deadPlayers.Add(player);
-                        WriteToConsole("player died -- ID: " + player.actualClientId + " -- name: " + player.name);
-                    }
-                }
 
             }
         }
@@ -1468,6 +1498,8 @@ namespace Wendigos
 
         public static void GeneratePlayerAudioClips()
         {
+            myClips.Clear();
+
             // Generate audio clips
             byte count = 0;
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
@@ -1506,6 +1538,7 @@ namespace Wendigos
                 if (__instance.isInitScene)
                 {
                     Task.Factory.StartNew(GeneratePlayerAudioClips);
+                    Task.Factory.StartNew(download_main_exe);
                     return;
                 }
                 try
@@ -1531,6 +1564,7 @@ namespace Wendigos
                     if (doneGenerating == false)
                     {
                         __instance.DisplayMenuNotification($"Please wait for audio clips to finish generating", "[ close ]");
+                        GeneratingAnimation(__instance);
                     }
                 }
             }
@@ -1539,13 +1573,13 @@ namespace Wendigos
         static async void GeneratingAnimation(MenuManager __instance)
         {
             string[] characterList = ["/", "-", "\\", "|"];
-            __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/3] |";
+            __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/5] |";
             while (!doneGenerating)
             {
                 foreach (string c in characterList)
                 {
                     __instance.menuNotificationText.text = __instance.menuNotificationText.text.Remove(__instance.menuNotificationText.text.Length-7);
-                    __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/3] "+ c;
+                    __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/5] "+ c;
                     await Task.Delay(200);
                 }
             }
