@@ -26,7 +26,7 @@ using System.Net;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "v1.0.4")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
