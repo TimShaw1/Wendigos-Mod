@@ -20,13 +20,14 @@ using Unity.Collections;
 using Newtonsoft.Json;
 using UnityEngine.XR;
 using System.Net;
+using System.Security.Cryptography;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "v1.0.4")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.4")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -670,6 +671,20 @@ namespace Wendigos
             UnityEngine.Application.OpenURL("https://www.youtube.com/@Tim-Shaw");
         }
 
+        static string CalculateMainHash(string filename)
+        {
+            WriteToConsole("Calculating hash...");
+            using (var hasher = SHA512.Create())
+            {
+                using (var stream = File.OpenRead(filename))
+                {
+                    var hash = hasher.ComputeHash(stream);
+                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
+        }
+
+        static string MAIN_HASH_VALUE = "d00044f06a082907f8190fb8db5314da46bd2daec86389f71bca54ea9ec4b2d2515fecb2f16d6a4ba47c01aaa769b23886fd7d33c2b4e2dde1e46712ed63c59a";
         static bool main_downloaded = false;
         private static async Task download_main_exe()
         {
@@ -677,6 +692,17 @@ namespace Wendigos
             {
                 main_downloaded = true;
                 sentenceTypesCompleted++;
+                WriteToConsole(CalculateMainHash(assembly_path + "\\main.exe"));
+                if (CalculateMainHash(assembly_path + "\\main.exe").Equals(MAIN_HASH_VALUE))
+                {
+                    WriteToConsole("Valid main.exe");
+                    return;
+                }
+                else
+                {
+                    WriteToConsole("INVALID main.exe");
+                    //File.Delete(assembly_path + "\\main.exe");
+                }
                 return;
             }
 
@@ -700,6 +726,16 @@ namespace Wendigos
                 main_downloaded = true;
                 sentenceTypesCompleted++;
                 WriteToConsole("main.exe finished downloading");
+                if (CalculateMainHash(assembly_path + "\\main.exe").Equals(MAIN_HASH_VALUE))
+                {
+                    WriteToConsole("Valid main.exe");
+                    return;
+                }
+                else
+                {
+                    WriteToConsole("INVALID main.exe");
+                    File.Delete(assembly_path + "\\main.exe");
+                }
             }
             else
                 WriteToConsole("main.exe failed to download");
