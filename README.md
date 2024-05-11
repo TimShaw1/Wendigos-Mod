@@ -1,7 +1,11 @@
 # Wendigos (Voice Cloning Mod for Lethal Company)
 The Masked have learned how to copy the voices of your friends. Can you tell who's real and who's fake?
 
+## DISCLAIMER
+This mod downloads external binaries (about 350MB in size) from my github and loads an AI model locally to generate voice clips for the masked. If you would prefer not to download this large external binary, you can use Elevenlabs instead.
+
 ## First Time Setup
+0. Enable the mod in `Wendigos.cfg`. Optionally enable Elevenlabs and add API key and voice ID
 1. When launching the game for the first time, you will be asked to record some voice lines. Your current selected mic will be displayed. 
     - If the selected mic is not the one you would like to use, simply click "close", set the correct mic in settings, and relaunch the game.
 
