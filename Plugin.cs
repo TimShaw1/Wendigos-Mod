@@ -27,7 +27,7 @@ using System.Security.Cryptography;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.4")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.1.0")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -717,20 +717,21 @@ namespace Wendigos
         {
             if (File.Exists(assembly_path + "\\main.exe"))
             {
-                main_downloaded = true;
-                sentenceTypesCompleted++;
                 WriteToConsole(CalculateMainHash(assembly_path + "\\main.exe"));
                 if (CalculateMainHash(assembly_path + "\\main.exe").Equals(MAIN_HASH_VALUE))
                 {
                     WriteToConsole("Valid main.exe");
+                    main_downloaded = true;
+                    sentenceTypesCompleted++;
                     return;
                 }
                 else
                 {
-                    WriteToConsole("INVALID main.exe already downloaded");
-                    //File.Delete(assembly_path + "\\main.exe");
+                    WriteToConsole("INVALID main.exe already downloaded. Redownloading...");
+                    File.Delete(assembly_path + "\\main.exe");
+                    await download_main_exe();
+                    return;
                 }
-                return;
             }
 
             WriteToConsole("Downloading main.exe for voice generation");
@@ -740,7 +741,7 @@ namespace Wendigos
                 //wc.Headers.Add("a", "a");
                 try
                 {
-                    wc.DownloadFile("https://github.com/TimShaw1/Wendigos-Mod/releases/download/v0.0.4/main.exe", assembly_path + "\\main.exe");
+                    wc.DownloadFile("https://github.com/TimShaw1/Wendigos-Mod/releases/download/v0.1.0/main.exe", assembly_path + "\\main.exe");
                 }
                 catch (Exception ex)
                 {
@@ -1335,7 +1336,7 @@ namespace Wendigos
                 ulong MimickingClientID = 0;
                 if (!sharedMaskedClientDict.Keys.Contains(thisMaskedID))
                 {
-                    WriteToConsole("Masked not in dict");
+                    //WriteToConsole("Masked not in dict");
                     return;
                 }
                 else
