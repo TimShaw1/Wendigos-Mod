@@ -1,6 +1,8 @@
 # Wendigos (Voice Cloning Mod for Lethal Company)
 The Masked have learned how to copy the voices of your friends. Can you tell who's real and who's fake?
 
+This mod requires **every player** to have the mod to function corrcectly.
+
 ## DISCLAIMER
 This mod downloads external binaries (about 350MB in size) from my github and loads an AI model locally to generate voice clips for the masked. If you would prefer not to download this large external binary, you can use Elevenlabs instead. The external binary is 350MB, and the voice cloning model is 1.75GB.
 
@@ -38,6 +40,9 @@ Each player can have their own unique set of voice lines to better suit things t
 
 ### Masked improvements
 This mod removes the masked masks and zombie arms to better fool players. Player clothing is also mimicked.
+
+### Elevenlabs
+Players can use Elevenlabs for voice cloning. This produces far better results and makes the masked much more deceptive. For this to work, **every client must have their voice already cloned by Elevenlabs**. You can all use the same api key, but each player needs a unique voice id.
 
 ## Possible issues
 - Voice lines fail to sync (working on this, should be fairly rare)
