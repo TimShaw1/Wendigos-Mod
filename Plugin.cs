@@ -651,6 +651,33 @@ namespace Wendigos
             }
         }
 
+        public static string[] LanguagesList = { 
+                "en", "es", "fr", "de", "it", "pt", 
+                "pl", "tr", "ru", "nl", "cs", "ar",
+                "zh-cn", "ja", "hu", "ko", "hi"
+            };
+        public enum Languages
+        {
+            English,
+            Spanish,
+            French,
+            German,
+            Italian,
+            Portuguese,
+            Polish,
+            Turkish,
+            Russian,
+            Dutch,
+            Czech,
+            Arabic,
+            Chinese,
+            Japanese,
+            Hungarian,
+            Korean,
+            Hindi
+
+        }
+
         static void sort_audioclips()
         {
             foreach (var clipList in audioClips.Values)
@@ -684,7 +711,7 @@ namespace Wendigos
             }
         }
 
-        static string MAIN_HASH_VALUE = "d00044f06a082907f8190fb8db5314da46bd2daec86389f71bca54ea9ec4b2d2515fecb2f16d6a4ba47c01aaa769b23886fd7d33c2b4e2dde1e46712ed63c59a";
+        static string MAIN_HASH_VALUE = "20ca39002a389704d5499df0f522848ec21fe724f8d13de830d596f28df69a7ae860aa4bb58e0b7ddbefcdf3e96b902fc2f98fca37777a4bf08de15af231f36e";
         static bool main_downloaded = false;
         private static async Task download_main_exe()
         {
@@ -700,7 +727,7 @@ namespace Wendigos
                 }
                 else
                 {
-                    WriteToConsole("INVALID main.exe");
+                    WriteToConsole("INVALID main.exe already downloaded");
                     //File.Delete(assembly_path + "\\main.exe");
                 }
                 return;
@@ -771,10 +798,11 @@ namespace Wendigos
             startInfo.FileName = "cmd.exe";
             startInfo.WorkingDirectory = assembly_path;
             //startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.Arguments = $"/C (set PYTORCH_JIT=0)&(main.exe {file_name})";
+            startInfo.Arguments = $"/C (set PYTORCH_JIT=0)&(main.exe {file_name} {LanguagesList[((int)voice_language.Value)]})";
             startInfo.RedirectStandardOutput = true;
             startInfo.RedirectStandardError = true;
             startInfo.RedirectStandardInput = true;
+            startInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
 
             try
             {
@@ -796,7 +824,7 @@ namespace Wendigos
                     exeProcess.ErrorDataReceived += (sender, args) => WriteToConsole(args.Data);
                     exeProcess.BeginOutputReadLine();
                     exeProcess.BeginErrorReadLine();
-                    WriteToConsole("LOADING MODEL...");
+                    WriteToConsole($"LOADING MODEL {LanguagesList[((int)voice_language.Value)]}...");
                     exeProcess.WaitForExit();
                 }
             }
@@ -979,6 +1007,7 @@ namespace Wendigos
 
         private static ConfigEntry<bool> mod_enabled;
         private static ConfigEntry<bool> need_new_player_audio;
+        private static ConfigEntry<Languages> voice_language;
         private static ConfigEntry<bool> elevenlabs_enabled;
         private static ConfigEntry<string> elevenlabs_api_key;
         private static ConfigEntry<string> elevenlabs_voice_id;
@@ -1022,6 +1051,13 @@ namespace Wendigos
                 "Record new player sample audio?",
                 true,
                 "Whether the record audio prompt should show up"
+                );
+
+            voice_language = Config.Bind<Languages>(
+                "General",
+                "Language",
+                Languages.English,
+                "What language the voice generator should use"
                 );
 
             elevenlabs_enabled = Config.Bind<bool>(
