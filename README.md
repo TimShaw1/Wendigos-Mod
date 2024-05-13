@@ -51,8 +51,6 @@ Players can use Elevenlabs for voice cloning. This produces far better results a
 - Game crashes when joining lobby (this happens when someone joins the lobby very quickly, should be rare on non-LAN games)
 - Your PC doesn't have enough storage space for the model and voice lines
     - Each player stores the voice cloning model (1.75GB), their sample audio (~10MB) and their own voice lines (<500KB each) locally.
- - `Masked not in dict`
-    - This happens when masked are spawned unnaturally (i.e. with a mod menu). Masked are assigned an ID when they spawn from a vent, so spawning any other way does not work.
 
 ## FAQ
 **What languages does this mod support?**
