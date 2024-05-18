@@ -564,10 +564,12 @@ namespace Wendigos
                 }
                 catch (Exception e)
                 {
+
                     WriteToConsole("ERROR HERE");
                     WriteToConsole(e.Message);
                     foreach (var id in serverReadyDict.Keys)
                         WriteToConsole("" + id);
+
                 }
             }
 
@@ -595,9 +597,16 @@ namespace Wendigos
             public void TryPlayAudioServerRpc(ulong MimickingID, string maskedID)
             {
                 bool ready = true;
-                foreach (bool clientReady in serverReadyDict[maskedID].Values)
+                try
                 {
-                    ready = clientReady & ready;
+                    foreach (bool clientReady in serverReadyDict[maskedID].Values)
+                    {
+                        ready = clientReady & ready;
+                    }
+                }
+                catch
+                {
+                    ready = true;
                 }
 
                 if (ready)
@@ -1337,7 +1346,8 @@ namespace Wendigos
                 if (!sharedMaskedClientDict.Keys.Contains(thisMaskedID))
                 {
                     //WriteToConsole("Masked not in dict");
-                    return;
+                    //return;
+                    MimickingClientID = 0;
                 }
                 else
                 {
@@ -1360,8 +1370,10 @@ namespace Wendigos
 
                         break;
                     case 1:
+                        WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
                         break;
                     case 2:
+                        WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
                         break;
                 }
             }
