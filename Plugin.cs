@@ -872,6 +872,8 @@ namespace Wendigos
                 return;
             }
 
+            string old_log_message = log.message;
+
             log.generation_successful = false;
             log.message = "Not finished generating player sentences";
             log.Save();
@@ -884,6 +886,8 @@ namespace Wendigos
             {
                 found_sample_audio = true;
                 WriteToConsole("ELEVENLABS ENABLED");
+                if (old_log_message != "Elevenlabs")
+                    new_idle = new_nearby = new_chasing = true;
             }
 
             if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
@@ -959,7 +963,10 @@ namespace Wendigos
             }
 
             log.generation_successful = true;
-            log.message = "";
+            if (elevenlabs_enabled.Value)
+                log.message = "Elevenlabs";
+            else
+                log.message = "";
             log.Save();
             doneGenerating = true;
             GeneratePlayerAudioClips();
@@ -1562,8 +1569,7 @@ namespace Wendigos
 
             int channels = 1; //Assuming audio is mono because microphone input usually is
 
-            // Slow hash
-            AudioClip clip = AudioClip.Create(GetHashSHA1(receivedBytes), samples.Length, channels, sampleRate, false);
+            AudioClip clip = AudioClip.Create("NONAME", samples.Length, channels, sampleRate, false);
             clip.SetData(samples, 0);
 
             return clip;
@@ -1611,7 +1617,8 @@ namespace Wendigos
                 if (__instance.isInitScene)
                 {
                     Task.Factory.StartNew(GeneratePlayerAudioClips);
-                    Task.Factory.StartNew(download_main_exe);
+                    if (!elevenlabs_enabled.Value)
+                        Task.Factory.StartNew(download_main_exe);
                     return;
                 }
                 try
