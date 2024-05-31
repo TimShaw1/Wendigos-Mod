@@ -21,6 +21,7 @@ using Newtonsoft.Json;
 using UnityEngine.XR;
 using System.Net;
 using System.Security.Cryptography;
+using UnityEditor;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -78,14 +79,23 @@ namespace Wendigos
 
             internal static void ClientConnectInitializer(Scene sceneName, LoadSceneMode sceneEnum)
             {
-                //IL_001c: Unknown result type (might be due to invalid IL or missing references)
-                //IL_0022: Expected O, but got Unknown
                 if (((Scene)(sceneName)).name == "SampleSceneRelay")
                 {
+
                     GameObject val = new GameObject("WendigosMessageHandler");
-                    val.AddComponent<NetworkObject>();
                     val.AddComponent<WendigosMessageHandler>();
+                    val.AddComponent<NetworkObject>();
+
+                    PropertyInfo item = typeof(NetworkObject).GetProperty("NetworkObjectId", BindingFlags.Instance | BindingFlags.Public);
+                    WriteToConsole("" + (item == null));
+                    item.SetValue(val.GetComponent<NetworkObject>(), (System.UInt64)(127));
+                    WriteToConsole("NETWORK MANAGER ID IS " + val.GetComponent<NetworkObject>().NetworkObjectId);
+
+                    FieldInfo item2 = typeof(NetworkObject).GetField("GlobalObjectIdHash", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                    WriteToConsole("" + (item2 == null));
+                    item2.SetValue(val.GetComponent<NetworkObject>(), (System.UInt32)(127));
                     //DontDestroyOnLoad(val);
+
                 }
             }
 
@@ -207,7 +217,7 @@ namespace Wendigos
                 byte[] receivedMessageContentNoHeader = new byte[receivedMessageContent.Length - 8];
                 Buffer.BlockCopy(receivedMessageContent, 8, receivedMessageContentNoHeader, 0, receivedMessageContentNoHeader.Length);
 
-                AudioClip recievedClip = LoadAudioClip(receivedMessageContentNoHeader);
+                AudioClip recievedClip = LoadAudioClip(receivedMessageContentNoHeader, elevenlabs_enabled.Value ? 44100 : 24000);
                 recievedClip.name = clipN;
                 bool doWeHaveTheClip = false;
 
