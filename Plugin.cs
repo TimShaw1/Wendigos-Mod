@@ -53,7 +53,7 @@ namespace Wendigos
                 // Both the server-host and client(s) register the custom named message.
                 NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
 
-                
+
                 ConnectedClientIDs = new List<ulong>() { 0 };
 
                 if (IsServer)
@@ -138,6 +138,38 @@ namespace Wendigos
                 }
 
 
+            }
+
+            public void StartClipSync()
+            {
+                if (IsServer)
+                {
+                    //SendMessage(Guid.NewGuid());
+                    WriteToConsole("Server sending " + get_clips_count() + " clips");
+
+
+                    foreach (ulong connectedClient in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+
+                        // Send ALL clips the server has
+                        try
+                        {
+                            List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[connectedClient]);
+
+                            var task = SendClipListAsync(clipsCopy, 0, false, originClient: connectedClient);
+                            //task.Wait();
+                        }
+                        catch { continue; }
+                    }
+                }
+                else
+                {
+                    List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
+
+                    // Send client's clips
+                    var task = SendClipListAsync(clipsCopy, 0, false, true, NetworkManager.Singleton.LocalClientId);
+                    //task.Wait();
+                }
             }
 
             public override void OnNetworkDespawn()
@@ -438,9 +470,9 @@ namespace Wendigos
             public void SendServerMyClipsClientRpc(ClientRpcParams p = default)
             {
                 // Send server client's clips and tell it to sync them with everyone
-                var task = SendClipListAsync(myClips, shouldSync:true, originClient:NetworkManager.Singleton.LocalClientId);
+                var task = SendClipListAsync(myClips, shouldSync: true, originClient: NetworkManager.Singleton.LocalClientId);
                 //task.Wait();
-                
+
             }
 
             [ClientRpc]
@@ -535,14 +567,14 @@ namespace Wendigos
             public void AskServerResendClipServerRpc(ulong originClipId, FixedString128Bytes name, ulong senderID)
             {
                 WriteToConsole("Resending...");
-                List<AudioClip> missingClips = new List<AudioClip>();   
+                List<AudioClip> missingClips = new List<AudioClip>();
                 foreach (var clip in audioClips[originClipId])
                 {
                     if (clip.name == name)
                     {
                         WriteToConsole("Server Resending " + originClipId + clip.name);
                         missingClips.Add(clip);
-                        
+
                         //SendFragmentedMessage(clip, senderID, false, originClipId);
                         //var task = waitForMSeconds(200);
                         //task.Wait();
@@ -627,6 +659,18 @@ namespace Wendigos
                 WriteToConsole($"Masked {maskedID} playing {MimickingID}[{indexToPlay}] - {audioClips[MimickingID][indexToPlay].name}");
                 TryToPlayAudio(audioClips[MimickingID][indexToPlay], maskedID);
             }
+
+            [ServerRpc(RequireOwnership = false)]
+            public void StartClipSyncServerRpc()
+            {
+                StartClipSyncClientRpc();
+            }
+
+            [ClientRpc]
+            public void StartClipSyncClientRpc()
+            {
+                StartClipSync();
+            }
         }
 
         public class WendigosLog
@@ -661,8 +705,8 @@ namespace Wendigos
             }
         }
 
-        public static string[] LanguagesList = { 
-                "en", "es", "fr", "de", "it", "pt", 
+        public static string[] LanguagesList = {
+                "en", "es", "fr", "de", "it", "pt",
                 "pl", "tr", "ru", "nl", "cs", "ar",
                 "zh-cn", "ja", "hu", "ko", "hi"
             };
@@ -1501,6 +1545,21 @@ namespace Wendigos
                 sort_audioclips();
                 if (NetworkManager.Singleton.IsServer)
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
+            }
+        }
+
+        public static void RegenerateAllPlayerSentences()
+        {
+            GenerateAllPlayerSentences(true);
+            WendigosMessageHandler.Instance.StartClipSyncServerRpc();
+        }
+
+        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.EndOfGameClientRpc))]
+        class EndOfGamePatch()
+        {
+            static void Postfix()
+            {
+                Task.Factory.StartNew(() => RegenerateAllPlayerSentences());
             }
         }
 
