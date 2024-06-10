@@ -1548,9 +1548,10 @@ namespace Wendigos
             }
         }
 
-        public static void RegenerateAllPlayerSentences()
+        public static void ResyncAllPlayerSentences(bool regenerate = false)
         {
-            GenerateAllPlayerSentences(true);
+            if (regenerate)
+                GenerateAllPlayerSentences(true);
             WendigosMessageHandler.Instance.StartClipSyncServerRpc();
         }
 
@@ -1559,7 +1560,7 @@ namespace Wendigos
         {
             static void Postfix()
             {
-                Task.Factory.StartNew(() => RegenerateAllPlayerSentences());
+                Task.Factory.StartNew(() => ResyncAllPlayerSentences());
             }
         }
 
@@ -1703,10 +1704,13 @@ namespace Wendigos
                 __instance.NewsPanel.SetActive(false);
                 if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
                 {
-                    need_new_player_audio.Value = true;
-                    __instance.DisplayMenuNotification($"Press R to record some voice lines.\nSelected Mic is {mic_name}", "[ Close ]");
-                    Transform responseButton = __instance.menuNotification.transform.Find("Panel").Find("ResponseButton");
-                    responseButton.transform.position = new Vector3(responseButton.transform.position.x, responseButton.transform.position.y - 10, responseButton.transform.position.z);
+                    if (!elevenlabs_enabled.Value)
+                    {
+                        need_new_player_audio.Value = true;
+                        __instance.DisplayMenuNotification($"Press R to record some voice lines.\nSelected Mic is {mic_name}", "[ Close ]");
+                        Transform responseButton = __instance.menuNotification.transform.Find("Panel").Find("ResponseButton");
+                        responseButton.transform.position = new Vector3(responseButton.transform.position.x, responseButton.transform.position.y - 10, responseButton.transform.position.z);
+                    }
                 }
                 else
                 {
@@ -1744,6 +1748,7 @@ namespace Wendigos
             {
                 if (__instance.isInitScene) { return; }
                 if (!__instance.menuNotification.activeInHierarchy) { return; }
+                if (elevenlabs_enabled.Value) { return; }
 
                 if (!Microphone.IsRecording(mic_name) && !recorded)
                 {
