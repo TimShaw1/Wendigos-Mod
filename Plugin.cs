@@ -107,6 +107,10 @@ namespace Wendigos
 
             private void OnClientConnectedCallback(ulong obj)
             {
+                if (!doneGenerating) {
+                    WriteToConsole("NOT FINISHED GENERATING");
+                    return; 
+                }
                 if (IsServer)
                 {
                     //SendMessage(Guid.NewGuid());
@@ -384,6 +388,12 @@ namespace Wendigos
 
             public async Task SendClipListAsync(List<AudioClip> clips, ulong destClient = 0, bool specificClient = false, bool shouldSync = false, ulong originClient = 0)
             {
+                if (!doneGenerating)
+                {
+                    WriteToConsole("NOT FINISHED GENERATING IN SEND CLIP");
+                    return;
+                }
+
                 foreach (var clip in clips)
                 {
                     WriteToConsole("Sending " + originClient + "'s clips");
@@ -1560,7 +1570,8 @@ namespace Wendigos
         {
             static void Postfix()
             {
-                Task.Factory.StartNew(() => ResyncAllPlayerSentences());
+                if (doneGenerating)
+                    Task.Factory.StartNew(() => ResyncAllPlayerSentences());
             }
         }
 
