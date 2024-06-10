@@ -28,7 +28,7 @@ using UnityEditor;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.1.0")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.1.8")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
