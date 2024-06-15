@@ -1,4 +1,4 @@
-# Wendigos (Voice Cloning Mod for Lethal Company)
+# Wendigos Voice Cloning (Mod for Lethal Company)
 The Masked have learned how to copy the voices of your friends. Can you tell who's real and who's fake?
 
 This mod requires **every player** to have the mod to function corrcectly.
