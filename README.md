@@ -3,7 +3,7 @@ The Masked have learned how to copy the voices of your friends. Can you tell who
 
 This mod requires **every player** to have the mod to function corrcectly.
 
-Here's a video I made showing the mod off! [link](https://youtu.be/PNsyplFd2WU) 
+[Here's a video I made showing the mod off!](https://youtu.be/PNsyplFd2WU) 
 
 ## DISCLAIMER
 This mod downloads external binaries (about 350MB in size) from my github and loads an AI model locally to generate voice clips for the masked. If you would prefer not to download this large external binary, you can use Elevenlabs instead. The external binary is 350MB, and the voice cloning model is 1.75GB.
