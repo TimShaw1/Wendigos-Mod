@@ -15,20 +15,24 @@ using Unity.Netcode;
 using UnityEngine.SceneManagement;
 using System.IO.Compression;
 using System.Buffers;
-using Steamworks;
 using Unity.Collections;
 using Newtonsoft.Json;
 using UnityEngine.XR;
 using System.Net;
 using System.Security.Cryptography;
 using UnityEditor;
+using Dissonance;
+using Dissonance.Audio.Capture;
+using NAudio.Wave;
+using Whisper.net;
+using Whisper.net.Ggml;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.0")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.9.0")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -661,6 +665,49 @@ namespace Wendigos
             }
         }
 
+        public class DissonanceManager : IMicrophoneSubscriber
+        {
+            public static DissonanceManager Instance { get; private set; }
+            public void ReceiveMicrophoneData(ArraySegment<float> buffer, WaveFormat format)
+            {
+                //WriteToConsole("DATA RECIEVED");
+                var floatArray1 = buffer.ToArray();
+                var byteArray = new byte[floatArray1.Length * 4];
+                Buffer.BlockCopy(floatArray1, 0, byteArray, 0, byteArray.Length);
+
+                try
+                {
+                    WhisperManager.ProcessBuffer(byteArray);
+                }
+                catch (FileNotFoundException ex)
+                {
+                    Console.WriteLine("Message: " + ex.Message);
+                    Console.WriteLine("Stack Trace: " + ex.StackTrace);
+                    
+                }
+
+            }
+
+            public void Reset()
+            {
+                //throw new NotImplementedException();
+            }
+
+            public DissonanceManager()
+            {
+                try
+                {
+                    FindObjectOfType<DissonanceComms>().SubscribeToRecordedAudio(this);
+                    Instance = this;
+                    WriteToConsole("INIT DISSONANCE MANAGER");
+                } 
+                catch
+                {
+                    WriteToConsole("Not in game yet");
+                }
+            }
+        }
+
         public static string[] LanguagesList = { 
                 "en", "es", "fr", "de", "it", "pt", 
                 "pl", "tr", "ru", "nl", "cs", "ar",
@@ -1056,7 +1103,6 @@ namespace Wendigos
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-
             mod_enabled = Config.Bind<bool>(
                 "General",
                 "Enable mod?",
@@ -1102,10 +1148,14 @@ namespace Wendigos
                 "Your elevenlabs voice id"
                 );
 
+            
+
             if (mod_enabled.Value)
             {
                 log.Load();
                 log.Save();
+
+                var a = WhisperFactory.FromPath("ggml-small.en.bin");
 
                 if (log.generation_successful)
                     last_successful_generation = log.last_successful_generation;
@@ -1501,6 +1551,21 @@ namespace Wendigos
                 sort_audioclips();
                 if (NetworkManager.Singleton.IsServer)
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
+
+                if (DissonanceManager.Instance == null)
+                {
+                    try
+                    {
+                        new DissonanceManager();
+                        WriteToConsole("Created Dissonance Manager");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("TypeLoadException: " + ex.Message);
+                        //Console.WriteLine("Type: " + ex.TypeName);
+                        Console.WriteLine("Stack Trace: " + ex.StackTrace);
+                    }
+                }
             }
         }
 
@@ -1630,14 +1695,6 @@ namespace Wendigos
                     if (!elevenlabs_enabled.Value)
                         Task.Factory.StartNew(download_main_exe);
                     return;
-                }
-                try
-                {
-                    steamID = Steamworks.SteamClient.SteamId.Value;
-                }
-                catch
-                {
-                    steamID = 1;
                 }
 
                 // Show record audio prompt

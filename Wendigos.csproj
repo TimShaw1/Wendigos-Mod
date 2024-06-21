@@ -1,12 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Wendigos</AssemblyName>
     <Description>My first plugin</Description>
-    <Version>1.0.0</Version>
+    <Version>1.9.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
   <Target Name="NetcodePatch" AfterTargets="PostBuildEvent">
@@ -20,7 +22,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="UnityEngine.Modules" Version="2022.3.9.15351836" IncludeAssets="compile" />
     <PackageReference Include="Whisper.net" Version="1.5.0" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.5.0" />
+	<PackageReference Include="Whisper.net.Runtime" Version="1.5.0" />
   </ItemGroup>
   
   <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
@@ -31,6 +33,9 @@
     <Reference Include="Assembly-CSharp">
       <HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
       <HintPath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed')">C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="DissonanceVoip">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\DissonanceVoip.dll</HintPath>
     </Reference>
     <Reference Include="Facepunch.Steamworks.Win64">
       <HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
