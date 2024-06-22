@@ -24,8 +24,6 @@ using UnityEditor;
 using Dissonance;
 using Dissonance.Audio.Capture;
 using NAudio.Wave;
-using Whisper.net;
-using Whisper.net.Ggml;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -675,16 +673,7 @@ namespace Wendigos
                 var byteArray = new byte[floatArray1.Length * 4];
                 Buffer.BlockCopy(floatArray1, 0, byteArray, 0, byteArray.Length);
 
-                try
-                {
-                    WhisperManager.ProcessBuffer(byteArray);
-                }
-                catch (FileNotFoundException ex)
-                {
-                    Console.WriteLine("Message: " + ex.Message);
-                    Console.WriteLine("Stack Trace: " + ex.StackTrace);
-                    
-                }
+                // Process audio data
 
             }
 
@@ -1154,8 +1143,6 @@ namespace Wendigos
             {
                 log.Load();
                 log.Save();
-
-                var a = WhisperFactory.FromPath("ggml-small.en.bin");
 
                 if (log.generation_successful)
                     last_successful_generation = log.last_successful_generation;
