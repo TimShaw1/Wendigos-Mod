@@ -663,6 +663,7 @@ namespace Wendigos
             }
         }
 
+        /*
         public class DissonanceManager : IMicrophoneSubscriber
         {
             public static DissonanceManager Instance { get; private set; }
@@ -672,8 +673,6 @@ namespace Wendigos
                 var floatArray1 = buffer.ToArray();
                 var byteArray = new byte[floatArray1.Length * 4];
                 Buffer.BlockCopy(floatArray1, 0, byteArray, 0, byteArray.Length);
-
-                // Process audio data
 
             }
 
@@ -696,6 +695,7 @@ namespace Wendigos
                 }
             }
         }
+        */
 
         public static string[] LanguagesList = { 
                 "en", "es", "fr", "de", "it", "pt", 
@@ -1166,6 +1166,10 @@ namespace Wendigos
                     }
                 }
 
+                foreach (var device in Microphone.devices)
+                    WriteToConsole(device);
+
+                ChatManager.Init();
 
                 config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
 
@@ -1228,6 +1232,8 @@ namespace Wendigos
                 //RoundManager.Instance.currentLevel.Enemies.Add(new SpawnableEnemyWithRarity());
 
                 // TODO: Killed player can see mask mesh on new masked
+
+                //System.Text.Json.Serialization.JsonConverterFactory
 
 
                 var players = startOfRound.allPlayerScripts;
@@ -1525,6 +1531,8 @@ namespace Wendigos
             }
         }
 
+        
+
         [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.LoadNewLevel))]
         class RoundManagerSpawnPatch
         {
@@ -1539,10 +1547,15 @@ namespace Wendigos
                 if (NetworkManager.Singleton.IsServer)
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
 
+                if (!AzureSTT.is_init)
+                    Task.Factory.StartNew(() => AzureSTT.Main());
+
+                /*
                 if (DissonanceManager.Instance == null)
                 {
                     try
                     {
+                        liveClient = DeepgramManager.Main();
                         new DissonanceManager();
                         WriteToConsole("Created Dissonance Manager");
                     }
@@ -1553,6 +1566,7 @@ namespace Wendigos
                         Console.WriteLine("Stack Trace: " + ex.StackTrace);
                     }
                 }
+                */
             }
         }
 
