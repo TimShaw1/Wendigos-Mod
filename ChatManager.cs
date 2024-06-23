@@ -7,9 +7,8 @@ namespace Wendigos
 {
     public static class ChatManager
     {
-        static string api_key = "";
         static ChatClient client;
-        public static void Init()
+        public static void Init(string api_key)
         {
             try
             {

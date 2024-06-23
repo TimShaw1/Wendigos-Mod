@@ -1065,6 +1065,7 @@ namespace Wendigos
         private static ConfigEntry<bool> elevenlabs_enabled;
         private static ConfigEntry<string> elevenlabs_api_key;
         private static ConfigEntry<string> elevenlabs_voice_id;
+        private static ConfigEntry<string> ChatGPT_api_key;
         static System.Random serverRand = new System.Random();
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
         private static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
@@ -1137,7 +1138,14 @@ namespace Wendigos
                 "Your elevenlabs voice id"
                 );
 
-            
+            ChatGPT_api_key = Config.Bind<string>(
+                "ChatGPT",
+                "API key",
+                "",
+                "Your ChatGPT API key"
+                );
+
+
 
             if (mod_enabled.Value)
             {
@@ -1169,7 +1177,7 @@ namespace Wendigos
                 foreach (var device in Microphone.devices)
                     WriteToConsole(device);
 
-                ChatManager.Init();
+                ChatManager.Init(ChatGPT_api_key.Value);
 
                 config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
 
