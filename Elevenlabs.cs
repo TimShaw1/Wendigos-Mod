@@ -10,7 +10,7 @@ namespace Wendigos
     using System.Net.Http.Headers;
     using System.Threading.Tasks;
 
-    class ElevenLabs
+    static class ElevenLabs
     {
 
         const string baseDir = @".\"; // Base Directory of output file

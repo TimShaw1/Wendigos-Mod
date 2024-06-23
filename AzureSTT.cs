@@ -39,15 +39,19 @@ namespace Wendigos
                         if (e.Result.Text.Length > 1)
                         {
                             Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
+                            var closest_masked = Plugin.GetClosestMasked();
+                            if (closest_masked == null)
+                                return;
                             try
                             {
                                 var response = ChatManager.SendPromptToChatGPT(ChatGPT_System_Prompt + "\nTim: " + e.Result.Text);
                                 Console.WriteLine("RESPONSE: " + response);
 
                                 // Overlap handled in this function
-                                var t = ElevenLabs.RequestAudio(response, ElevenLabs.VOICE_ID, ElevenLabs.VOICE_ID, Plugin.assembly_path + "\\temp_elevenlabs_lines", 0);
+                                var t = ElevenLabs.RequestAudio(response, ElevenLabs.VOICE_ID, ElevenLabs.VOICE_ID, Plugin.assembly_path + "\\temp_elevenlabs_lines\\", 0);
                                 t.Wait();
                                 var new_clip = Plugin.LoadAudioFile(t.Result);
+                                closest_masked.creatureVoice.PlayOneShot(new_clip);
                                 Console.WriteLine("ROUND TRIP DONE");
 
                                 // Have closest masked to player play the new audio file

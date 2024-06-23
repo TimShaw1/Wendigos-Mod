@@ -896,8 +896,6 @@ namespace Wendigos
             Directory.CreateDirectory(assembly_path + $"\\audio_output\\player0\\{file_name}");
             WriteToConsole($"created directory \\audio_output\\player0\\{file_name}");
 
-            ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
-
             string[] readText = File.ReadAllLines(sentences_file_path);
             int i = 0;
             foreach (string s in readText)
@@ -1186,6 +1184,7 @@ namespace Wendigos
                     WriteToConsole(device);
 
                 ChatManager.Init(ChatGPT_api_key.Value);
+                ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
 
                 config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
 
@@ -1392,6 +1391,39 @@ namespace Wendigos
         static int CountFilesInDir(string path)
         {
             return Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly).Length;
+        }
+
+        public static MaskedPlayerEnemy GetClosestMasked()
+        {
+            var allPlayers = FindObjectsOfType<PlayerControllerB>();
+            PlayerControllerB localPlayer = null;
+            foreach (var player in allPlayers)
+            {
+                if (player.actualClientId == NetworkManager.Singleton.LocalClientId)
+                    localPlayer = player;
+            }
+
+            try
+            {
+                var allMasked = FindObjectsOfType<MaskedPlayerEnemy>();
+                WriteToConsole("COUNT: " + allMasked.Length.ToString());
+                foreach (var masked in allMasked)
+                {
+                    var dist = Vector3.Distance(masked.transform.position, localPlayer.transform.position);
+                    WriteToConsole("Masked dist is: " + dist);
+                    if (dist < 15)
+                    {
+                        var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
+                        if (!sharedMaskedClientDict.Keys.Contains(id))
+                            continue;
+                        return masked;
+                    }
+                }
+            } catch (Exception ex)
+            {
+                WriteToConsole(ex.ToString());
+            }
+            return null;
         }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
