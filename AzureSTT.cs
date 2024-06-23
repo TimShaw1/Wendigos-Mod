@@ -41,7 +41,7 @@ namespace Wendigos
                             Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
                             try
                             {
-                                Console.WriteLine("RESPONSE: " + ChatManager.GetResponse(ChatGPT_System_Prompt + "\nTim: " + e.Result.Text));
+                                Console.WriteLine("RESPONSE: " + ChatManager.SendPromptToChatGPT(ChatGPT_System_Prompt + "\nTim: " + e.Result.Text));
                             }
                             catch (Exception ex)
                             {
@@ -88,13 +88,13 @@ namespace Wendigos
             }
         }
 
-        public async static Task Main()
+        public async static Task Main(string api_key)
         {
             is_init = true;
             //Console.WriteLine("IN MAIN");
             try
             {
-                var speechConfig = SpeechConfig.FromSubscription("2cdd8d833a504c78ae71d323954e205f", "canadacentral");
+                var speechConfig = SpeechConfig.FromSubscription(api_key, "canadacentral");
                 await FromMic(speechConfig);
             }
             catch (Exception ex)

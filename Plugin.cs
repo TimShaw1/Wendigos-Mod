@@ -1066,6 +1066,7 @@ namespace Wendigos
         private static ConfigEntry<string> elevenlabs_api_key;
         private static ConfigEntry<string> elevenlabs_voice_id;
         private static ConfigEntry<string> ChatGPT_api_key;
+        private static ConfigEntry<string> Azure_api_key;
         static System.Random serverRand = new System.Random();
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
         private static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
@@ -1143,6 +1144,13 @@ namespace Wendigos
                 "API key",
                 "",
                 "Your ChatGPT API key"
+                );
+
+            Azure_api_key = Config.Bind<string>(
+                "Azure",
+                "API key",
+                "",
+                "Your Azure API key"
                 );
 
 
@@ -1556,7 +1564,7 @@ namespace Wendigos
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
 
                 if (!AzureSTT.is_init)
-                    Task.Factory.StartNew(() => AzureSTT.Main());
+                    Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value));
 
                 /*
                 if (DissonanceManager.Instance == null)

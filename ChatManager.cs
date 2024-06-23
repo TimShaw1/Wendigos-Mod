@@ -1,18 +1,23 @@
-﻿using OpenAI.Chat;
+﻿using Newtonsoft.Json;
+using OpenAI;
+using OpenAI.Chat;
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Wendigos
 {
     public static class ChatManager
     {
-        static ChatClient client;
+        static HttpClient client;
         public static void Init(string api_key)
         {
             try
             {
-                client = new(model: "gpt-4o", api_key);
+                client = new HttpClient();
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {api_key}");
                 Console.WriteLine("CHATGPT INIT SUCCESS");
             }
             catch (Exception ex)
@@ -22,19 +27,40 @@ namespace Wendigos
             }
         }
 
-        public static string GetResponse(string prompt)
+        public static string SendPromptToChatGPT(string prompt)
         {
             try
             {
-                Console.WriteLine("PROMPTING");
-                ChatCompletion completion = client.CompleteChat(prompt);
-                return completion.ToString();
+                var requestBody = new
+                {
+                    model = "gpt-4o",
+                    messages = new[]
+                    {
+                        new { role = "user", content = prompt }
+                    },
+                    max_tokens = 200
+                };
+
+                var content = new StringContent(JsonConvert.SerializeObject(requestBody), Encoding.UTF8, "application/json");
+
+                var task = client.PostAsync("https://api.openai.com/v1/chat/completions", content);
+                task.Wait();
+                var response = task.Result;
+                response.EnsureSuccessStatusCode();
+
+                var task2 = response.Content.ReadAsStringAsync();
+                task2.Wait();
+                var responseContent = task2.Result;
+                dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
+
+                Console.WriteLine("MESSAGE RECIEVED");
+                return jsonResponse.choices[0].message.content;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("CHAT BROKE");
-                Console.WriteLine(ex.ToString());
-                return "";
+                Console.WriteLine(ex.ToString()); 
+                return ""; 
             }
         }
     }
