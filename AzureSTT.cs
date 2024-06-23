@@ -53,6 +53,7 @@ namespace Wendigos
                                 var new_clip = Plugin.LoadAudioFile(t.Result);
                                 closest_masked.creatureVoice.PlayOneShot(new_clip);
                                 Console.WriteLine("ROUND TRIP DONE");
+                                File.Delete(t.Result);
 
                                 // Have closest masked to player play the new audio file
 
