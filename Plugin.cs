@@ -1192,6 +1192,7 @@ namespace Wendigos
                 System.IO.Directory.CreateDirectory(assembly_path + "\\player_sentences");
                 System.IO.Directory.CreateDirectory(assembly_path + "\\sample_player_audio");
                 System.IO.Directory.CreateDirectory(assembly_path + "\\audio_output");
+                System.IO.Directory.CreateDirectory(assembly_path + "\\temp_elevenlabs_lines");
                 Logger.LogInfo($"{PluginInfo.PLUGIN_GUID}: Created/found config directories");
 
                 bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
