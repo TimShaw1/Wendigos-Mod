@@ -1411,7 +1411,7 @@ namespace Wendigos
                 {
                     var dist = Vector3.Distance(masked.transform.position, localPlayer.transform.position);
                     WriteToConsole("Masked dist is: " + dist);
-                    if (dist < 15)
+                    if (dist < 20)
                     {
                         var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
                         if (!sharedMaskedClientDict.Keys.Contains(id))

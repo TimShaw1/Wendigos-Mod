@@ -40,7 +40,7 @@ namespace Wendigos
                         {
                             Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
                             var closest_masked = Plugin.GetClosestMasked();
-                            if (closest_masked == null)
+                            if (closest_masked == null || closest_masked.currentBehaviourStateIndex == 0)
                                 return;
                             try
                             {
