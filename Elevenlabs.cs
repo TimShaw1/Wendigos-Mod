@@ -15,19 +15,24 @@ namespace Wendigos
 
         const string baseDir = @".\"; // Base Directory of output file
         const string baseURL = "https://api.elevenlabs.io/v1/text-to-speech/"; // Base URL of HTTP request
-        public string API_KEY { get; } // Eleven Labs API key
-        public bool requesting = false;
-        public ElevenLabs(string key) { this.API_KEY = key; }
-
-        // Requests WAV file containing AI Voice saying the prompt and outputs the directory to said file
-        public async Task<string> RequestAudio(string prompt, string voice, string fileName, string dir, int fileNum)
+        public static string API_KEY; // Eleven Labs API key
+        public static bool requesting = false;
+        static HttpClient client;
+        public static string VOICE_ID;
+        public static void Init(string api_key, string voice_id)
         {
-
-            string url = baseURL + voice; // Concatenate Voice ID to end of URL
-            HttpClient client = new HttpClient();
+            API_KEY = api_key;
+            VOICE_ID = voice_id;
+            client = new HttpClient();
 
             client.DefaultRequestHeaders.Add("xi-api-key", API_KEY); // Add API Key header
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/mpeg")); // Add accepted file extension header
+        }
+
+        // Requests WAV file containing AI Voice saying the prompt and outputs the directory to said file
+        public static async Task<string> RequestAudio(string prompt, string voice, string fileName, string dir, int fileNum)
+        {
+            string url = baseURL + voice; // Concatenate Voice ID to end of URL
 
             var data = new
             {

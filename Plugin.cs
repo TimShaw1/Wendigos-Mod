@@ -896,14 +896,14 @@ namespace Wendigos
             Directory.CreateDirectory(assembly_path + $"\\audio_output\\player0\\{file_name}");
             WriteToConsole($"created directory \\audio_output\\player0\\{file_name}");
 
-            var elevenlabs_client = new ElevenLabs(elevenlabs_api_key.Value);
+            ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
 
             string[] readText = File.ReadAllLines(sentences_file_path);
             int i = 0;
             foreach (string s in readText)
             {
                 //Task.Factory.StartNew(() => elevenlabs_client.RequestAudio(s, elevenlabs_voice_id.Value, file_name + "0_line", assembly_path + $"\\audio_output\\player0\\{file_name}\\"));
-                await elevenlabs_client.RequestAudio(s, elevenlabs_voice_id.Value, file_name + "0_line", assembly_path + $"\\audio_output\\player0\\{file_name}\\", i);
+                await ElevenLabs.RequestAudio(s, elevenlabs_voice_id.Value, file_name + "0_line", assembly_path + $"\\audio_output\\player0\\{file_name}\\", i);
                 i++;
             }
         }
@@ -1074,7 +1074,7 @@ namespace Wendigos
         Harmony harmonyInstance = new Harmony("my-instance");
 
         private static string config_path;
-        private static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        public static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
         // used to track if we need to generate new audio files
         private static DateTime last_successful_generation;
@@ -1278,7 +1278,7 @@ namespace Wendigos
             }
         }
 
-        static AudioClip LoadAudioFile(string audioFilePath)
+        public static AudioClip LoadAudioFile(string audioFilePath)
         {
             if (elevenlabs_enabled.Value)
                 return LoadMP3File(audioFilePath);
