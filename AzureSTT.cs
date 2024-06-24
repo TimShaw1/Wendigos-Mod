@@ -46,12 +46,23 @@ namespace Wendigos
                                 var response = ChatManager.SendPromptToChatGPT(ChatGPT_System_Prompt + "\nTim: " + e.Result.Text);
                                 Console.WriteLine("RESPONSE: " + response);
 
+                                var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;
+                                string voice_id;
+                                try
+                                {
+                                    var client = Plugin.sharedMaskedClientDict[masked_id];
+                                    voice_id = Plugin.clientVoiceIDLookup[client];
+                                }
+                                catch
+                                {
+                                    voice_id = ElevenLabs.VOICE_ID;
+                                }
+
                                 // Overlap handled in this function
-                                var t = ElevenLabs.RequestAudio(response, ElevenLabs.VOICE_ID, ElevenLabs.VOICE_ID, Plugin.assembly_path + "\\temp_elevenlabs_lines\\", 0);
+                                var t = ElevenLabs.RequestAudio(response, voice_id, voice_id, Plugin.assembly_path + "\\temp_elevenlabs_lines\\", 0);
                                 t.Wait();
 
                                 // Have client-voiceid lookup somehow
-                                var client = Plugin.sharedMaskedClientDict[closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id];
                                 var new_clip = Plugin.LoadAudioFile(t.Result);
                                 //Plugin.SendClipForMe(new_clip, closest_masked);
                                 closest_masked.creatureVoice.PlayOneShot(new_clip);

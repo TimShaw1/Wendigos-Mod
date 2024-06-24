@@ -75,6 +75,8 @@ namespace Wendigos
                 {
                     audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
                 }
+
+                ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, elevenlabs_voice_id.Value);
             }
 
             internal static void ClientConnectInitializer(Scene sceneName, LoadSceneMode sceneEnum)
@@ -122,6 +124,11 @@ namespace Wendigos
                             List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[connectedClient]);
 
                             var task = SendClipListAsync(clipsCopy, obj, true, originClient: connectedClient);
+
+                            foreach (var key in clientVoiceIDLookup.Keys)
+                            {
+                                ShareVoiceIDClientRpc(key, clientVoiceIDLookup[key]);
+                            }
                             //task.Wait();
                         }
                         catch { continue; }
@@ -133,6 +140,7 @@ namespace Wendigos
 
                     // Send client's clips
                     var task = SendClipListAsync(clipsCopy, obj, false, true, NetworkManager.Singleton.LocalClientId);
+                    ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, elevenlabs_voice_id.Value);
                     //task.Wait();
                 }
 
@@ -628,17 +636,23 @@ namespace Wendigos
             }
 
             [ServerRpc(RequireOwnership = false)]
-            public void PlayElevenlabsHistoryIDServerRpc(string id)
+            public void ShareVoiceIDServerRpc(ulong clientID, string VoiceID)
             {
-                PlayElevenlabsHistoryIDClientRpc(id);
+                if (!clientVoiceIDLookup.ContainsKey(clientID))
+                {
+                    clientVoiceIDLookup.Add(clientID, VoiceID);
+                    WriteToConsole("Server adding " + clientID + " " + VoiceID);
+                }
             }
 
             [ClientRpc]
-            public void PlayElevenlabsHistoryIDClientRpc(string id)
+            public void ShareVoiceIDClientRpc(ulong clientID, string VoiceID)
             {
-                var t = Task.Factory.StartNew(() => ElevenLabs.GetLatestHistoryItem(id, assembly_path + "\\temp_elevenlabs_lines\\"));
-                AudioClip clip = t.Result.Result;
-                GetClosestMasked().creatureVoice.PlayOneShot(clip);
+                if (!clientVoiceIDLookup.ContainsKey(clientID))
+                {
+                    clientVoiceIDLookup.Add(clientID, VoiceID);
+                    WriteToConsole("Client adding " + clientID + " " + VoiceID);
+                }
             }
         }
 
@@ -1084,6 +1098,7 @@ namespace Wendigos
         static System.Random serverRand = new System.Random();
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
         public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
+        public static Dictionary<ulong, string> clientVoiceIDLookup = new Dictionary<ulong, string>();
 
         Harmony harmonyInstance = new Harmony("my-instance");
 
@@ -1616,7 +1631,10 @@ namespace Wendigos
                 if (elevenlabs_enabled.Value && !AzureSTT.is_init)
                     Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value));
 
-                SendClipForMe(audioClips[NetworkManager.Singleton.LocalClientId][0]);
+                foreach (var key in clientVoiceIDLookup.Keys)
+                {
+                    WriteToConsole($"CLIENT IDS: {key} {clientVoiceIDLookup[key]}");
+                }
 
                 /*
                 if (DissonanceManager.Instance == null)
