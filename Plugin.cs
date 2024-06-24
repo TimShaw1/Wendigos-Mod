@@ -22,8 +22,6 @@ using System.Net;
 using System.Security.Cryptography;
 using UnityEditor;
 using Dissonance;
-using Dissonance.Audio.Capture;
-using NAudio.Wave;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -630,16 +628,17 @@ namespace Wendigos
             }
 
             [ServerRpc(RequireOwnership = false)]
-            public void SendSingleAudioClipServerRpc(byte[] clip, string maskedID)
+            public void PlayElevenlabsHistoryIDServerRpc(string id)
             {
-                SendSingleAudioClipClientRpc(clip, maskedID);
+                PlayElevenlabsHistoryIDClientRpc(id);
             }
 
             [ClientRpc]
-            public void SendSingleAudioClipClientRpc(byte[] clip, string maskedID)
+            public void PlayElevenlabsHistoryIDClientRpc(string id)
             {
-                AudioClip full_clip = LoadAudioClip(clip);
-                maskedInstanceLookup[maskedID].creatureVoice.PlayOneShot(full_clip);
+                var t = Task.Factory.StartNew(() => ElevenLabs.GetLatestHistoryItem(id, assembly_path + "\\temp_elevenlabs_lines\\"));
+                AudioClip clip = t.Result.Result;
+                GetClosestMasked().creatureVoice.PlayOneShot(clip);
             }
         }
 
@@ -769,9 +768,9 @@ namespace Wendigos
             }
         }
 
-        public static void SendClipForMe(AudioClip clip, MaskedPlayerEnemy maskedID)
+        public static void SendClipForMe(AudioClip clip, MaskedPlayerEnemy maskedID = null)
         {
-            WendigosMessageHandler.Instance.SendSingleAudioClipServerRpc(ConvertToByteArr(clip), maskedID.GetComponent<MaskedEnemyIdentifier>().id);
+            WendigosMessageHandler.Instance.SendFragmentedMessage(clip, 0, false, NetworkManager.Singleton.LocalClientId);
         }
 
         static string MAIN_HASH_VALUE = "20ca39002a389704d5499df0f522848ec21fe724f8d13de830d596f28df69a7ae860aa4bb58e0b7ddbefcdf3e96b902fc2f98fca37777a4bf08de15af231f36e";
@@ -1079,12 +1078,12 @@ namespace Wendigos
         private static ConfigEntry<Languages> voice_language;
         private static ConfigEntry<bool> elevenlabs_enabled;
         private static ConfigEntry<string> elevenlabs_api_key;
-        private static ConfigEntry<string> elevenlabs_voice_id;
+        public static ConfigEntry<string> elevenlabs_voice_id;
         private static ConfigEntry<string> ChatGPT_api_key;
         private static ConfigEntry<string> Azure_api_key;
         static System.Random serverRand = new System.Random();
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
-        private static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
+        public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
 
         Harmony harmonyInstance = new Harmony("my-instance");
 
@@ -1202,6 +1201,7 @@ namespace Wendigos
 
                 ChatManager.Init(ChatGPT_api_key.Value);
                 ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
+                Task.Factory.StartNew(() => ElevenLabs.GetLatestHistoryItem(elevenlabs_voice_id.Value));
 
                 config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
 
@@ -1613,8 +1613,10 @@ namespace Wendigos
                 if (NetworkManager.Singleton.IsServer)
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
 
-                if (!AzureSTT.is_init)
+                if (elevenlabs_enabled.Value && !AzureSTT.is_init)
                     Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value));
+
+                SendClipForMe(audioClips[NetworkManager.Singleton.LocalClientId][0]);
 
                 /*
                 if (DissonanceManager.Instance == null)

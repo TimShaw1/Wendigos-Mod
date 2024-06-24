@@ -9,6 +9,8 @@ namespace Wendigos
     using System.Net.Http;
     using System.Net.Http.Headers;
     using System.Threading.Tasks;
+    using UnityEngine;
+    using UnityEngine.Networking;
 
     static class ElevenLabs
     {
@@ -27,6 +29,43 @@ namespace Wendigos
 
             client.DefaultRequestHeaders.Add("xi-api-key", API_KEY); // Add API Key header
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/mpeg")); // Add accepted file extension header
+        }
+
+        public static async Task<string> GetLatestHistoryItem(string voice_id)
+        {
+            var history = await client.GetAsync($"https://api.elevenlabs.io/v1/history?page_size=1&voice_id={voice_id}");
+            dynamic t = JsonConvert.DeserializeObject(await history.Content.ReadAsStringAsync());
+            try
+            {
+                Console.WriteLine(t["history"][0]["history_item_id"]);
+                return t["history"][0]["history_item_id"];
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+            return "";
+        }
+
+        public static async Task<AudioClip> GetLatestHistoryItem(string voice_id, string dir)
+        {
+            var data = new
+            {
+                history_item_id = voice_id
+            }; // Set-up Data
+
+            string json = JsonConvert.SerializeObject(data);
+            StringContent httpContent = new StringContent(json, System.Text.Encoding.Default, "application/json");
+
+            var response = await client.PostAsync($"https://api.elevenlabs.io/v1/history/{voice_id}/audio", httpContent);
+
+            using (Stream stream = await response.Content.ReadAsStreamAsync())
+            using (FileStream fileStream = File.Create(dir + voice_id + ".mp3"))
+            {
+                await stream.CopyToAsync(fileStream);
+            }
+
+            return Plugin.LoadAudioFile(dir + voice_id + ".mp3");
         }
 
         // Requests WAV file containing AI Voice saying the prompt and outputs the directory to said file
@@ -58,7 +97,6 @@ namespace Wendigos
             // Output Response to local MPEG file in the respective directory
             if (response != null)
             {
-
                 int fileNameExtension = fileNum;
                 int retries = 0;
                 bool fileNameValid = false;
