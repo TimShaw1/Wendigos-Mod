@@ -83,7 +83,6 @@ namespace Wendigos
             {
                 if (((Scene)(sceneName)).name == "SampleSceneRelay")
                 {
-
                     GameObject val = new GameObject("WendigosMessageHandler");
                     val.AddComponent<WendigosMessageHandler>();
                     val.AddComponent<NetworkObject>();
@@ -630,7 +629,7 @@ namespace Wendigos
                 TryToPlayAudio(audioClips[MimickingID][indexToPlay], maskedID);
             }
 
-            [ServerRpc]
+            [ServerRpc(RequireOwnership = false)]
             public void SendSingleAudioClipServerRpc(byte[] clip, string maskedID)
             {
                 SendSingleAudioClipClientRpc(clip, maskedID);
@@ -770,9 +769,9 @@ namespace Wendigos
             }
         }
 
-        public static void SendClipForMe(byte[] clip, string maskedID)
+        public static void SendClipForMe(AudioClip clip, MaskedPlayerEnemy maskedID)
         {
-            WendigosMessageHandler.Instance.SendSingleAudioClipServerRpc(clip, maskedID);
+            WendigosMessageHandler.Instance.SendSingleAudioClipServerRpc(ConvertToByteArr(clip), maskedID.GetComponent<MaskedEnemyIdentifier>().id);
         }
 
         static string MAIN_HASH_VALUE = "20ca39002a389704d5499df0f522848ec21fe724f8d13de830d596f28df69a7ae860aa4bb58e0b7ddbefcdf3e96b902fc2f98fca37777a4bf08de15af231f36e";

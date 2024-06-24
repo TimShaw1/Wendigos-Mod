@@ -12,8 +12,6 @@ using Unity.Netcode;
 
 namespace Wendigos
 {
-    
-
     class AzureSTT
     {
         public static bool is_init = false;
@@ -52,7 +50,8 @@ namespace Wendigos
                                 var t = ElevenLabs.RequestAudio(response, ElevenLabs.VOICE_ID, ElevenLabs.VOICE_ID, Plugin.assembly_path + "\\temp_elevenlabs_lines\\", 0);
                                 t.Wait();
                                 var new_clip = Plugin.LoadAudioFile(t.Result);
-                                closest_masked.creatureVoice.PlayOneShot(new_clip);
+                                Plugin.SendClipForMe(new_clip, closest_masked);
+                                //closest_masked.creatureVoice.PlayOneShot(new_clip);
                                 Console.WriteLine("ROUND TRIP DONE");
                                 File.Delete(t.Result);
 
