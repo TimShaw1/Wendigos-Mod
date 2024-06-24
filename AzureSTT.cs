@@ -8,6 +8,7 @@ using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using System.Data;
 using NAudio.CoreAudioApi;
+using Unity.Netcode;
 
 namespace Wendigos
 {
@@ -40,7 +41,7 @@ namespace Wendigos
                         {
                             Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
                             var closest_masked = Plugin.GetClosestMasked();
-                            if (closest_masked == null || closest_masked.currentBehaviourStateIndex == 0)
+                            if (closest_masked == null || closest_masked.creatureVoice.isPlaying)
                                 return;
                             try
                             {

@@ -629,6 +629,19 @@ namespace Wendigos
                 WriteToConsole($"Masked {maskedID} playing {MimickingID}[{indexToPlay}] - {audioClips[MimickingID][indexToPlay].name}");
                 TryToPlayAudio(audioClips[MimickingID][indexToPlay], maskedID);
             }
+
+            [ServerRpc]
+            public void SendSingleAudioClipServerRpc(byte[] clip, string maskedID)
+            {
+                SendSingleAudioClipClientRpc(clip, maskedID);
+            }
+
+            [ClientRpc]
+            public void SendSingleAudioClipClientRpc(byte[] clip, string maskedID)
+            {
+                AudioClip full_clip = LoadAudioClip(clip);
+                maskedInstanceLookup[maskedID].creatureVoice.PlayOneShot(full_clip);
+            }
         }
 
         public class WendigosLog
@@ -755,6 +768,11 @@ namespace Wendigos
                     return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
                 }
             }
+        }
+
+        public static void SendClipForMe(byte[] clip, string maskedID)
+        {
+            WendigosMessageHandler.Instance.SendSingleAudioClipServerRpc(clip, maskedID);
         }
 
         static string MAIN_HASH_VALUE = "20ca39002a389704d5499df0f522848ec21fe724f8d13de830d596f28df69a7ae860aa4bb58e0b7ddbefcdf3e96b902fc2f98fca37777a4bf08de15af231f36e";
