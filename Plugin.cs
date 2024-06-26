@@ -682,7 +682,8 @@ namespace Wendigos
                             {
                                 try
                                 {
-                                    maskedInstanceLookup[MaskedID].creatureVoice.PlayOneShot(item);
+                                    if (!maskedInstanceLookup[MaskedID].creatureVoice.isPlaying)
+                                        maskedInstanceLookup[MaskedID].creatureVoice.PlayOneShot(item);
                                     return;
                                 }
                                 catch
