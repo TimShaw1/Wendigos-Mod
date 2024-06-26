@@ -127,9 +127,12 @@ namespace Wendigos
 
                             var task = SendClipListAsync(clipsCopy, obj, true, originClient: connectedClient);
 
-                            foreach (var key in clientVoiceIDLookup.Keys)
+                            if (elevenlabs_enabled.Value)
                             {
-                                ShareVoiceIDClientRpc(key, clientVoiceIDLookup[key]);
+                                foreach (var key in clientVoiceIDLookup.Keys)
+                                {
+                                    ShareVoiceIDClientRpc(key, clientVoiceIDLookup[key]);
+                                }
                             }
                             //task.Wait();
                         }
@@ -1567,8 +1570,9 @@ namespace Wendigos
                     case 0:
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
-
-                            WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
+                            // Play clip when can see player
+                            if (!elevenlabs_enabled.Value)
+                                WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
                         }
                         else
                         {
@@ -1613,7 +1617,9 @@ namespace Wendigos
 
                 ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
 
-                WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
+                // Play clip when setting hands out
+                if (!elevenlabs_enabled.Value)
+                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
 
             }
 
@@ -1707,9 +1713,12 @@ namespace Wendigos
                 if (elevenlabs_enabled.Value && !AzureSTT.is_init)
                     Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value));
 
-                foreach (var key in clientVoiceIDLookup.Keys)
+                if (elevenlabs_enabled.Value)
                 {
-                    WriteToConsole($"CLIENT IDS: {key} {clientVoiceIDLookup[key]}");
+                    foreach (var key in clientVoiceIDLookup.Keys)
+                    {
+                        WriteToConsole($"CLIENT IDS: {key} {clientVoiceIDLookup[key]}");
+                    }
                 }
 
                 /*
