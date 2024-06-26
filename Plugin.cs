@@ -22,6 +22,8 @@ using System.Net;
 using System.Security.Cryptography;
 using UnityEditor;
 using Dissonance;
+using System.Collections.Concurrent;
+using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -654,6 +656,47 @@ namespace Wendigos
                     WriteToConsole("Client adding " + clientID + " " + VoiceID);
                 }
             }
+
+            [ServerRpc(RequireOwnership = false)]
+            public void PlaySpecificAudioClipServerRpc(string name, string MaskedID)
+            {
+                PlaySpecificAudioClipClientRpc(name, MaskedID);
+            }
+
+            [ClientRpc]
+            public void PlaySpecificAudioClipClientRpc(string name, string MaskedID)
+            {
+                Task.Factory.StartNew(() => TryPlayClip(name, MaskedID));
+            }
+
+            private async Task TryPlayClip(string name, string MaskedID)
+            {
+                int checks = 0;
+                while (checks < 10)
+                {
+                    foreach (var user in audioClips.Keys)
+                    {
+                        foreach (var item in audioClips[user])
+                        {
+                            if (item.name == name)
+                            {
+                                try
+                                {
+                                    maskedInstanceLookup[MaskedID].creatureVoice.PlayOneShot(item);
+                                    return;
+                                }
+                                catch
+                                {
+                                    WriteToConsole("Masked not found");
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    await Task.Delay(50);
+                }
+                WriteToConsole("COULD NOT FIND CLIP");
+            }
         }
 
         public class WendigosLog
@@ -722,6 +765,19 @@ namespace Wendigos
         }
         */
 
+        public class MainThreadInvoker
+        {
+            public static readonly ConcurrentQueue<Action> _actions = new ConcurrentQueue<Action>();
+
+            public static void Enqueue(Action action)
+            {
+                if (action == null)
+                    throw new ArgumentNullException(nameof(action));
+
+                _actions.Enqueue(action);
+            }
+        }
+
         public static string[] LanguagesList = { 
                 "en", "es", "fr", "de", "it", "pt", 
                 "pl", "tr", "ru", "nl", "cs", "ar",
@@ -782,9 +838,16 @@ namespace Wendigos
             }
         }
 
-        public static void SendClipForMe(AudioClip clip, MaskedPlayerEnemy maskedID = null)
+        public static void SendClipForMe(AudioClip clip, string maskedID = "")
         {
-            WendigosMessageHandler.Instance.SendFragmentedMessage(clip, 0, false, NetworkManager.Singleton.LocalClientId);
+            MainThreadInvoker.Enqueue(() =>
+            {
+                // Your code that needs to run on the main thread
+                audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
+                WendigosMessageHandler.Instance.SendFragmentedMessage(clip, 0, false, NetworkManager.Singleton.LocalClientId);
+                WendigosMessageHandler.Instance.PlaySpecificAudioClipServerRpc(clip.name, maskedID);
+            });
+            
         }
 
         static string MAIN_HASH_VALUE = "20ca39002a389704d5499df0f522848ec21fe724f8d13de830d596f28df69a7ae860aa4bb58e0b7ddbefcdf3e96b902fc2f98fca37777a4bf08de15af231f36e";
@@ -1118,6 +1181,17 @@ namespace Wendigos
         static List<AudioClip> myClips = new List<AudioClip>();
         public static Dictionary<ulong, List<AudioClip>> audioClips = new Dictionary<ulong, List<AudioClip>>() { { 0, new List<AudioClip>() } };
 
+        private static bool _pauseGame;
+
+        private void Update()
+        {
+            while (MainThreadInvoker._actions.TryDequeue(out var action))
+            {
+                action();
+            }
+        }
+
+
         private void Awake()
         {
             // Plugin startup logic
@@ -1216,7 +1290,8 @@ namespace Wendigos
 
                 ChatManager.Init(ChatGPT_api_key.Value);
                 ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
-                Task.Factory.StartNew(() => ElevenLabs.GetLatestHistoryItem(elevenlabs_voice_id.Value));
+                var t = Task.Factory.StartNew(() => ElevenLabs.GetLatestHistoryItem(elevenlabs_voice_id.Value));
+
 
                 config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
 

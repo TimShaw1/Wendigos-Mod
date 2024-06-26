@@ -14,6 +14,7 @@ namespace Wendigos
 {
     class AzureSTT
     {
+        private static int num_gens = 0;
         public static bool is_init = false;
         public static string ChatGPT_System_Prompt = "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.";
         async static Task FromMic(SpeechConfig speechConfig)
@@ -58,14 +59,18 @@ namespace Wendigos
                                     voice_id = ElevenLabs.VOICE_ID;
                                 }
 
+                                
                                 // Overlap handled in this function
                                 var t = ElevenLabs.RequestAudio(response, voice_id, voice_id, Plugin.assembly_path + "\\temp_elevenlabs_lines\\", 0);
                                 t.Wait();
 
                                 // Have client-voiceid lookup somehow
                                 var new_clip = Plugin.LoadAudioFile(t.Result);
-                                //Plugin.SendClipForMe(new_clip, closest_masked);
-                                closest_masked.creatureVoice.PlayOneShot(new_clip);
+                                new_clip.name = "" + Convert.ToChar(NetworkManager.Singleton.LocalClientId + 33) + num_gens;
+                                num_gens++;
+                                
+                                Plugin.SendClipForMe(new_clip, masked_id);
+                                //closest_masked.creatureVoice.PlayOneShot(new_clip);
                                 Console.WriteLine("ROUND TRIP DONE");
                                 File.Delete(t.Result);
 

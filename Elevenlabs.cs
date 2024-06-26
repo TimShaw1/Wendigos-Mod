@@ -47,25 +47,25 @@ namespace Wendigos
             return "";
         }
 
-        public static async Task<AudioClip> GetLatestHistoryItem(string voice_id, string dir)
+        public static async Task<AudioClip> GetLatestHistoryItemAudioClip(string history_item_id, string dir)
         {
             var data = new
             {
-                history_item_id = voice_id
+                history_item_id = history_item_id
             }; // Set-up Data
 
             string json = JsonConvert.SerializeObject(data);
             StringContent httpContent = new StringContent(json, System.Text.Encoding.Default, "application/json");
 
-            var response = await client.PostAsync($"https://api.elevenlabs.io/v1/history/{voice_id}/audio", httpContent);
+            var response = await client.PostAsync($"https://api.elevenlabs.io/v1/history/{history_item_id}/audio", httpContent);
 
             using (Stream stream = await response.Content.ReadAsStreamAsync())
-            using (FileStream fileStream = File.Create(dir + voice_id + ".mp3"))
+            using (FileStream fileStream = File.Create(dir + history_item_id + ".mp3"))
             {
                 await stream.CopyToAsync(fileStream);
             }
 
-            return Plugin.LoadAudioFile(dir + voice_id + ".mp3");
+            return Plugin.LoadAudioFile(dir + history_item_id + ".mp3");
         }
 
         // Requests WAV file containing AI Voice saying the prompt and outputs the directory to said file
