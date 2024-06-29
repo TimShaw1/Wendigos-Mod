@@ -92,3 +92,5 @@ No, the voice cloning is done at runtime and is not saved. Only the audio files 
 - RugbugRedfern's Skinwalkers mod
 - @Kalthun and @notgarrett for helping me test this mod
 - The Lethal Company Modding Discord 
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y8Y6ZWLYH)
