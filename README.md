@@ -81,7 +81,7 @@ No, you'll need to write your voice lines in your language in the text files.
 No, the voice cloning is done at runtime and is not saved. Only the audio files of the voice lines are saved.
 
 ## TODO
-  - [ ] Possessed players should have their own voices.
+  - [ ] Add damaged line category
   - [ ] Masked should play certain line categories (i.e. chasing or idle) based on what they're doing.
   - [x] Allow players to use an ElevenLabs API key for better voice cloning results.
   - [ ] AI generates new voice lines between rounds
