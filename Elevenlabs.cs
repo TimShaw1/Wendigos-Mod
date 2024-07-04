@@ -21,6 +21,7 @@ namespace Wendigos
         public static bool requesting = false;
         static HttpClient client;
         public static string VOICE_ID;
+        public static bool optimize_for_speed = false;
         public static void Init(string api_key, string voice_id)
         {
             API_KEY = api_key;
@@ -76,13 +77,14 @@ namespace Wendigos
             var data = new
             {
                 text = prompt,
-                model_id = "eleven_multilingual_v2",
+                model_id = optimize_for_speed ? "eleven_turbo_v2" : "eleven_multilingual_v2",
                 voice_settings = new
                 {
                     stability = 0.5f,
                     similarity_boost = 0.5f,
-                    style = 0.3f,
-                    use_speaker_boost = true
+                    style = optimize_for_speed ? 0.0f : 0.3f,
+                    use_speaker_boost = true,
+                    optimize_streaming_latency = optimize_for_speed ? 3 : 0
                 }
             }; // Set-up Data
 

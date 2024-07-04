@@ -30,7 +30,7 @@ using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.9.0")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.9.1")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -1162,6 +1162,7 @@ namespace Wendigos
         public static ConfigEntry<string> elevenlabs_voice_id;
         private static ConfigEntry<string> ChatGPT_api_key;
         private static ConfigEntry<string> Azure_api_key;
+        private static ConfigEntry<bool> optimize_for_speed;
         static System.Random serverRand = new System.Random();
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
         public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
@@ -1260,6 +1261,13 @@ namespace Wendigos
                 "Your Azure API key"
                 );
 
+            optimize_for_speed = Config.Bind<bool>(
+                "Elevenlabs",
+                "Optimize for Speed",
+                false,
+                "(English ONLY) Enable if you want extremely fast voice generation."
+                );
+
 
 
             if (mod_enabled.Value)
@@ -1293,6 +1301,8 @@ namespace Wendigos
                     WriteToConsole(device);
 
                 ChatManager.Init(ChatGPT_api_key.Value);
+                if (optimize_for_speed.Value)
+                    ElevenLabs.optimize_for_speed = true;
                 ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
                 var t = Task.Factory.StartNew(() => ElevenLabs.GetLatestHistoryItem(elevenlabs_voice_id.Value));
 
