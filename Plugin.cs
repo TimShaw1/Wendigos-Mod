@@ -1279,7 +1279,9 @@ namespace Wendigos
                 "General",
                 "Talk Probability",
                 10,
-                "How likely (as a percentage) a masked talking is. Value should be between 0 and 100"
+                new ConfigDescription(
+                "How likely (as a percentage) a masked talking is.",
+                new AcceptableValueRange<uint>(0, 100))
                 );
 
             elevenlabs_enabled = Config.Bind<bool>(
