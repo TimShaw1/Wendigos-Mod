@@ -44,6 +44,8 @@ namespace Wendigos
                                 return;
                             try
                             {
+                                if (!ChatManager.init_success) return;
+
                                 var response = ChatManager.SendPromptToChatGPT(ChatGPT_System_Prompt + "\nTim: " + e.Result.Text);
                                 Console.WriteLine("RESPONSE: " + response);
 

@@ -12,13 +12,20 @@ namespace Wendigos
     public static class ChatManager
     {
         static HttpClient client;
+        public static bool init_success = false;
         public static void Init(string api_key)
         {
             try
             {
+                if (api_key.Length == 0)
+                {
+                    Console.WriteLine("No ChatGPT API key");
+                    return;
+                }
                 client = new HttpClient();
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {api_key}");
                 Console.WriteLine("CHATGPT INIT SUCCESS");
+                init_success = true;
             }
             catch (Exception ex)
             {
