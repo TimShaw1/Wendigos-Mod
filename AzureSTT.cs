@@ -14,7 +14,7 @@ namespace Wendigos
 {
     class AzureSTT
     {
-        private static int num_gens = 0;
+        public static int num_gens = 0;
         public static bool is_init = false;
         public static string ChatGPT_System_Prompt = "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.";
         async static Task FromMic(SpeechConfig speechConfig)

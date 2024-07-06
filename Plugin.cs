@@ -1594,6 +1594,8 @@ namespace Wendigos
                         var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
                         if (!sharedMaskedClientDict.Keys.Contains(id))
                             continue;
+                        if (masked.isEnemyDead)
+                            continue;
                         return masked;
                     }
                 }
@@ -1774,6 +1776,11 @@ namespace Wendigos
             }
         }
 
+        public static bool isLowercaseLetter(char c)
+        {
+            return (97 <= c && c <= 122);
+        }
+
         
 
         [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.LoadNewLevel))]
@@ -1799,6 +1806,20 @@ namespace Wendigos
                     {
                         WriteToConsole($"CLIENT IDS: {key} {clientVoiceIDLookup[key]}");
                     }
+
+                    // Garbage collection for elevenlabs clips
+                    foreach (var playerID in audioClips.Keys)
+                    {
+                        foreach (var clip in audioClips[playerID])
+                        {
+                            if (!isLowercaseLetter(clip.name[0]))
+                            {
+                                audioClips[playerID].Remove(clip);
+                            }
+                        }
+                    }
+
+                    AzureSTT.num_gens = 0;
                 }
 
                 /*
