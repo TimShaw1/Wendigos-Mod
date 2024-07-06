@@ -1825,10 +1825,12 @@ namespace Wendigos
                         WriteToConsole($"CLIENT IDS: {key} {clientVoiceIDLookup[key]}");
                     }
 
+
                     // Garbage collection for elevenlabs clips
                     foreach (var playerID in audioClips.Keys)
                     {
-                        foreach (var clip in audioClips[playerID])
+                        List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[playerID]);
+                        foreach (var clip in clipsCopy)
                         {
                             if (!isLowercaseLetter(clip.name[0]))
                             {
