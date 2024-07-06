@@ -614,7 +614,7 @@ namespace Wendigos
             }
 
             [ServerRpc(RequireOwnership = false)]
-            public void TryPlayAudioServerRpc(ulong MimickingID, string maskedID)
+            public void TryPlayAudioServerRpc(ulong MimickingID, string maskedID, char lineType = ' ')
             {
                 bool ready = true;
                 foreach (bool clientReady in serverReadyDict[maskedID].Values)
@@ -622,12 +622,34 @@ namespace Wendigos
                     ready = clientReady & ready;
                 }
 
-                if (ready)
+                if (ready || lineType == 'd')
                 {
-                    if (serverRand.Next() % 10 == 0)
+                    if (serverRand.Next() % 10 == 0 || lineType == 'd')
                     {
                         WriteToConsole("Trying to play audio");
-                        int indexToPlay = serverRand.Next() % audioClips[MimickingID].Count;
+                        int indexToPlay = 0;
+                        int indexOffset = -1;
+                        List < AudioClip > clipList = new List<AudioClip>();
+                        if (lineType != ' ')
+                        {
+                            for (int i = 0; i < audioClips[MimickingID].Count; i++)
+                            {
+                                if (audioClips[MimickingID][i].name[0] == lineType)
+                                {
+                                    clipList.Add(audioClips[MimickingID][i]);
+                                    if (indexOffset == -1)
+                                        indexOffset = i;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            clipList = audioClips[MimickingID];
+                        }
+
+                        if (indexOffset == -1)
+                            indexOffset = 0;
+                        indexToPlay = (serverRand.Next() % clipList.Count) + indexOffset;
                         PlayAudioClientRpc(MimickingID, indexToPlay, maskedID);
                     }
                 }
@@ -1020,15 +1042,20 @@ namespace Wendigos
             log.Save();
 
             bool found_sample_audio = File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav");
-            bool new_idle, new_nearby, new_chasing;
-            new_idle = new_nearby = new_chasing = new_player_audio;
+            bool new_idle, new_nearby, new_chasing, new_damaged;
+            new_idle = new_nearby = new_chasing = new_damaged = new_player_audio;
 
             if (elevenlabs_enabled.Value)
             {
                 found_sample_audio = true;
                 WriteToConsole("ELEVENLABS ENABLED");
                 if (old_log_message != "Elevenlabs")
-                    new_idle = new_nearby = new_chasing = true;
+                    new_idle = new_nearby = new_chasing = new_damaged = true;
+            }
+            else
+            {
+                if (old_log_message == "Elevenlabs")
+                    new_idle = new_nearby = new_chasing = new_damaged = true;
             }
 
             if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_idle_sentences.txt"))
@@ -1099,6 +1126,29 @@ namespace Wendigos
                     GeneratePlayerSentences("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
                 else
                     GeneratePlayerSentencesElevenlabs("chasing", config_path + "Wendigos\\player_sentences\\player0_chasing_sentences.txt");
+                sentenceTypesCompleted++;
+                log.last_successful_generation = DateTime.Now;
+            }
+
+            if (!File.Exists(config_path + "Wendigos\\player_sentences\\player0_damaged_sentences.txt"))
+            {
+                File.WriteAllText(config_path + "Wendigos\\player_sentences\\player0_damaged_sentences.txt",
+                "Ow stop\n" +
+                "Stop I'm real\n" +
+                "why"
+                );
+            }
+            if (found_sample_audio && isFileChanged(config_path + "Wendigos\\player_sentences\\player0_damaged_sentences.txt"))
+            {
+                new_damaged = true;
+            }
+            if (new_damaged)
+            {
+                WriteToConsole($"generating damaged sentences");
+                if (!elevenlabs_enabled.Value)
+                    GeneratePlayerSentences("damaged", config_path + "Wendigos\\player_sentences\\player0_damaged_sentences.txt");
+                else
+                    GeneratePlayerSentencesElevenlabs("damaged", config_path + "Wendigos\\player_sentences\\player0_damaged_sentences.txt");
                 sentenceTypesCompleted++;
                 log.last_successful_generation = DateTime.Now;
             }
@@ -1476,6 +1526,12 @@ namespace Wendigos
                     __instance.creatureVoice.PlayOneShot(clip);
                     waitThenSayReady(__instance, maskedID);
                 }
+                else if (clip && clip.name[0] == 'd')
+                {
+                    __instance.creatureVoice.Stop();
+                    __instance.creatureVoice.PlayOneShot(clip);
+                    waitThenSayReady(__instance, maskedID);
+                }
             }
             catch (Exception e)
             {
@@ -1582,11 +1638,11 @@ namespace Wendigos
                         {
                             // Play clip when can see player
                             if (!elevenlabs_enabled.Value)
-                                WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
+                                WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'c');
                         }
                         else
                         {
-                            WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
+                            WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'n');
                         }
 
                         break;
@@ -1629,10 +1685,24 @@ namespace Wendigos
 
                 // Play clip when setting hands out
                 if (!elevenlabs_enabled.Value)
-                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID);
+                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'c');
 
             }
 
+        }
+
+        [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.HitEnemy))]
+        class MaskedPlayerEnemyDamagePatch
+        {
+            static void Prefix(MaskedPlayerEnemy __instance)
+            {
+                string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
+                ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
+
+                // Speak when damaged
+                if (__instance.enemyHP > 0)
+                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'd');
+            }
         }
 
         public class MaskedEnemyIdentifier : MonoBehaviour
@@ -1863,6 +1933,15 @@ namespace Wendigos
                 myClips.Add(clip);
                 count++;
             }
+
+            count = 0;
+            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\damaged"))
+            {
+                AudioClip clip = LoadAudioFile(line);
+                clip.name = "d" + count;
+                myClips.Add(clip);
+                count++;
+            }
             WriteToConsole("Generated Player Clips. Count: " + myClips.Count);
         }
 
@@ -1905,13 +1984,13 @@ namespace Wendigos
         static async void GeneratingAnimation(MenuManager __instance)
         {
             string[] characterList = ["/", "-", "\\", "|"];
-            __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/5] |";
+            __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/6] |";
             while (!doneGenerating)
             {
                 foreach (string c in characterList)
                 {
                     __instance.menuNotificationText.text = __instance.menuNotificationText.text.Remove(__instance.menuNotificationText.text.Length-7);
-                    __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/5] "+ c;
+                    __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/6] "+ c;
                     await Task.Delay(200);
                 }
             }

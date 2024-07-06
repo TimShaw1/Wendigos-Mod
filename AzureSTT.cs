@@ -125,6 +125,12 @@ namespace Wendigos
         public async static Task Main(string api_key)
         {
             is_init = true;
+            if (api_key.Length == 0)
+            {
+                Console.WriteLine("No azure API key. STT disabled.");
+                return;
+            }
+
             //Console.WriteLine("IN MAIN");
             try
             {
