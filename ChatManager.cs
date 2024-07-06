@@ -19,7 +19,7 @@ namespace Wendigos
             {
                 if (api_key.Length == 0)
                 {
-                    Console.WriteLine("No ChatGPT API key");
+                    throw new ArgumentException("No ChatGPT API key!");
                     return;
                 }
                 client = new HttpClient();

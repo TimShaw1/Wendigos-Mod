@@ -614,7 +614,7 @@ namespace Wendigos
             }
 
             [ServerRpc(RequireOwnership = false)]
-            public void TryPlayAudioServerRpc(ulong MimickingID, string maskedID, char lineType = ' ')
+            public void TryPlayAudioServerRpc(ulong MimickingID, string maskedID, char lineType = ' ', uint talkProbability = 10)
             {
                 bool ready = true;
                 foreach (bool clientReady in serverReadyDict[maskedID].Values)
@@ -624,7 +624,7 @@ namespace Wendigos
 
                 if (ready || lineType == 'd')
                 {
-                    if (serverRand.Next() % 10 == 0 || lineType == 'd')
+                    if (serverRand.Next() % 100 + talkProbability >= 100 || lineType == 'd')
                     {
                         WriteToConsole("Trying to play audio");
                         int indexToPlay = 0;
@@ -1207,12 +1207,14 @@ namespace Wendigos
         private static ConfigEntry<bool> mod_enabled;
         private static ConfigEntry<bool> need_new_player_audio;
         private static ConfigEntry<Languages> voice_language;
+        private static ConfigEntry<uint> talk_probability;
         private static ConfigEntry<bool> elevenlabs_enabled;
         private static ConfigEntry<string> elevenlabs_api_key;
         public static ConfigEntry<string> elevenlabs_voice_id;
         private static ConfigEntry<string> ChatGPT_api_key;
         private static ConfigEntry<string> Azure_api_key;
         private static ConfigEntry<bool> optimize_for_speed;
+        private static ConfigEntry<bool> enable_realtime_responses;
         static System.Random serverRand = new System.Random();
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
         public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
@@ -1273,6 +1275,13 @@ namespace Wendigos
                 "What language the voice generator should use"
                 );
 
+            talk_probability = Config.Bind<uint>(
+                "General",
+                "Talk Probability",
+                10,
+                "How likely (as a percentage) a masked talking is. Value should be between 0 and 100"
+                );
+
             elevenlabs_enabled = Config.Bind<bool>(
                 "Elevenlabs",
                 "Enabled",
@@ -1316,6 +1325,13 @@ namespace Wendigos
                 "Optimize for Speed",
                 false,
                 "(English ONLY) Enable if you want extremely fast voice generation."
+                );
+
+            enable_realtime_responses = Config.Bind<bool>(
+                "Elevenlabs",
+                "Realtime Responses",
+                false,
+                "Enables ChatGPT voice line generation so masked can reply in real time. You MUST have Elevenlabs, Azure, and ChatGPT api keys."
                 );
 
 
@@ -1639,12 +1655,12 @@ namespace Wendigos
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
                             // Play clip when can see player
-                            if (!elevenlabs_enabled.Value)
-                                WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'c');
+                            if (!enable_realtime_responses.Value)
+                                WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'c', talk_probability.Value);
                         }
                         else
                         {
-                            WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'n');
+                            WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'n', talk_probability.Value);
                         }
 
                         break;
@@ -1686,8 +1702,8 @@ namespace Wendigos
                 ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
 
                 // Play clip when setting hands out
-                if (!elevenlabs_enabled.Value)
-                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'c');
+                if (!enable_realtime_responses.Value)
+                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'c', talk_probability.Value);
 
             }
 
@@ -1703,7 +1719,7 @@ namespace Wendigos
 
                 // Speak when damaged
                 if (__instance.enemyHP > 0)
-                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'd');
+                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'd', 100);
             }
         }
 
@@ -1797,10 +1813,10 @@ namespace Wendigos
                 if (NetworkManager.Singleton.IsServer)
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
 
-                if (elevenlabs_enabled.Value && !AzureSTT.is_init)
+                if (enable_realtime_responses.Value && !AzureSTT.is_init)
                     Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value));
 
-                if (elevenlabs_enabled.Value)
+                if (enable_realtime_responses.Value)
                 {
                     foreach (var key in clientVoiceIDLookup.Keys)
                     {
