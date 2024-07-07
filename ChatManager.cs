@@ -13,7 +13,8 @@ namespace Wendigos
     {
         static HttpClient client;
         public static bool init_success = false;
-        public static void Init(string api_key)
+        private static string gpt_model;
+        public static void Init(string api_key, string modelToUse)
         {
             try
             {
@@ -24,6 +25,7 @@ namespace Wendigos
                 }
                 client = new HttpClient();
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {api_key}");
+                gpt_model = modelToUse;
                 Console.WriteLine("CHATGPT INIT SUCCESS");
                 init_success = true;
             }
@@ -40,7 +42,7 @@ namespace Wendigos
             {
                 var requestBody = new
                 {
-                    model = "gpt-4o",
+                    model = gpt_model,
                     messages = new[]
                     {
                         new { role = "user", content = prompt }

@@ -18,6 +18,7 @@ namespace Wendigos
         public static bool is_init = false;
         public static string ChatGPT_System_Prompt = "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.";
         public static SpeechRecognizer speechRecognizer;
+        public static string player_name = "";
         async static Task FromMic(SpeechConfig speechConfig)
         {
             try
@@ -47,7 +48,7 @@ namespace Wendigos
                             {
                                 if (!ChatManager.init_success) return;
 
-                                var response = ChatManager.SendPromptToChatGPT(ChatGPT_System_Prompt + "\nTim: " + e.Result.Text);
+                                var response = ChatManager.SendPromptToChatGPT(ChatGPT_System_Prompt + (player_name == "" ? "\n" : "\n" + player_name + ": ")  + e.Result.Text);
                                 Console.WriteLine("RESPONSE: " + response);
 
                                 var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;

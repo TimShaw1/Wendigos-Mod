@@ -1212,9 +1212,11 @@ namespace Wendigos
         private static ConfigEntry<string> elevenlabs_api_key;
         public static ConfigEntry<string> elevenlabs_voice_id;
         private static ConfigEntry<string> ChatGPT_api_key;
+        private static ConfigEntry<string> ChatGPT_model;
         private static ConfigEntry<string> Azure_api_key;
         private static ConfigEntry<bool> optimize_for_speed;
         private static ConfigEntry<bool> enable_realtime_responses;
+        private static ConfigEntry<string> player_name;
         static System.Random serverRand = new System.Random();
         private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
         public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
@@ -1315,6 +1317,16 @@ namespace Wendigos
                 "Your ChatGPT API key"
                 );
 
+            ChatGPT_model = Config.Bind<string>(
+                "ChatGPT",
+                "Model",
+                "gpt-4o",
+                new ConfigDescription(
+                "Which gpt model to use. Use gpt-3.5-turbo if you want to save on cost (10x cheaper) and don't mind less convincing results",
+                new AcceptableValueList<string>("gpt-4o", "gpt-3.5-turbo")
+                )
+                );
+
             Azure_api_key = Config.Bind<string>(
                 "Azure",
                 "API key",
@@ -1323,17 +1335,24 @@ namespace Wendigos
                 );
 
             optimize_for_speed = Config.Bind<bool>(
-                "Elevenlabs",
-                "Optimize for Speed",
+                "Experimental",
+                "Optimize Elevenlabs for Speed",
                 false,
                 "(English ONLY) Enable if you want extremely fast voice generation."
                 );
 
             enable_realtime_responses = Config.Bind<bool>(
-                "Elevenlabs",
+                "Experimental",
                 "Realtime Responses",
                 false,
                 "Enables ChatGPT voice line generation so masked can reply in real time. You MUST have Elevenlabs, Azure, and ChatGPT api keys."
+                );
+
+            player_name = Config.Bind<string>(
+                "Experimental",
+                "Your name",
+                "",
+                "Your name. Allows ChatGPT to know who is who"
                 );
 
 
@@ -1368,7 +1387,8 @@ namespace Wendigos
                 foreach (var device in Microphone.devices)
                     WriteToConsole(device);
 
-                ChatManager.Init(ChatGPT_api_key.Value);
+                ChatManager.Init(ChatGPT_api_key.Value, ChatGPT_model.Value);
+                AzureSTT.player_name = player_name.Value;
                 if (optimize_for_speed.Value)
                     ElevenLabs.optimize_for_speed = true;
                 ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
