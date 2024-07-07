@@ -17,13 +17,14 @@ namespace Wendigos
         public static int num_gens = 0;
         public static bool is_init = false;
         public static string ChatGPT_System_Prompt = "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.";
+        public static SpeechRecognizer speechRecognizer;
         async static Task FromMic(SpeechConfig speechConfig)
         {
             try
             {
                 Console.WriteLine("Wendigos: Start transcribing audio...");
                 using var audioConfig = AudioConfig.FromDefaultMicrophoneInput();
-                using var speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
+                speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
 
                 var stopRecognition = new TaskCompletionSource<int>();
 

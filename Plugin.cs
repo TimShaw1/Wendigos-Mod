@@ -1862,6 +1862,17 @@ namespace Wendigos
             }
         }
 
+        [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.DespawnPropsAtEndOfRound))]
+        class RoundManagerEndPatch
+        {
+            static void Prefix()
+            {
+                // reset speech recognition
+                AzureSTT.speechRecognizer.StopContinuousRecognitionAsync();
+                AzureSTT.is_init = false;
+            }
+        }
+
         [HarmonyPatch(typeof(IngamePlayerSettings), nameof(IngamePlayerSettings.LoadSettingsFromPrefs))]
         class IngamePlayerSettingsLoadPatch
         {
