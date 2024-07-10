@@ -649,8 +649,11 @@ namespace Wendigos
 
                         if (indexOffset == -1)
                             indexOffset = 0;
-                        indexToPlay = (serverRand.Next() % clipList.Count) + indexOffset;
-                        PlayAudioClientRpc(MimickingID, indexToPlay, maskedID);
+                        if (clipList.Count > 0)
+                        {
+                            indexToPlay = (serverRand.Next() % clipList.Count) + indexOffset;
+                            PlayAudioClientRpc(MimickingID, indexToPlay, maskedID);
+                        }
                     }
                 }
             }
@@ -1355,6 +1358,16 @@ namespace Wendigos
                 "Your name. Allows ChatGPT to know who is who"
                 );
 
+            // Allow players to hear voices even if mod is disabled
+            SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
+
+            if (!mod_enabled.Value)
+            {
+                var original = typeof(MaskedPlayerEnemy).GetMethod("Start");
+                var postfix = typeof(MaskedStartPatch).GetMethod("Postfix");
+
+                harmonyInstance.Patch(original, postfix: new HarmonyMethod(postfix));
+            }
 
 
             if (mod_enabled.Value)
@@ -1368,7 +1381,6 @@ namespace Wendigos
                     last_successful_generation = DateTime.MinValue;
 
                 harmonyInstance.PatchAll();
-                SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
 
                 var types = Assembly.GetExecutingAssembly().GetTypes();
                 foreach (var type in types)
@@ -1755,7 +1767,7 @@ namespace Wendigos
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Start))]
         class MaskedStartPatch
         {
-            static void Postfix(MaskedPlayerEnemy __instance)
+            public static void Postfix(MaskedPlayerEnemy __instance)
             {
 
                 __instance.gameObject.AddComponent<MaskedEnemyIdentifier>();
