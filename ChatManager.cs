@@ -24,7 +24,7 @@ namespace Wendigos
                     return;
                 }
                 client = new HttpClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {api_key}");
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {api_key}");
                 gpt_model = modelToUse;
                 Console.WriteLine("CHATGPT INIT SUCCESS");
                 init_success = true;
