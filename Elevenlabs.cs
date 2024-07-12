@@ -24,12 +24,19 @@ namespace Wendigos
         public static bool optimize_for_speed = false;
         public static void Init(string api_key, string voice_id)
         {
-            API_KEY = api_key;
-            VOICE_ID = voice_id;
-            client = new HttpClient();
+            try
+            {
+                API_KEY = api_key;
+                VOICE_ID = voice_id;
+                client = new HttpClient();
 
-            client.DefaultRequestHeaders.Add("xi-api-key", API_KEY); // Add API Key header
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/mpeg")); // Add accepted file extension header
+                client.DefaultRequestHeaders.Add("xi-api-key", API_KEY); // Add API Key header
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/mpeg")); // Add accepted file extension header
+            }
+            catch (Exception ex) 
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         public static async Task<string> GetLatestHistoryItem(string voice_id)

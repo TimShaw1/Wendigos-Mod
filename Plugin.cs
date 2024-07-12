@@ -30,7 +30,7 @@ using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.9.1")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.9.2")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -106,6 +106,14 @@ namespace Wendigos
             {
                 Instance = this;
                 clipNamesArr = new NetworkList<FixedString128Bytes>();
+            }
+
+            private void Update()
+            {
+                while (MainThreadInvoker._actions.TryDequeue(out var action))
+                {
+                    action();
+                }
             }
 
             private void OnClientConnectedCallback(ulong obj)
@@ -869,12 +877,17 @@ namespace Wendigos
 
         public static void SendClipForMe(AudioClip clip, string maskedID = "")
         {
+            WriteToConsole("In sendforme");
             MainThreadInvoker.Enqueue(() =>
             {
+                WriteToConsole("Sending...");
                 // Your code that needs to run on the main thread
                 audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
+                WriteToConsole("Added clip in sendforme");
                 WendigosMessageHandler.Instance.SendFragmentedMessage(clip, 0, false, NetworkManager.Singleton.LocalClientId);
+                WriteToConsole("Sent clip in sendforme");
                 WendigosMessageHandler.Instance.PlaySpecificAudioClipServerRpc(clip.name, maskedID);
+                WriteToConsole("playing clip in sendforme");
             });
             
         }
@@ -1217,6 +1230,7 @@ namespace Wendigos
         private static ConfigEntry<string> ChatGPT_api_key;
         private static ConfigEntry<string> ChatGPT_model;
         private static ConfigEntry<string> Azure_api_key;
+        private static ConfigEntry<string> Azure_region;
         private static ConfigEntry<bool> optimize_for_speed;
         private static ConfigEntry<bool> enable_realtime_responses;
         private static ConfigEntry<string> player_name;
@@ -1244,14 +1258,6 @@ namespace Wendigos
         public static Dictionary<ulong, List<AudioClip>> audioClips = new Dictionary<ulong, List<AudioClip>>() { { 0, new List<AudioClip>() } };
 
         private static bool _pauseGame;
-
-        private void Update()
-        {
-            while (MainThreadInvoker._actions.TryDequeue(out var action))
-            {
-                action();
-            }
-        }
 
 
         private void Awake()
@@ -1337,6 +1343,13 @@ namespace Wendigos
                 "Your Azure API key"
                 );
 
+            Azure_region = Config.Bind<string>(
+                "Azure",
+                "Region",
+                "canadacentral",
+                "Your Azure region"
+                );
+
             optimize_for_speed = Config.Bind<bool>(
                 "Experimental",
                 "Optimize Elevenlabs for Speed",
@@ -1403,8 +1416,14 @@ namespace Wendigos
                 AzureSTT.player_name = player_name.Value;
                 if (optimize_for_speed.Value)
                     ElevenLabs.optimize_for_speed = true;
-                ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
-                var t = Task.Factory.StartNew(() => ElevenLabs.GetLatestHistoryItem(elevenlabs_voice_id.Value));
+                try
+                {
+                    ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
+                }
+                catch (Exception ex)
+                {
+                    WriteToConsole(ex.ToString());
+                }
 
 
                 config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
@@ -1848,7 +1867,7 @@ namespace Wendigos
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
 
                 if (enable_realtime_responses.Value && !AzureSTT.is_init)
-                    Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value));
+                    Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value, Azure_region.Value));
 
                 if (enable_realtime_responses.Value)
                 {

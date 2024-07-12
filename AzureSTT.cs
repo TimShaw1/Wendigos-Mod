@@ -126,7 +126,7 @@ namespace Wendigos
             }
         }
 
-        public async static Task Main(string api_key)
+        public async static Task Main(string api_key, string region)
         {
             is_init = true;
             if (api_key.Length == 0)
@@ -138,7 +138,7 @@ namespace Wendigos
             //Console.WriteLine("IN MAIN");
             try
             {
-                var speechConfig = SpeechConfig.FromSubscription(api_key, "canadacentral");
+                var speechConfig = SpeechConfig.FromSubscription(api_key, region);
                 await FromMic(speechConfig);
             }
             catch (Exception ex)
