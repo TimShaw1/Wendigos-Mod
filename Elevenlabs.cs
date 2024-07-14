@@ -26,6 +26,12 @@ namespace Wendigos
         {
             try
             {
+                if (api_key.Length == 0)
+                {
+                    Console.WriteLine("No Elevenlabs API key found.");
+                    return;
+                }
+           
                 API_KEY = api_key;
                 VOICE_ID = voice_id;
                 client = new HttpClient();

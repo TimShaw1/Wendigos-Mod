@@ -126,7 +126,7 @@ namespace Wendigos
             }
         }
 
-        public async static Task Main(string api_key, string region)
+        public async static Task Main(string api_key, string region, string prompt)
         {
             is_init = true;
             if (api_key.Length == 0)
@@ -138,6 +138,7 @@ namespace Wendigos
             //Console.WriteLine("IN MAIN");
             try
             {
+                ChatGPT_System_Prompt = prompt;
                 var speechConfig = SpeechConfig.FromSubscription(api_key, region);
                 await FromMic(speechConfig);
             }

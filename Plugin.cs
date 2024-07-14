@@ -30,7 +30,7 @@ using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.9.2")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.0")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -880,17 +880,15 @@ namespace Wendigos
 
         public static void SendClipForMe(AudioClip clip, string maskedID = "")
         {
-            WriteToConsole("In sendforme");
             MainThreadInvoker.Enqueue(() =>
             {
-                WriteToConsole("Sending...");
                 // Your code that needs to run on the main thread
                 audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
-                WriteToConsole("Added clip in sendforme");
+
                 WendigosMessageHandler.Instance.SendFragmentedMessage(clip, 0, false, NetworkManager.Singleton.LocalClientId);
-                WriteToConsole("Sent clip in sendforme");
+
                 WendigosMessageHandler.Instance.PlaySpecificAudioClipServerRpc(clip.name, maskedID);
-                WriteToConsole("playing clip in sendforme");
+
             });
             
         }
@@ -1232,6 +1230,7 @@ namespace Wendigos
         public static ConfigEntry<string> elevenlabs_voice_id;
         private static ConfigEntry<string> ChatGPT_api_key;
         private static ConfigEntry<string> ChatGPT_model;
+        private static ConfigEntry<string> ChatGPT_prompt;
         private static ConfigEntry<string> Azure_api_key;
         private static ConfigEntry<string> Azure_region;
         private static ConfigEntry<bool> optimize_for_speed;
@@ -1272,21 +1271,21 @@ namespace Wendigos
                 "General",
                 "Enable mod?",
                 false,
-                "Enables the mod"
+                "Enables the mod. If disabled, you can only hear other people's voices. Your voice will not be cloned."
                 );
 
             need_new_player_audio = Config.Bind<bool>(
                 "General",
                 "Record new player sample audio?",
                 true,
-                "Whether the record audio prompt should show up"
+                "(Local AI model ONLY) Whether the record audio prompt should show up. Enable if you want to re-record your sample audio for the local ai"
                 );
 
             voice_language = Config.Bind<Languages>(
                 "General",
                 "Language",
                 Languages.English,
-                "What language the voice generator should use"
+                "(Local AI model ONLY) What language the voice generator should use."
                 );
 
             talk_probability = Config.Bind<uint>(
@@ -1312,7 +1311,7 @@ namespace Wendigos
                 "Elevenlabs",
                 "API key",
                 "",
-                "Your elevenlabs API key"
+                "Your elevenlabs API key. Do NOT add extra characters like \""
                 );
 
             elevenlabs_voice_id = Config.Bind<string>(
@@ -1326,7 +1325,7 @@ namespace Wendigos
                 "ChatGPT",
                 "API key",
                 "",
-                "Your ChatGPT API key"
+                "Your ChatGPT API key. Do NOT add extra characters like \""
                 );
 
             ChatGPT_model = Config.Bind<string>(
@@ -1339,11 +1338,18 @@ namespace Wendigos
                 )
                 );
 
+            ChatGPT_prompt = Config.Bind<string>(
+                "ChatGPT",
+                "Prompt",
+                "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.",
+                "The prompt given to ChatGPT to determine what to say."
+                );
+
             Azure_api_key = Config.Bind<string>(
                 "Azure",
                 "API key",
                 "",
-                "Your Azure API key"
+                "Your Azure API key. Do NOT add extra characters like \""
                 );
 
             Azure_region = Config.Bind<string>(
@@ -1357,14 +1363,14 @@ namespace Wendigos
                 "Experimental",
                 "Optimize Elevenlabs for Speed",
                 false,
-                "(English ONLY) Enable if you want extremely fast voice generation."
+                "(English ONLY) Enable if you want extremely fast voice generation. Reduces the quality of the voice clone."
                 );
 
             enable_realtime_responses = Config.Bind<bool>(
                 "Experimental",
                 "Realtime Responses",
                 false,
-                "Enables ChatGPT voice line generation so masked can reply in real time. You MUST have Elevenlabs, Azure, and ChatGPT api keys."
+                "Enables ChatGPT voice line generation so masked can reply in real time. You MUST have Elevenlabs, Azure, and ChatGPT api keys set."
                 );
 
             player_name = Config.Bind<string>(
@@ -1382,7 +1388,15 @@ namespace Wendigos
                 var original = typeof(MaskedPlayerEnemy).GetMethod("Start");
                 var postfix = typeof(MaskedStartPatch).GetMethod("Postfix");
 
+                var original2 = typeof(MaskedPlayerEnemy).GetMethod("SetHandsOutClientRpc");
+                var prefix = typeof(MaskedPlayerEnemyRemoveHands).GetMethod("Prefix");
+
+                var original3 = typeof(MaskedPlayerEnemy).GetMethod("SetVisibilityOfMaskedEnemy");
+                var postfix2 = typeof(MaskedPlayerEnemyVisibilityPatch).GetMethod("Postfix");
+
                 harmonyInstance.Patch(original, postfix: new HarmonyMethod(postfix));
+                harmonyInstance.Patch(original2, prefix: new HarmonyMethod(prefix));
+                harmonyInstance.Patch(original3, postfix: new HarmonyMethod(postfix2));
 
                 var types = Assembly.GetExecutingAssembly().GetTypes();
                 foreach (var type in types)
@@ -1425,9 +1439,6 @@ namespace Wendigos
                         }
                     }
                 }
-
-                foreach (var device in Microphone.devices)
-                    WriteToConsole(device);
 
                 ChatManager.Init(ChatGPT_api_key.Value, ChatGPT_model.Value);
                 AzureSTT.player_name = player_name.Value;
@@ -1745,7 +1756,7 @@ namespace Wendigos
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.SetVisibilityOfMaskedEnemy))]
         class MaskedPlayerEnemyVisibilityPatch
         {
-            static void Postfix(MaskedPlayerEnemy __instance)
+            public static void Postfix(MaskedPlayerEnemy __instance)
             {
                 // Hide mask
                 if ((bool)Traverse.Create(__instance).Field("enemyEnabled").GetValue())
@@ -1760,7 +1771,7 @@ namespace Wendigos
         class MaskedPlayerEnemyRemoveHands
         {
             // Hide arms going out
-            static void Prefix(ref bool setOut, MaskedPlayerEnemy __instance)
+            public static void Prefix(ref bool setOut, MaskedPlayerEnemy __instance)
             {
                 setOut = false;
                 string type = "chasing";
@@ -1812,13 +1823,6 @@ namespace Wendigos
                 __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id = __instance.transform.position.ToString();
                 maskedInstanceLookup.TryAdd(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id, __instance);
                 WriteToConsole("Spawned Masked. ID: " + __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id);
-
-                // Hide mask
-                if ((bool)Traverse.Create(__instance).Field("enemyEnabled").GetValue())
-                {
-                    __instance.gameObject.transform.Find("ScavengerModel/metarig/spine/spine.001/spine.002/spine.003/spine.004/HeadMaskComedy").gameObject.SetActive(false);
-                    __instance.gameObject.transform.Find("ScavengerModel/metarig/spine/spine.001/spine.002/spine.003/spine.004/HeadMaskTragedy").gameObject.SetActive(false);
-                }
 
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
@@ -1891,7 +1895,7 @@ namespace Wendigos
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
 
                 if (enable_realtime_responses.Value && !AzureSTT.is_init)
-                    Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value, Azure_region.Value));
+                    Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value, Azure_region.Value, ChatGPT_prompt.Value));
 
                 if (enable_realtime_responses.Value)
                 {
