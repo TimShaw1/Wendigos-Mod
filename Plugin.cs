@@ -458,7 +458,7 @@ namespace Wendigos
             public void SendServerMyClipsClientRpc(ClientRpcParams p = default)
             {
                 // Send server client's clips and tell it to sync them with everyone
-                var task = SendClipListAsync(myClips, shouldSync:true, originClient:NetworkManager.Singleton.LocalClientId);
+                var task = SendClipListAsync(myClips, shouldSync:mod_enabled.Value, originClient:NetworkManager.Singleton.LocalClientId);
                 //task.Wait();
                 
             }
@@ -1380,6 +1380,20 @@ namespace Wendigos
                 var postfix = typeof(MaskedStartPatch).GetMethod("Postfix");
 
                 harmonyInstance.Patch(original, postfix: new HarmonyMethod(postfix));
+
+                var types = Assembly.GetExecutingAssembly().GetTypes();
+                foreach (var type in types)
+                {
+                    var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                    foreach (var method in methods)
+                    {
+                        var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+                        if (attributes.Length > 0)
+                        {
+                            method.Invoke(null, null);
+                        }
+                    }
+                }
             }
 
 
