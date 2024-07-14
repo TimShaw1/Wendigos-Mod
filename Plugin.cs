@@ -1813,6 +1813,13 @@ namespace Wendigos
                 maskedInstanceLookup.TryAdd(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id, __instance);
                 WriteToConsole("Spawned Masked. ID: " + __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id);
 
+                // Hide mask
+                if ((bool)Traverse.Create(__instance).Field("enemyEnabled").GetValue())
+                {
+                    __instance.gameObject.transform.Find("ScavengerModel/metarig/spine/spine.001/spine.002/spine.003/spine.004/HeadMaskComedy").gameObject.SetActive(false);
+                    __instance.gameObject.transform.Find("ScavengerModel/metarig/spine/spine.001/spine.002/spine.003/spine.004/HeadMaskTragedy").gameObject.SetActive(false);
+                }
+
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
                     List<ulong> unassignedClientIDs = new List<ulong>();
