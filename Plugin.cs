@@ -719,7 +719,10 @@ namespace Wendigos
                                 try
                                 {
                                     if (!maskedInstanceLookup[MaskedID].creatureVoice.isPlaying)
+                                    {
+                                        maskedInstanceLookup[MaskedID].creatureVoice.minDistance = 2;
                                         maskedInstanceLookup[MaskedID].creatureVoice.PlayOneShot(item);
+                                    }
                                     return;
                                 }
                                 catch
