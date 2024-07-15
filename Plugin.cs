@@ -30,7 +30,7 @@ using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.0")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.2")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -703,6 +703,17 @@ namespace Wendigos
             public void PlaySpecificAudioClipClientRpc(string name, string MaskedID)
             {
                 Task.Factory.StartNew(() => TryPlayClip(name, MaskedID));
+            }
+
+            [ClientRpc]
+            public void InitAzureClientRpc()
+            {
+                if (enable_realtime_responses.Value && !AzureSTT.is_init)
+                {
+                    AzureSTT.num_gens = 0;
+                    AzureSTT.Init(Azure_api_key.Value, Azure_region.Value);
+                    Task.Factory.StartNew(() => AzureSTT.Main(ChatGPT_prompt.Value));
+                }
             }
 
             private async Task TryPlayClip(string name, string MaskedID)
@@ -1892,15 +1903,11 @@ namespace Wendigos
                 WriteToConsole("Sorting Audioclips");
                 sort_audioclips();
                 if (NetworkManager.Singleton.IsServer)
-                    WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
-
-                
-                if (enable_realtime_responses.Value && !AzureSTT.is_init)
                 {
-                    AzureSTT.num_gens = 0;
-                    AzureSTT.Init(Azure_api_key.Value, Azure_region.Value);
-                    Task.Factory.StartNew(() => AzureSTT.Main(ChatGPT_prompt.Value));
+                    WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
+                    WendigosMessageHandler.Instance.InitAzureClientRpc();
                 }
+
 
                 if (enable_realtime_responses.Value)
                 {
