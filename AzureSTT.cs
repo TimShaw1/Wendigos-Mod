@@ -19,13 +19,12 @@ namespace Wendigos
         public static string ChatGPT_System_Prompt = "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.";
         public static SpeechRecognizer speechRecognizer;
         public static string player_name = "";
-        async static Task FromMic(SpeechConfig speechConfig)
+        async static Task FromMic()
         {
             try
             {
                 Console.WriteLine("Wendigos: Start transcribing audio...");
-                using var audioConfig = AudioConfig.FromDefaultMicrophoneInput();
-                speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
+                
 
                 var stopRecognition = new TaskCompletionSource<int>();
 
@@ -126,26 +125,34 @@ namespace Wendigos
             }
         }
 
-        public async static Task Main(string api_key, string region, string prompt)
+        public async static Task Main(string prompt)
         {
-            is_init = true;
-            if (api_key.Length == 0)
-            {
-                Console.WriteLine("No azure API key. STT disabled.");
-                return;
-            }
+            
+            
 
             //Console.WriteLine("IN MAIN");
             try
             {
                 ChatGPT_System_Prompt = prompt;
-                var speechConfig = SpeechConfig.FromSubscription(api_key, region);
-                await FromMic(speechConfig);
+                await FromMic();
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
             }
+        }
+
+        public static void Init(string api_key, string region)
+        {
+            if (api_key.Length == 0)
+            {
+                Console.WriteLine("No azure API key. STT disabled.");
+                return;
+            }
+            using var audioConfig = AudioConfig.FromDefaultMicrophoneInput();
+            var speechConfig = SpeechConfig.FromSubscription(api_key, region);
+            speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
+            is_init = true;
         }
 
         static void GetAudioDevices(string[] args)

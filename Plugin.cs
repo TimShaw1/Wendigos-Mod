@@ -378,7 +378,7 @@ namespace Wendigos
                     SendFragmentedMessage(clip, destClient, specificClient, originClient);
 
                     // Wait so steam doesnt lump all messages together and yell at me
-                    await Task.Delay(200);
+                    await Task.Delay(300);
                 }
                 if (IsServer && specificClient)
                 {
@@ -1894,8 +1894,13 @@ namespace Wendigos
                 if (NetworkManager.Singleton.IsServer)
                     WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
 
+                
                 if (enable_realtime_responses.Value && !AzureSTT.is_init)
-                    Task.Factory.StartNew(() => AzureSTT.Main(Azure_api_key.Value, Azure_region.Value, ChatGPT_prompt.Value));
+                {
+                    AzureSTT.num_gens = 0;
+                    AzureSTT.Init(Azure_api_key.Value, Azure_region.Value);
+                    Task.Factory.StartNew(() => AzureSTT.Main(ChatGPT_prompt.Value));
+                }
 
                 if (enable_realtime_responses.Value)
                 {
@@ -1918,7 +1923,7 @@ namespace Wendigos
                         }
                     }
 
-                    AzureSTT.num_gens = 0;
+                    
                 }
 
                 /*
@@ -1946,9 +1951,17 @@ namespace Wendigos
         {
             static void Prefix()
             {
-                // reset speech recognition
-                AzureSTT.speechRecognizer.StopContinuousRecognitionAsync();
                 AzureSTT.is_init = false;
+                try
+                {
+                    // reset speech recognition
+                    AzureSTT.speechRecognizer.StopContinuousRecognitionAsync();
+                    
+                }
+                catch (Exception ex)
+                {
+                    WriteToConsole(ex.ToString());
+                }
             }
         }
 
