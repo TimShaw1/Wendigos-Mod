@@ -1649,13 +1649,21 @@ namespace Wendigos
 
         static async void waitThenSayReady(MaskedPlayerEnemy __instance, string maskedID)
         {
-            WriteToConsole("WAITING");
-            while (__instance.creatureVoice.isPlaying)
-                await Task.Delay(10);
+            try
+            {
+                WriteToConsole("WAITING");
+                while (__instance.creatureVoice.isPlaying)
+                    await Task.Delay(10);
 
-            WriteToConsole("SAYING READY");
-            WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, true);
-            return;
+                WriteToConsole("SAYING READY");
+                WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, true);
+                return;
+            }
+            catch
+            {
+                WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, true);
+                return;
+            }
 
         }
 
