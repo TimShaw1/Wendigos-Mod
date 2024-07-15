@@ -4,6 +4,7 @@ using System.Text;
 
 namespace Wendigos
 {
+    using NAudio.Wave;
     using Newtonsoft.Json;
     using System.IO;
     using System.Net.Http;
@@ -82,6 +83,36 @@ namespace Wendigos
             return Plugin.LoadAudioFile(dir + history_item_id + ".mp3");
         }
 
+        private static void ConvertMp3ToWav(string _inPath_, string _outPath_)
+        {
+            using (Mp3FileReader mp3 = new Mp3FileReader(_inPath_))
+            {
+                using (WaveStream pcm = WaveFormatConversionStream.CreatePcmStream(mp3))
+                {
+                    WaveFileWriter.CreateWaveFile(_outPath_, pcm);
+                }
+            }
+        }
+
+        public static void IncreaseVolume(string inputPath, string outputPath, double db)
+        {
+            double linearScalingRatio = Math.Pow(10d, db / 10d);
+            using (WaveFileReader reader = new WaveFileReader(inputPath))
+            {
+                VolumeWaveProvider16 volumeProvider = new VolumeWaveProvider16(reader);
+                using (WaveFileWriter writer = new WaveFileWriter(outputPath, reader.WaveFormat))
+                {
+                    while (true)
+                    {
+                        var frame = reader.ReadNextSampleFrame();
+                        if (frame == null)
+                            break;
+                        writer.WriteSample(frame[0] * (float)linearScalingRatio);
+                    }
+                }
+            }
+        }
+
         // Requests WAV file containing AI Voice saying the prompt and outputs the directory to said file
         public static async Task<string> RequestAudio(string prompt, string voice, string fileName, string dir, int fileNum)
         {
@@ -140,7 +171,20 @@ namespace Wendigos
                 }
 
                 if (fileNameValid)
-                    return dir + fileName + fileNameExtension.ToString() + ".mp3";
+                {
+                    try
+                    {
+                        ConvertMp3ToWav(dir + fileName + fileNameExtension.ToString() + ".mp3", dir + fileName + fileNameExtension.ToString() + "z.wav");
+                        File.Delete(dir + fileName + fileNameExtension.ToString() + ".mp3");
+                        IncreaseVolume(dir + fileName + fileNameExtension.ToString() + "z.wav", dir + fileName + fileNameExtension.ToString() + ".wav", 4);
+                        File.Delete(dir + fileName + fileNameExtension.ToString() + "z.wav");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.ToString());
+                    }
+                    return dir + fileName + fileNameExtension.ToString() + ".wav";
+                }
             }
 
             // Return Directory to file

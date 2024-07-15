@@ -24,6 +24,7 @@ using UnityEditor;
 using Dissonance;
 using System.Collections.Concurrent;
 using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
+using NAudio.Wave;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -1557,12 +1558,11 @@ namespace Wendigos
             }
         }
 
+        
+
         public static AudioClip LoadAudioFile(string audioFilePath)
         {
-            if (elevenlabs_enabled.Value)
-                return LoadMP3File(audioFilePath);
-            else
-                return LoadWavFile(audioFilePath);
+            return LoadWavFile(audioFilePath);
         }
 
         static AudioClip LoadWavFile(string audioFilePath)
