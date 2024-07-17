@@ -176,7 +176,7 @@ namespace Wendigos
                     {
                         ConvertMp3ToWav(dir + fileName + fileNameExtension.ToString() + ".mp3", dir + fileName + fileNameExtension.ToString() + "z.wav");
                         File.Delete(dir + fileName + fileNameExtension.ToString() + ".mp3");
-                        IncreaseVolume(dir + fileName + fileNameExtension.ToString() + "z.wav", dir + fileName + fileNameExtension.ToString() + ".wav", 4);
+                        IncreaseVolume(dir + fileName + fileNameExtension.ToString() + "z.wav", dir + fileName + fileNameExtension.ToString() + ".wav", 3);
                         File.Delete(dir + fileName + fileNameExtension.ToString() + "z.wav");
                     }
                     catch (Exception ex)
