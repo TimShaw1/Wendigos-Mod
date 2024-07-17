@@ -1240,6 +1240,7 @@ namespace Wendigos
         private static ConfigEntry<bool> elevenlabs_enabled;
         private static ConfigEntry<string> elevenlabs_api_key;
         public static ConfigEntry<string> elevenlabs_voice_id;
+        public static ConfigEntry<float> elevenlabs_voice_volume_boost;
         private static ConfigEntry<string> ChatGPT_api_key;
         private static ConfigEntry<string> ChatGPT_model;
         private static ConfigEntry<string> ChatGPT_prompt;
@@ -1327,6 +1328,16 @@ namespace Wendigos
                 "Voice id",
                 "",
                 "Your elevenlabs voice id"
+                );
+
+            elevenlabs_voice_volume_boost = Config.Bind<float>(
+                "Elevenlabs",
+                "Masked Voice Volume Boost",
+                1f,
+                new ConfigDescription(
+                "How much to boost the masked voices",
+                new AcceptableValueRange<float>(0f,4f)
+                )
                 );
 
             ChatGPT_api_key = Config.Bind<string>(
@@ -1454,7 +1465,7 @@ namespace Wendigos
                     ElevenLabs.optimize_for_speed = true;
                 try
                 {
-                    ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value);
+                    ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value, elevenlabs_voice_volume_boost.Value);
                 }
                 catch (Exception ex)
                 {

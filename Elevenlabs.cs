@@ -23,7 +23,8 @@ namespace Wendigos
         static HttpClient client;
         public static string VOICE_ID;
         public static bool optimize_for_speed = false;
-        public static void Init(string api_key, string voice_id)
+        public static float volume_boost = 0;
+        public static void Init(string api_key, string voice_id, float volumeBoost)
         {
             try
             {
@@ -39,6 +40,8 @@ namespace Wendigos
 
                 client.DefaultRequestHeaders.Add("xi-api-key", API_KEY); // Add API Key header
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/mpeg")); // Add accepted file extension header
+
+                volume_boost = volumeBoost;
             }
             catch (Exception ex) 
             {
@@ -176,7 +179,7 @@ namespace Wendigos
                     {
                         ConvertMp3ToWav(dir + fileName + fileNameExtension.ToString() + ".mp3", dir + fileName + fileNameExtension.ToString() + "z.wav");
                         File.Delete(dir + fileName + fileNameExtension.ToString() + ".mp3");
-                        IncreaseVolume(dir + fileName + fileNameExtension.ToString() + "z.wav", dir + fileName + fileNameExtension.ToString() + ".wav", 3);
+                        IncreaseVolume(dir + fileName + fileNameExtension.ToString() + "z.wav", dir + fileName + fileNameExtension.ToString() + ".wav", volume_boost);
                         File.Delete(dir + fileName + fileNameExtension.ToString() + "z.wav");
                     }
                     catch (Exception ex)
