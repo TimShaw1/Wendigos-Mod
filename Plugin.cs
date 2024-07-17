@@ -1264,14 +1264,10 @@ namespace Wendigos
 
         internal static string mic_name;
 
-        internal static ulong steamID;
-
         static AudioClip mic_audio_clip;
 
         static List<AudioClip> myClips = new List<AudioClip>();
         public static Dictionary<ulong, List<AudioClip>> audioClips = new Dictionary<ulong, List<AudioClip>>() { { 0, new List<AudioClip>() } };
-
-        private static bool _pauseGame;
 
 
         private void Awake()
@@ -1516,28 +1512,6 @@ namespace Wendigos
             }
         }
 
-        [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Update))]
-        class MaskedPlayerEnemyUpdatePatch
-        {
-            static void Prefix()
-            {
-                StartOfRound startOfRound = StartOfRound.Instance;
-
-                //var currentLevel = RoundManager.Instance.currentLevel;
-
-                //RoundManager.Instance.currentLevel.Enemies.Add(new SpawnableEnemyWithRarity());
-
-                // TODO: Killed player can see mask mesh on new masked
-
-                //System.Text.Json.Serialization.JsonConverterFactory
-
-
-                var players = startOfRound.allPlayerScripts;
-
-                //AudioSource voice = MaskedPlayerEnemy.voice;
-
-            }
-        }
 
         [HarmonyPatch(typeof(StartOfRound), "OnLocalDisconnect")]
         class DisconnectPatch
