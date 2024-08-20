@@ -8,6 +8,8 @@ This mod requires **every player** to have the mod to function corrcectly.
 
 [Here's a video I made showing the mod off!](https://youtu.be/PNsyplFd2WU) 
 
+[Here's a SECOND video I made showing the real time stuff off!](https://youtu.be/GSBca7f7S5A?si=Hfohs8w3yxDyMuES) 
+
 ## DISCLAIMER
 If you are not using Elevenlabs, this mod downloads external binaries (about 350MB in size) from my github and loads an AI model locally to generate voice clips for the masked. The external binary is 350MB, and the voice cloning model is 1.75GB.
 
@@ -16,7 +18,7 @@ The clone of your voice is done at runtime entirely locally. This means that (1)
 
 If using Elevenlabs, everything is stored on **your account**.
 
-## First Time Setup
+## First Time Setup (not real time)
 0. If using Elevenlabs, clone everyone's voices in advance.
 1. Enable the mod in `Wendigos.cfg`. Optionally enable Elevenlabs and add API key and voice ID. Also be sure to set your language and add custom voice lines (see Bonus Features).
 2. (Local AI model only - Elevenlabs users are already done!) When launching the game for the first time, you will be asked to record some voice lines. Your current selected mic will be displayed. 
@@ -53,30 +55,41 @@ This mod removes the masked masks and zombie arms to better fool players. Player
 ### Elevenlabs
 Players can use Elevenlabs for voice cloning. This produces far better results and makes the masked much more deceptive. For this to work, **every client must have their voice already cloned by Elevenlabs**. You can all use the same api key, but each player needs a unique voice id.
 
-### Real time responses with Azure and ChatGPT (EXPERIMENTAL)
+## Real time responses with Azure and ChatGPT (EXPERIMENTAL)
 Allows the masked to reply to things players say in real time. This feature does NOT respect push-to-talk.
-#### Azure
-go to https://portal.azure.com/ to get your AZURE API KEY. Create an account, from there create a new resource group. You will most likely be prompted to create a subscription, when you're doing that it's fine to pick the FREE subscription instead of pay-as-you-go. Make sure to pick a region that is CLOSEST to your real-life location, the closer it is the faster the mod will recognize what you're saying and make the responses overall quicker.
 
-After that's over, go into your new resource group and press create, search for "Azure AI services", click create, punch in all the data, again put the region that's closest to you.
+#### What you need
+- An Elevenlabs subscription ($5 tier or better)
+- A free Azure Speech to Text service
+- A ChatGPT account with some api credits bought (NOT THE SUBSCRIPTION)
+
+#### Azure
+Go to https://portal.azure.com/ and create an account and a new resource group. You will most likely be prompted to create a subscription, when you're doing that it's fine to pick the FREE subscription, no need for pay-as-you-go. Make sure to pick a region that is CLOSEST to your real-life location for best results.
+
+After that's done, go into your new resource group and press create, search for "Azure AI services", click create, punch in all the data, and again put the region that's closest to you.
 
 After that's done go into your new Azure AI Service and press on Keys and Endpoint. Put your KEY 1 into wendigos.cfg in AZURE API KEY and put your Location/Region in Region.
 
 #### ChatGPT
-go to https://platform.openai.com/docs/guides/text-generation and create an account if you don't have one. Go into your profile -> (under organization) Billing -> add a payment method
+go to https://platform.openai.com/docs/guides/text-generation and create an account if you don't have one. Go into your profile -> (under organization) Billing -> add a payment method. Purchase however many credits you'd like, but you likely wont need more than the minimum. **These credits do not expire at the end of the month.**
 
 After which go back to Your profle -> User API keys -> View project API keys if it requires you to do so, create a new project, in the project API keys create a new key, save it and put it into wendigos.cfg in ChatGPT API key.
 
+If you have trouble finding your api key, look here: https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key
+
 #### Config Setup
-Set all api keys if you haven't already.
+Set all api keys (Elevenlabs, Azure, ChatGPT) if you haven't already.
+
+Set Azure region to the one you picked earlier (MOD WONT WORK WITHOUT THIS).
 
 Set `General -> Enable mod?` and `Experimental -> Realtime Responses` to true.
 
 Add your name to the Your Name setting if you'd like the AI to know who is who.
 
+#### Optional configs
 **Optimize Elevenlabs for Speed**: speeds up voice generation at the cost of losing most emotion in the voice. Less stylistic and emotional speaking overall.
 
-**Talk Probability**: how likely the Masked is to talk when no players are nearby.
+**Talk Probability**: how likely the Masked is to play pre-generated voice lines.
 
 
 ## Possible issues
@@ -124,6 +137,5 @@ If you have realtime responses enabled, the mod listens only during rounds. If r
 - RugbugRedfern's Skinwalkers mod
 - @Kalthun and @notgarrett for helping me test this mod
 - The Lethal Company Modding Discord
-- MadLike on Discord for helping me test the mod and for writing the realtime tutorial.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y8Y6ZWLYH)
