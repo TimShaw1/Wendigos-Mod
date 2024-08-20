@@ -63,6 +63,9 @@ Allows the masked to reply to things players say in real time. This feature does
 - A free Azure Speech to Text service
 - A ChatGPT account with some api credits bought (NOT THE SUBSCRIPTION)
 
+#### Elevenlabs
+Create an account and subscribe to the $5 tier or better. Click on your profile and click "API Keys". Create a key and save it somewhere. Clone your voice (and anyone else's who you are sharing the account with), then under Voices -> Personal click your voice, then click "ID" to copy the voice ID. Save that ID too.
+
 #### Azure
 Go to https://portal.azure.com/ and create an account and a new resource group. You will most likely be prompted to create a subscription, when you're doing that it's fine to pick the FREE subscription, no need for pay-as-you-go. Make sure to pick a region that is CLOSEST to your real-life location for best results.
 
@@ -79,6 +82,8 @@ If you have trouble finding your api key, look here: https://help.openai.com/en/
 
 #### Config Setup
 Set all api keys (Elevenlabs, Azure, ChatGPT) if you haven't already.
+
+Set your Elevenlabs voice ID.
 
 Set Azure region to the one you picked earlier (MOD WONT WORK WITHOUT THIS).
 
@@ -104,7 +109,7 @@ Add your name to the Your Name setting if you'd like the AI to know who is who.
 
 This mod uses XTTSv2, which supports 17 languages: English (en), Spanish (es), French (fr), German (de), Italian (it), Portuguese (pt), Polish (pl), Turkish (tr), Russian (ru), Dutch (nl), Czech (cs), Arabic (ar), Chinese (zh-cn), Japanese (ja), Hungarian (hu), Korean (ko) Hindi (hi).
 
-Elevenlabs supports 29 languages. Find out more here: https://elevenlabs.io/languages
+Elevenlabs supports 32 languages. Find out more here: https://elevenlabs.io/languages
 
 **Can I use this with Mirage?**
 
@@ -123,7 +128,11 @@ No, you'll need to write your voice lines in your language in the text files.
 No, the voice cloning is done at runtime and is not saved. Only the audio files of the voice lines are saved.
 
 **When is the mod listening to me?**
+
 If you have realtime responses enabled, the mod listens only during rounds. If realtime responses is disabled, the mod is never listening to you.
+
+**Can I share my Elevenlabs account?**
+Yes! You can have everyone on the same account. Everyone just has to set their own voice ID in their config.
 
 ## TODO
   - [x] Add damaged line category
