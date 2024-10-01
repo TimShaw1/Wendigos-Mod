@@ -142,15 +142,17 @@ namespace Wendigos
             }
         }
 
-        public static void Init(string api_key, string region)
+        public static void Init(string api_key, string region, string language)
         {
             if (api_key.Length == 0)
             {
                 Console.WriteLine("No azure API key. STT disabled.");
                 return;
             }
+
             using var audioConfig = AudioConfig.FromDefaultMicrophoneInput();
             var speechConfig = SpeechConfig.FromSubscription(api_key, region);
+            speechConfig.SpeechRecognitionLanguage = language;
             speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
             is_init = true;
         }
