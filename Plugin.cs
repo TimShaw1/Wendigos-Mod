@@ -31,7 +31,7 @@ using NAudio.Wave;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.4")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.8")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -1353,8 +1353,8 @@ namespace Wendigos
                 "Model",
                 "gpt-4o",
                 new ConfigDescription(
-                "Which gpt model to use. Use gpt-3.5-turbo if you want to save on cost (10x cheaper) and don't mind less convincing results",
-                new AcceptableValueList<string>("gpt-4o", "gpt-3.5-turbo")
+                "Which gpt model to use. Use gpt-4o-mini if you want to save on cost and don't mind less convincing results",
+                new AcceptableValueList<string>("gpt-4o", "gpt-4o-mini")
                 )
                 );
 
