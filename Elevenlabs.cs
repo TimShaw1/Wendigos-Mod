@@ -86,7 +86,7 @@ namespace Wendigos
             return Plugin.LoadAudioFile(dir + history_item_id + ".mp3");
         }
 
-        private static void ConvertMp3ToWav(string _inPath_, string _outPath_)
+        public static void ConvertMp3ToWav(string _inPath_, string _outPath_)
         {
             using (Mp3FileReader mp3 = new Mp3FileReader(_inPath_))
             {
@@ -110,6 +110,11 @@ namespace Wendigos
                         var frame = reader.ReadNextSampleFrame();
                         if (frame == null)
                             break;
+                        var sample = frame[0] * (float)linearScalingRatio;
+                        if (sample < -0.6f)
+                            sample = -0.6f;
+                        if (sample > 0.6f)
+                            sample = 0.6f;
                         writer.WriteSample(frame[0] * (float)linearScalingRatio);
                     }
                 }
