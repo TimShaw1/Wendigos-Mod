@@ -712,7 +712,7 @@ namespace Wendigos
                 if (enable_realtime_responses.Value && !AzureSTT.is_init)
                 {
                     AzureSTT.num_gens = 0;
-                    AzureSTT.Init(Azure_api_key.Value, Azure_region.Value);
+                    AzureSTT.Init(Azure_api_key.Value, Azure_region.Value, Azure_language.Value);
                     Task.Factory.StartNew(() => AzureSTT.Main(ChatGPT_prompt.Value));
                 }
             }
@@ -1246,6 +1246,7 @@ namespace Wendigos
         private static ConfigEntry<string> ChatGPT_prompt;
         private static ConfigEntry<string> Azure_api_key;
         private static ConfigEntry<string> Azure_region;
+        private static ConfigEntry<string> Azure_language;
         private static ConfigEntry<bool> optimize_for_speed;
         private static ConfigEntry<bool> enable_realtime_responses;
         private static ConfigEntry<string> player_name;
@@ -1376,6 +1377,13 @@ namespace Wendigos
                 "Region",
                 "canadacentral",
                 "Your Azure region"
+                );
+
+            Azure_language = Config.Bind<string>(
+                "Azure",
+                "Language",
+                "en-US",
+                "Your desired speech recognition language, list of supported languages can be found here: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt"
                 );
 
             optimize_for_speed = Config.Bind<bool>(
