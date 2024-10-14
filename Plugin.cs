@@ -31,7 +31,7 @@ using NAudio.Wave;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.8")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.9")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosMessageHandler : NetworkBehaviour
@@ -1807,12 +1807,19 @@ namespace Wendigos
         {
             static void Prefix(MaskedPlayerEnemy __instance)
             {
-                string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
-                ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
+                try
+                {
+                    string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
+                    ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
 
-                // Speak when damaged
-                if (__instance.enemyHP > 0)
-                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'd', 100);
+                    // Speak when damaged
+                    if (__instance.enemyHP > 0)
+                        WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'd', 100);
+                }
+                catch
+                {
+
+                }
             }
         }
 
