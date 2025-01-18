@@ -69,9 +69,9 @@ Create an account and subscribe to the $5 tier or better. Click on your profile 
 #### Azure
 Go to https://portal.azure.com/ and create an account and a new resource group. You will most likely be prompted to create a subscription, when you're doing that it's fine to pick the FREE subscription, no need for pay-as-you-go. Make sure to pick a region that is CLOSEST to your real-life location for best results.
 
-After that's done, go into your new resource group and press create, search for "Azure AI services", click create, punch in all the data, and again put the region that's closest to you.
+After that's done, go into your new resource group and press create, look for "Speech" under AI services, click create, punch in all the required info (name, resource group, etc), and again put the region that's closest to you. Be sure to select the Free F0 tier.
 
-After that's done go into your new Azure AI Service and press on Keys and Endpoint. Put your KEY 1 into wendigos.cfg in AZURE API KEY and put your Location/Region in Region.
+After that's done go into your new Speech Service and select Keys and Endpoint. Put your KEY 1 into wendigos.cfg in AZURE API KEY and put your Location/Region in Region.
 
 #### ChatGPT
 go to https://platform.openai.com/docs/guides/text-generation and create an account if you don't have one. Go into your profile -> (under organization) Billing -> add a payment method. Purchase however many credits you'd like, but you likely wont need more than the minimum. **These credits do not expire at the end of the month.**
