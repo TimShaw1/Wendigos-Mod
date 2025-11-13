@@ -21,7 +21,6 @@ using UnityEngine.XR;
 using System.Net;
 using System.Security.Cryptography;
 using UnityEditor;
-using Dissonance;
 using System.Collections.Concurrent;
 using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 using NAudio.Wave;
@@ -611,6 +610,7 @@ namespace Wendigos
             [ClientRpc]
             public void AddToMaskedClientDictClientRpc(string maskedID, ulong clientID)
             {
+                WriteToConsole("Trying to add masked to masked_client_dict");
                 sharedMaskedClientDict[maskedID] = clientID;
                 WriteToConsole($"added masked {maskedID} to masked_client_dict");
             }
