@@ -43,27 +43,14 @@
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
       <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="DissonanceVoip">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\DissonanceVoip.dll</HintPath>
     </Reference>
     <Reference Include="Facepunch.Steamworks.Win64">
       <HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
-      <HintPath Condition="Exists('C:\Users\Tim\source\repos\TimShaw1\Wendigos-Mod\bin\Debug\netstandard2.1\Facepunch.Steamworks.Win64.dll')">C:\Users\Tim\source\repos\TimShaw1\Wendigos-Mod\bin\Debug\netstandard2.1\Facepunch.Steamworks.Win64.dll</HintPath>
-    </Reference>
-    <Reference Include="LC_API">
-      <HintPath>LC_API.dll</HintPath>
-    </Reference>
-    <Reference Include="LC_SoundTool">
-      <HintPath>..\..\..\..\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\no00ob-LCSoundTool\LC_SoundTool.dll</HintPath>
-      <HintPath Condition="Exists('C:\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\no00ob-LCSoundTool\LC_SoundTool.dll')">C:\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\no00ob-LCSoundTool\LC_SoundTool.dll</HintPath>
-    </Reference>
-    <Reference Include="LethalLib">
-      <HintPath>..\..\..\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\Evaisa-LethalLib\LethalLib\LethalLib.dll</HintPath>
-    </Reference>
-    <Reference Include="LethalNetworkAPI">
-      <HintPath>..\..\..\..\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\xilophor-LethalNetworkAPI\LethalNetworkAPI\LethalNetworkAPI.dll</HintPath>
-      <HintPath Condition="Exists('C:\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\xilophor-LethalNetworkAPI\LethalNetworkAPI\LethalNetworkAPI.dll')">C:\Users\DUPER\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Modding\BepInEx\plugins\xilophor-LethalNetworkAPI\LethalNetworkAPI\LethalNetworkAPI.dll</HintPath>
+      <HintPath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll')">C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Collections">
       <HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Collections.dll')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Collections.dll</HintPath>
@@ -71,6 +58,7 @@
     </Reference>
     <Reference Include="Unity.Netcode.Runtime">
       <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Runtime.dll</HintPath>
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.TextMeshPro.dll</HintPath>
@@ -81,6 +69,7 @@
     </Reference>
     <Reference Include="VoiceBoxModLib.Core">
       <HintPath>..\..\VoiceBoxModLib\bin\Release\netstandard2.1\VoiceBoxModLib.Core.dll</HintPath>
+      <HintPath>C:\Users\Tim\source\repos\TimShaw1\VoiceBoxModLib\bin\Release\netstandard2.1\VoiceBoxModLib.Core.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
