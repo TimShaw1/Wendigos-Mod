@@ -24,6 +24,7 @@ using UnityEditor;
 using System.Collections.Concurrent;
 using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 using NAudio.Wave;
+using TimShaw.VoiceBox.Core;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -709,12 +710,14 @@ namespace Wendigos
             [ClientRpc]
             public void InitAzureClientRpc()
             {
-                if (enable_realtime_responses.Value && !AzureSTT.is_init)
+                WriteToConsole("AZURE MANAGER IS: " + AzureSTT.manager);
+                if (enable_realtime_responses.Value && AzureSTT.manager == null)
                 {
                     AzureSTT.num_gens = 0;
                     AzureSTT.Init(Azure_api_key.Value, Azure_region.Value, Azure_language.Value);
-                    Task.Factory.StartNew(() => AzureSTT.Main(ChatGPT_prompt.Value));
                 }
+
+                AzureSTT.StartSpeechTranscription(ChatGPT_prompt.Value);
             }
 
             private async Task TryPlayClip(string name, string MaskedID)
@@ -1046,12 +1049,23 @@ namespace Wendigos
 
             string[] readText = File.ReadAllLines(sentences_file_path);
             int i = 0;
+            int completedCounter = 0;
             foreach (string s in readText)
             {
                 //Task.Factory.StartNew(() => elevenlabs_client.RequestAudio(s, elevenlabs_voice_id.Value, file_name + "0_line", assembly_path + $"\\audio_output\\player0\\{file_name}\\"));
-                await ElevenLabs.RequestAudio(s, elevenlabs_voice_id.Value, file_name + "0_line", assembly_path + $"\\audio_output\\player0\\{file_name}\\", i);
+                ElevenLabs.RequestAudio(
+                    s, 
+                    elevenlabs_voice_id.Value, 
+                    file_name + "0_line", 
+                    assembly_path + $"\\audio_output\\player0\\{file_name}\\", 
+                    i,
+                    result => completedCounter++
+                );
                 i++;
             }
+
+            // Wait for each generation to complete
+            while (i != completedCounter) continue;
         }
 
         static bool doneGenerating = false;
@@ -1467,13 +1481,16 @@ namespace Wendigos
                     }
                 }
 
-                ChatManager.Init(ChatGPT_api_key.Value, ChatGPT_model.Value);
+
+
+                WendigosChatManager.Init(ChatGPT_api_key.Value, ChatGPT_model.Value);
                 AzureSTT.player_name = player_name.Value;
                 if (optimize_for_speed.Value)
                     ElevenLabs.optimize_for_speed = true;
                 try
                 {
-                    ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value, elevenlabs_voice_volume_boost.Value);
+                    if (elevenlabs_enabled.Value)
+                        ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value, elevenlabs_voice_volume_boost.Value);
                 }
                 catch (Exception ex)
                 {
@@ -1904,6 +1921,7 @@ namespace Wendigos
         {
             static void Prefix()
             {
+                WriteToConsole("Chat Manager Object is: " + WendigosChatManager.chatManagerComponent);
                 WriteToConsole("Clearing chared masked dict");
                 serverReadyDict.Clear();
                 sharedMaskedClientDict.Clear();
@@ -1919,6 +1937,19 @@ namespace Wendigos
 
                 if (enable_realtime_responses.Value)
                 {
+                    
+                    if (WendigosChatManager.chatManagerComponent == null)
+                        WendigosChatManager.Init(ChatGPT_api_key.Value, ChatGPT_model.Value);
+                    try
+                    {
+                        if (elevenlabs_enabled.Value && ElevenLabs.ttsManagerComponent == null)
+                            ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value, elevenlabs_voice_volume_boost.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteToConsole(ex.ToString());
+                    }
+
                     foreach (var key in clientVoiceIDLookup.Keys)
                     {
                         WriteToConsole($"CLIENT IDS: {key} {clientVoiceIDLookup[key]}");
@@ -1966,11 +1997,10 @@ namespace Wendigos
         {
             static void Prefix()
             {
-                AzureSTT.is_init = false;
                 try
                 {
                     // reset speech recognition
-                    AzureSTT.speechRecognizer.StopContinuousRecognitionAsync();
+                    AIManager.Instance.StopSpeechTranscription();
                     
                 }
                 catch (Exception ex)

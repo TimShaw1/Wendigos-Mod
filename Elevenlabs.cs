@@ -10,6 +10,9 @@ namespace Wendigos
     using System.Net.Http;
     using System.Net.Http.Headers;
     using System.Threading.Tasks;
+    using TimShaw.VoiceBox.Components;
+    using TimShaw.VoiceBox.Modding;
+    using TimShaw.VoiceBox.Data;
     using UnityEngine;
     using UnityEngine.Networking;
 
@@ -19,11 +22,11 @@ namespace Wendigos
         const string baseDir = @".\"; // Base Directory of output file
         const string baseURL = "https://api.elevenlabs.io/v1/text-to-speech/"; // Base URL of HTTP request
         public static string API_KEY; // Eleven Labs API key
-        public static bool requesting = false;
-        static HttpClient client;
         public static string VOICE_ID;
         public static bool optimize_for_speed = false;
         public static float volume_boost = 0;
+
+        public static TTSManager ttsManagerComponent;
         public static void Init(string api_key, string voice_id, float volumeBoost)
         {
             try
@@ -36,10 +39,19 @@ namespace Wendigos
            
                 API_KEY = api_key;
                 VOICE_ID = voice_id;
-                client = new HttpClient();
 
-                client.DefaultRequestHeaders.Add("xi-api-key", API_KEY); // Add API Key header
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/mpeg")); // Add accepted file extension header
+                // Create a new GameObject and attach a TTSManager component to it
+                GameObject ttsManager = new GameObject("wendigosTtsManager");
+                ttsManagerComponent = ttsManager.AddComponent<TTSManager>();
+
+                // Create an ElevenlabsServiceConfig object and choose a voiceId
+                ElevenlabsTTSServiceConfig elevenlabsConfig = ModdingTools.CreateTTSServiceConfig<ElevenlabsTTSServiceConfig>();
+                elevenlabsConfig.voiceId = voice_id;
+
+                // Configure the TTS manager with the elevenlabs config. 
+                // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
+                ModdingTools.InitTTSManagerObject(ttsManagerComponent, elevenlabsConfig, ttsKey: api_key);
+
 
                 volume_boost = volumeBoost;
             }
@@ -47,43 +59,6 @@ namespace Wendigos
             {
                 Console.WriteLine(ex.ToString());
             }
-        }
-
-        public static async Task<string> GetLatestHistoryItem(string voice_id)
-        {
-            var history = await client.GetAsync($"https://api.elevenlabs.io/v1/history?page_size=1&voice_id={voice_id}");
-            dynamic t = JsonConvert.DeserializeObject(await history.Content.ReadAsStringAsync());
-            try
-            {
-                Console.WriteLine(t["history"][0]["history_item_id"]);
-                return t["history"][0]["history_item_id"];
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
-            return "";
-        }
-
-        public static async Task<AudioClip> GetLatestHistoryItemAudioClip(string history_item_id, string dir)
-        {
-            var data = new
-            {
-                history_item_id = history_item_id
-            }; // Set-up Data
-
-            string json = JsonConvert.SerializeObject(data);
-            StringContent httpContent = new StringContent(json, System.Text.Encoding.Default, "application/json");
-
-            var response = await client.PostAsync($"https://api.elevenlabs.io/v1/history/{history_item_id}/audio", httpContent);
-
-            using (Stream stream = await response.Content.ReadAsStreamAsync())
-            using (FileStream fileStream = File.Create(dir + history_item_id + ".mp3"))
-            {
-                await stream.CopyToAsync(fileStream);
-            }
-
-            return Plugin.LoadAudioFile(dir + history_item_id + ".mp3");
         }
 
         public static void ConvertMp3ToWav(string _inPath_, string _outPath_)
@@ -122,81 +97,32 @@ namespace Wendigos
         }
 
         // Requests WAV file containing AI Voice saying the prompt and outputs the directory to said file
-        public static async Task<string> RequestAudio(string prompt, string voice, string fileName, string dir, int fileNum)
+        public static void RequestAudio(string prompt, string voice, string fileName, string dir, int fileNum, Action<string> onSuccess)
         {
-            string url = baseURL + voice; // Concatenate Voice ID to end of URL
-
-            var data = new
+            while (File.Exists(Path.Combine(dir, fileName + fileNum.ToString())))
             {
-                text = prompt,
-                model_id = optimize_for_speed ? "eleven_turbo_v2" : "eleven_multilingual_v2",
-                voice_settings = new
-                {
-                    stability = 0.5f,
-                    similarity_boost = 0.5f,
-                    style = optimize_for_speed ? 0.0f : 0.3f,
-                    use_speaker_boost = true,
-                    optimize_streaming_latency = optimize_for_speed ? 3 : 0
-                }
-            }; // Set-up Data
-
-            // Convert Data to JSON
-            string json = JsonConvert.SerializeObject(data);
-            StringContent httpContent = new StringContent(json, System.Text.Encoding.Default, "application/json");
-
-            // Request MPEG
-            var response = await client.PostAsync(url, httpContent);
-            requesting = false;
-
-            // Output Response to local MPEG file in the respective directory
-            if (response != null)
-            {
-                int fileNameExtension = fileNum;
-                int retries = 0;
-                bool fileNameValid = false;
-
-                while (!fileNameValid)
-                {
-                    try
-                    {
-                        // Stream response as binary data into a file
-                        using (Stream stream = await response.Content.ReadAsStreamAsync())
-                        using (FileStream fileStream = File.Create(dir + fileName + fileNameExtension.ToString() + ".mp3"))
-                        {
-                            await stream.CopyToAsync(fileStream);
-                        }
-
-                        fileNameValid = true;
-
-                    }
-                    catch (Exception ex)
-                    {
-                        retries++;
-                        if (retries >= 50)
-                            break;
-                        fileNameExtension++;
-                    }
-                }
-
-                if (fileNameValid)
-                {
-                    try
-                    {
-                        ConvertMp3ToWav(dir + fileName + fileNameExtension.ToString() + ".mp3", dir + fileName + fileNameExtension.ToString() + "z.wav");
-                        File.Delete(dir + fileName + fileNameExtension.ToString() + ".mp3");
-                        IncreaseVolume(dir + fileName + fileNameExtension.ToString() + "z.wav", dir + fileName + fileNameExtension.ToString() + ".wav", volume_boost);
-                        File.Delete(dir + fileName + fileNameExtension.ToString() + "z.wav");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.ToString());
-                    }
-                    return dir + fileName + fileNameExtension.ToString() + ".wav";
-                }
+                fileNum++;
             }
+            fileName = fileName + fileNum.ToString();
+            string fullFilePath = null;
+            ttsManagerComponent.GenerateSpeechFileFromText(prompt, fileName, dir, result => { 
 
-            // Return Directory to file
-            return null;
+                try
+                {
+                    ConvertMp3ToWav(dir + fileName + ".mp3", dir + fileName + "z.wav");
+                    File.Delete(dir + fileName + ".mp3");
+                    IncreaseVolume(dir + fileName + "z.wav", dir + fileName + ".wav", volume_boost);
+                    File.Delete(dir + fileName + "z.wav");
+
+                    fullFilePath = dir + fileName + ".wav";
+                    onSuccess.Invoke(fullFilePath);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                    onSuccess.Invoke("");
+                }
+            });
 
         }
 
