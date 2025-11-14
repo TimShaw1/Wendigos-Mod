@@ -28,7 +28,7 @@ namespace Wendigos
             {
                 if (api_key.Length == 0)
                 {
-                    throw new ArgumentException("No ChatGPT API key!");
+                    throw new ArgumentException("No Chat API key!");
                     return;
                 }
 
@@ -36,8 +36,8 @@ namespace Wendigos
                 GameObject chatManager = new GameObject("wendigosChatManager");
                 chatManagerComponent = chatManager.AddComponent<ChatManager>();
 
-                // Create a GeminiServiceConfig object and choose a model name
-                GeminiServiceConfig chatConfig = ModdingTools.CreateChatServiceConfig<GeminiServiceConfig>();
+                // Create a ChatGPTServiceConfig object and choose a model name
+                ChatGPTServiceConfig chatConfig = ModdingTools.CreateChatServiceConfig<ChatGPTServiceConfig>();
                 //chatGPTConfig.modelName = modelToUse;
 
                 // Configure the chat manager with the gemini config. 
