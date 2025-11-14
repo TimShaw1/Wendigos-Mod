@@ -717,7 +717,8 @@ namespace Wendigos
                     AzureSTT.Init(Azure_api_key.Value, Azure_region.Value, Azure_language.Value);
                 }
 
-                AzureSTT.StartSpeechTranscription(ChatGPT_prompt.Value);
+                if (enable_realtime_responses.Value)
+                    AzureSTT.StartSpeechTranscription(ChatGPT_prompt.Value);
             }
 
             private async Task TryPlayClip(string name, string MaskedID)
