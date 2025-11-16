@@ -33,11 +33,6 @@ namespace Wendigos
 
         public static void Init(string api_key, string region, string language)
         {
-            if (api_key.Length == 0)
-            {
-                Console.WriteLine("No azure API key. STT disabled.");
-                return;
-            }
 
             if (AIManager.Instance == null || AIManager.Instance.SpeechToTextService == null)
             {

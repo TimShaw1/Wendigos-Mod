@@ -21,7 +21,6 @@ namespace Wendigos
 
         const string baseDir = @".\"; // Base Directory of output file
         const string baseURL = "https://api.elevenlabs.io/v1/text-to-speech/"; // Base URL of HTTP request
-        public static string API_KEY; // Eleven Labs API key
         public static string VOICE_ID;
         public static bool optimize_for_speed = false;
         public static float volume_boost = 0;
@@ -30,14 +29,7 @@ namespace Wendigos
         public static void Init(string api_key, string voice_id, float volumeBoost)
         {
             try
-            {
-                if (api_key.Length == 0)
-                {
-                    Console.WriteLine("No Elevenlabs API key found.");
-                    return;
-                }
-           
-                API_KEY = api_key;
+            {           
                 VOICE_ID = voice_id;
 
                 // Create a new GameObject and attach a TTSManager component to it
@@ -48,12 +40,23 @@ namespace Wendigos
                 ElevenlabsTTSServiceConfig elevenlabsConfig = ModdingTools.CreateTTSServiceConfig<ElevenlabsTTSServiceConfig>();
                 elevenlabsConfig.voiceId = voice_id;
 
-                // Configure the TTS manager with the elevenlabs config. 
-                // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
-                ModdingTools.InitTTSManagerObject(ttsManagerComponent, elevenlabsConfig, ttsKey: api_key);
+                if (api_key.Length == 0)
+                {
+                    Console.WriteLine("No Elevenlabs API key found. Attempting to load from environment variable ELEVENLABS_API_KEY...");
+
+                    // Configure the TTS manager with the elevenlabs config. 
+                    // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
+                    ModdingTools.InitTTSManagerObject(ttsManagerComponent, elevenlabsConfig);
+                }
+                else
+                {
+                    // Configure the TTS manager with the elevenlabs config. 
+                    // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
+                    ModdingTools.InitTTSManagerObject(ttsManagerComponent, elevenlabsConfig, ttsKey: api_key);
+                }
 
 
-                volume_boost = volumeBoost;
+                    volume_boost = volumeBoost;
             }
             catch (Exception ex) 
             {
@@ -122,7 +125,7 @@ namespace Wendigos
                     Console.WriteLine(ex.ToString());
                     onSuccess.Invoke("");
                 }
-            });
+            }, err => Debug.LogError(err));
 
         }
 
