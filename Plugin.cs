@@ -1915,8 +1915,6 @@ namespace Wendigos
             return (97 <= c && c <= 122);
         }
 
-        
-
         [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.LoadNewLevel))]
         class RoundManagerSpawnPatch
         {
@@ -2150,6 +2148,7 @@ namespace Wendigos
 
                 // Show record audio prompt
                 __instance.NewsPanel.SetActive(false);
+                _ = TimShaw.VoiceBox.GUI.GUIManager.CreateGUIManagerObject();
                 if (!File.Exists(assembly_path + "\\sample_player_audio\\sample_player0_audio.wav") || need_new_player_audio.Value)
                 {
                     if (!elevenlabs_enabled.Value)
