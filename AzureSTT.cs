@@ -37,7 +37,7 @@ namespace Wendigos
             if (AIManager.Instance == null || AIManager.Instance.SpeechToTextService == null)
             {
                 Console.WriteLine("No STT Service has been created. Creating one...");
-                manager = ModdingTools.CreateAIManagerObject<GeminiServiceConfig, AzureSTTServiceConfig, ElevenlabsTTSServiceConfig>();
+                manager = ModdingTools.CreateAIManagerObject<GeminiServiceConfig, AzureSTTServiceConfig, ElevenlabsTTSServiceConfig>(sttKey: api_key);
 
             }
 
