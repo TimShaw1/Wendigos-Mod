@@ -25,6 +25,7 @@ using System.Collections.Concurrent;
 using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 using NAudio.Wave;
 using TimShaw.VoiceBox.Core;
+using TimShaw.VoiceBox.Components;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -721,6 +722,32 @@ namespace Wendigos
                     AzureSTT.StartSpeechTranscription(ChatGPT_prompt.Value);
             }
 
+            [ServerRpc(RequireOwnership = false)]
+            public void ShareAudioDataServerRpc(float[] mp3Data, string MaskedID, ServerRpcParams serverRpcParams = default)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+
+                ClientRpcParams clientRpcParams = new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams
+                    {
+                        TargetClientIds = NetworkManager.Singleton.ConnectedClientsIds.Except(new[] { senderClientId }).ToList()
+                    }
+                };
+
+                PlayAudioDataClientRpc(mp3Data, MaskedID, clientRpcParams);
+            }
+
+            [ClientRpc]
+            public void PlayAudioDataClientRpc(float[] mp3Data, string MaskedID, ClientRpcParams clientRpcParams = default)
+            {
+                var masked = maskedInstanceLookup[MaskedID];
+                var identifier = masked.GetComponent<MaskedEnemyIdentifier>();
+                //WriteToConsole("2");
+                var queue = identifier.audioQueue;
+                queue.Enqueue(mp3Data);
+            }
+
             private async Task TryPlayClip(string name, string MaskedID)
             {
                 int checks = 0;
@@ -786,40 +813,6 @@ namespace Wendigos
                 WriteToJsonFile<WendigosLog>(assembly_path + "\\WendigosLog.json", this);
             }
         }
-
-        /*
-        public class DissonanceManager : IMicrophoneSubscriber
-        {
-            public static DissonanceManager Instance { get; private set; }
-            public void ReceiveMicrophoneData(ArraySegment<float> buffer, WaveFormat format)
-            {
-                //WriteToConsole("DATA RECIEVED");
-                var floatArray1 = buffer.ToArray();
-                var byteArray = new byte[floatArray1.Length * 4];
-                Buffer.BlockCopy(floatArray1, 0, byteArray, 0, byteArray.Length);
-
-            }
-
-            public void Reset()
-            {
-                //throw new NotImplementedException();
-            }
-
-            public DissonanceManager()
-            {
-                try
-                {
-                    FindObjectOfType<DissonanceComms>().SubscribeToRecordedAudio(this);
-                    Instance = this;
-                    WriteToConsole("INIT DISSONANCE MANAGER");
-                } 
-                catch
-                {
-                    WriteToConsole("Not in game yet");
-                }
-            }
-        }
-        */
 
         public class MainThreadInvoker
         {
@@ -1366,11 +1359,9 @@ namespace Wendigos
             ChatGPT_model = Config.Bind<string>(
                 "ChatGPT",
                 "Model",
-                "gpt-4o",
-                new ConfigDescription(
-                "Which gpt model to use. Use gpt-4o-mini if you want to save on cost and don't mind less convincing results",
-                new AcceptableValueList<string>("gpt-4o", "gpt-4o-mini")
-                )
+                "gpt-5-nano",
+                "Which gpt model to use. Defaults to gpt-5-nano."
+
                 );
 
             ChatGPT_prompt = Config.Bind<string>(
@@ -1844,6 +1835,17 @@ namespace Wendigos
         public class MaskedEnemyIdentifier : MonoBehaviour
         {
             public string id;
+            public Queue<float[]> audioQueue = new Queue<float[]>();
+
+            private void OnAudioFilterRead(float[] data, int channels)
+            {
+                float[] newData;
+                if (audioQueue.TryDequeue(out newData))
+                {
+                    for (int i = 0; i < newData.Length && i < data.Length; i++)
+                        data[i] = newData[i];
+                }
+            }
         }
 
         static Dictionary<string, MaskedPlayerEnemy> maskedInstanceLookup = new Dictionary<string, MaskedPlayerEnemy>();
@@ -1858,8 +1860,12 @@ namespace Wendigos
 
                 // id is starting position since only 1 enemy can spawn per vent
                 __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id = __instance.transform.position.ToString();
-                maskedInstanceLookup.TryAdd(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id, __instance);
-                WriteToConsole("Spawned Masked. ID: " + __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id);
+                string ID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
+                maskedInstanceLookup.TryAdd(ID, __instance);
+                WriteToConsole("Spawned Masked. ID: " + ID);
+
+                AudioStreamer streamer = __instance.gameObject.AddComponent<AudioStreamer>();
+                streamer.OnAudioSamplePlayed += (obj, data) => WendigosMessageHandler.Instance.ShareAudioDataServerRpc(data, ID);
 
                 if (WendigosMessageHandler.Instance.IsServer)
                 {
