@@ -8,6 +8,7 @@ using System.Data;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using TimShaw.VoiceBox.Components;
 using TimShaw.VoiceBox.Core;
 using TimShaw.VoiceBox.Data;
 using TimShaw.VoiceBox.Generics;
@@ -81,27 +82,9 @@ namespace Wendigos
 
 
                                     // Overlap handled in this function
-                                    ElevenLabs.RequestAudio(
+                                    ElevenLabs.StreamAudio(
                                         response, 
-                                        voice_id, 
-                                        voice_id, 
-                                        Plugin.assembly_path + "\\temp_elevenlabs_lines\\", 
-                                        0,
-                                        generatedFile => { 
-
-                                            Console.WriteLine("Generated file: " + generatedFile);
-
-                                            // Have client-voiceid lookup somehow
-                                            var new_clip = Plugin.LoadAudioFile(generatedFile);
-                                            new_clip.name = "" + Convert.ToChar(NetworkManager.Singleton.LocalClientId + 33) + num_gens;
-                                            num_gens++;
-
-                                            Plugin.SendClipForMe(new_clip, masked_id);
-                                            //closest_masked.creatureVoice.PlayOneShot(new_clip);
-                                            Console.WriteLine("ROUND TRIP DONE");
-                                            File.Delete(generatedFile);
-
-                                        }
+                                        closest_masked.GetComponent<AudioStreamer>()
                                     );
 
                                     // Have closest masked to player play the new audio file
