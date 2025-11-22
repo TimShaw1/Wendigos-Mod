@@ -38,7 +38,8 @@ namespace Wendigos
 
                 // Create a ChatGPTServiceConfig object and choose a model name
                 ChatGPTServiceConfig chatConfig = ModdingTools.CreateChatServiceConfig<ChatGPTServiceConfig>();
-                //chatGPTConfig.modelName = modelToUse;
+                chatConfig.modelName = modelToUse;
+                chatConfig.useFunctionInvokation = false;
 
                 // Configure the chat manager with the gemini config. 
                 // This also creates the chat manager's ChatService via the ServiceFactory
