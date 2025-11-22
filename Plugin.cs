@@ -134,7 +134,7 @@ namespace Wendigos
                         {
                             List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[connectedClient]);
 
-                            var task = SendClipListAsync(clipsCopy, obj, true, originClient: connectedClient);
+                            var task = Task.Run(() => SendClipListAsync(clipsCopy, obj, true, originClient: connectedClient));
 
                             if (elevenlabs_enabled.Value)
                             {
@@ -153,7 +153,7 @@ namespace Wendigos
                     List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
 
                     // Send client's clips
-                    var task = SendClipListAsync(clipsCopy, obj, false, true, NetworkManager.Singleton.LocalClientId);
+                    var task = Task.Run(() => SendClipListAsync(clipsCopy, obj, false, true, NetworkManager.Singleton.LocalClientId));
                     ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, elevenlabs_voice_id.Value);
                     //task.Wait();
                 }
@@ -440,7 +440,7 @@ namespace Wendigos
                     WriteToConsole("Broadcasting " + senderID + "'s clips - " + audioClips[senderID].Count);
                     List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[senderID]);
                     // Send new clips to everyone
-                    var task = SendClipListAsync(clipsCopy, originClient: senderID);
+                    var task = Task.Run(() => SendClipListAsync(clipsCopy, originClient: senderID));
                     //task.Wait();
                     ClientRpcParams clientRpcParams = new ClientRpcParams
                     {
@@ -459,7 +459,7 @@ namespace Wendigos
             public void SendServerMyClipsClientRpc(ClientRpcParams p = default)
             {
                 // Send server client's clips and tell it to sync them with everyone
-                var task = SendClipListAsync(myClips, shouldSync:mod_enabled.Value, originClient:NetworkManager.Singleton.LocalClientId);
+                var task = Task.Run(() => SendClipListAsync(myClips, shouldSync:mod_enabled.Value, originClient:NetworkManager.Singleton.LocalClientId));
                 //task.Wait();
                 
             }
@@ -520,7 +520,7 @@ namespace Wendigos
                         }
                         if (resend)
                         {
-                            SendClipListAsync(missingClips, 0, false, true, originId);
+                            Task.Run(() => SendClipListAsync(missingClips, 0, false, true, originId));
                         }
                     }
 
@@ -571,7 +571,7 @@ namespace Wendigos
                 }
                 if (missingClips.Count > 0)
                 {
-                    SendClipListAsync(missingClips, senderID, false, originClient: originClipId);
+                    Task.Run(() => SendClipListAsync(missingClips, senderID, false, originClient: originClipId));
                 }
             }
 
