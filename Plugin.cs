@@ -26,6 +26,7 @@ using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 using NAudio.Wave;
 using TimShaw.VoiceBox.Core;
 using TimShaw.VoiceBox.Components;
+using TimShaw.VoiceBox.GUI;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
@@ -1413,6 +1414,9 @@ namespace Wendigos
                 "Your name. Allows ChatGPT to know who is who"
                 );
 
+            GUIManager.CreateGUIManagerObject();
+            
+
             // Allow players to hear voices even if mod is disabled
             SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
 
@@ -1926,6 +1930,8 @@ namespace Wendigos
         {
             static void Prefix()
             {
+                GUIManager.CreateGUIManagerObject();
+                WriteToConsole("Created GUI Manager");
                 WriteToConsole("Chat Manager Object is: " + WendigosChatManager.chatManagerComponent);
                 WriteToConsole("Clearing chared masked dict");
                 serverReadyDict.Clear();
