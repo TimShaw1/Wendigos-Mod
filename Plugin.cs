@@ -989,7 +989,6 @@ namespace Wendigos
                             float[] chunk = new float[length];
                             System.Array.Copy(audioData, start, chunk, 0, length);
 
-                            StreamingMp3Decoder
                             WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, __instance.GetComponent<MaskedEnemyIdentifier>().id);
                         }
                     }
