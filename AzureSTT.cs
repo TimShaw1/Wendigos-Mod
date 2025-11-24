@@ -35,7 +35,7 @@ namespace Wendigos
         public static void Init(string api_key, string region, string language)
         {
 
-            if (AIManager.Instance == null || AIManager.Instance.SpeechToTextService == null)
+            if (manager == null || AIManager.Instance == null || AIManager.Instance.SpeechToTextService == null)
             {
                 Console.WriteLine("No STT Service has been created. Creating one...");
                 manager = ModdingTools.CreateAIManagerObject<GenericChatServiceConfig, AzureSTTServiceConfig, GenericTTSServiceConfig>(sttKey: api_key);
@@ -64,8 +64,8 @@ namespace Wendigos
 
                             WendigosChatManager.SendPromptToChatService(
                                 Chat_System_Prompt + (player_name == "" ? "\n" : "\n" + player_name + ": ") + e.Result.Text,
-                                response => 
-                                { 
+                                response =>
+                                {
                                     Console.WriteLine("RESPONSE: " + response);
 
                                     var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;
@@ -83,7 +83,7 @@ namespace Wendigos
 
                                     // Overlap handled in this function
                                     ElevenLabs.StreamAudio(
-                                        response, 
+                                        response,
                                         closest_masked.GetComponent<AudioStreamer>()
                                     );
 
