@@ -36,17 +36,9 @@ namespace Wendigos
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.10")]
     public class Plugin : BaseUnityPlugin
     {
-        public class WendigosMessageHandler : NetworkBehaviour
+        public class WendigosNetworkManager : NetworkBehaviour
         {
-            public static string MessageName = "clipSender";
-            private static Dictionary<ulong, List<byte[]>> clipFragmentBuffers = new Dictionary<ulong, List<byte[]>>();
-            private static int numberOfFragments = 1;
-            public static bool isEveryoneReady = false;
-
-            public static List<ulong> ConnectedClientIDs;
-            public static WendigosMessageHandler Instance { get; private set; }
-
-            public NetworkList<FixedString128Bytes> clipNamesArr;
+            public static WendigosNetworkManager Instance { get; private set; }
 
             /// <summary>
             /// For most cases, you want to register once your NetworkBehaviour's
@@ -55,33 +47,6 @@ namespace Wendigos
             public override void OnNetworkSpawn()
             {
                 base.OnNetworkSpawn();
-                // Both the server-host and client(s) register the custom named message.
-                NetworkManager.CustomMessagingManager.RegisterNamedMessageHandler(MessageName, ReceiveMessage);
-
-                
-                ConnectedClientIDs = new List<ulong>() { 0 };
-
-                if (IsServer)
-                {
-                    // Server broadcasts to all clients when a new client connects 
-                    NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
-
-                    foreach (AudioClip clip in myClips)
-                    {
-                        clipNamesArr.Add((FixedString128Bytes)("0" + clip.name));
-                    }
-                }
-
-
-                if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
-                    audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
-
-                foreach (AudioClip clip in myClips)
-                {
-                    audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
-                }
-
-                ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, elevenlabs_voice_id.Value);
             }
 
             internal static void ClientConnectInitializer(Scene sceneName, LoadSceneMode sceneEnum)
@@ -89,7 +54,7 @@ namespace Wendigos
                 if (((Scene)(sceneName)).name == "SampleSceneRelay")
                 {
                     GameObject val = new GameObject("WendigosMessageHandler");
-                    val.AddComponent<WendigosMessageHandler>();
+                    val.AddComponent<WendigosNetworkManager>();
                     val.AddComponent<NetworkObject>();
 
                     PropertyInfo item = typeof(NetworkObject).GetProperty("NetworkObjectId", BindingFlags.Instance | BindingFlags.Public);
@@ -108,362 +73,15 @@ namespace Wendigos
             private void Awake()
             {
                 Instance = this;
-                clipNamesArr = new NetworkList<FixedString128Bytes>();
-            }
-
-            private void Update()
-            {
-                while (MainThreadInvoker._actions.TryDequeue(out var action))
-                {
-                    action();
-                }
-            }
-
-            private void OnClientConnectedCallback(ulong obj)
-            {
-                if (IsServer)
-                {
-                    //SendMessage(Guid.NewGuid());
-                    WriteToConsole("Server sending " + get_clips_count() + " clips");
-
-
-                    foreach (ulong connectedClient in NetworkManager.Singleton.ConnectedClientsIds)
-                    {
-                        if (connectedClient == obj) continue;
-
-                        // Send ALL clips the server has to new client
-                        try
-                        {
-                            List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[connectedClient]);
-
-                            var task = Task.Run(() => SendClipListAsync(clipsCopy, obj, true, originClient: connectedClient));
-
-                            if (elevenlabs_enabled.Value)
-                            {
-                                foreach (var key in clientVoiceIDLookup.Keys)
-                                {
-                                    ShareVoiceIDClientRpc(key, clientVoiceIDLookup[key]);
-                                }
-                            }
-                            //task.Wait();
-                        }
-                        catch { continue; }
-                    }
-                }
-                else
-                {
-                    List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[NetworkManager.Singleton.LocalClientId]);
-
-                    // Send client's clips
-                    var task = Task.Run(() => SendClipListAsync(clipsCopy, obj, false, true, NetworkManager.Singleton.LocalClientId));
-                    ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, elevenlabs_voice_id.Value);
-                    //task.Wait();
-                }
-
-
             }
 
             public override void OnNetworkDespawn()
             {
-                foreach (var clipList in audioClips.Values)
-                    clipList.Clear();
-                sent_localID = false;
-                ConnectedClientIDs.Clear();
-
                 if (IsServer)
                 {
                     sharedMaskedClientDict.Clear();
-                    serverReadyDict.Clear();
                 }
 
-            }
-
-            /// <summary>
-            /// Invoked when a custom message of type <see cref="MessageName"/>
-            /// </summary>
-            private void ReceiveMessage(ulong senderId, FastBufferReader messagePayload)
-            {
-                byte[] receivedMessageContent;
-                messagePayload.ReadValueSafe(out receivedMessageContent);
-
-                if (!clipFragmentBuffers.ContainsKey(senderId))
-                {
-                    clipFragmentBuffers.Add(senderId, new List<byte[]>());
-                }
-                clipFragmentBuffers[senderId].Add(receivedMessageContent);
-                if (clipFragmentBuffers[senderId].Count == numberOfFragments)
-                    Task.Factory.StartNew(() => CombineAudioFragments(senderId));
-
-
-            }
-
-            private async Task CombineAudioFragments(ulong senderId)
-            {
-                // Get size of original audioclip
-                int sizeOfFullMessage = 0;
-                foreach (var fragment in clipFragmentBuffers[senderId])
-                {
-                    sizeOfFullMessage += fragment.Length;
-                }
-                byte[] receivedMessageContent = new byte[sizeOfFullMessage];
-
-                // Block copy fragments into one big byte array
-                int totalOffset = 0;
-                foreach (var fragment in clipFragmentBuffers[senderId])
-                {
-                    Buffer.BlockCopy(fragment, 0, receivedMessageContent, totalOffset, fragment.Length);
-                    totalOffset += fragment.Length;
-                }
-
-                // clear buffer for next clip
-                clipFragmentBuffers[senderId].Clear();
-
-                // decompress audioclip
-                receivedMessageContent = Decompress(receivedMessageContent);
-                ulong realSenderId = 0;
-                byte firstChar = receivedMessageContent[7];
-                byte num = receivedMessageContent[6];
-
-                string clipN = "" + Convert.ToChar(firstChar) + num;
-
-                WriteToConsole("ClipN is " + clipN);
-
-                // convert first 8 bytes to ulong
-                for (int i = 0; i < 6; i++)
-                {
-                    realSenderId |= (ulong)receivedMessageContent[i] << (i * 8);
-                }
-                print("Sender ID is: " + senderId);
-                print("Real sender ID is: " + realSenderId);
-
-                // remove sender id header
-                byte[] receivedMessageContentNoHeader = new byte[receivedMessageContent.Length - 8];
-                Buffer.BlockCopy(receivedMessageContent, 8, receivedMessageContentNoHeader, 0, receivedMessageContentNoHeader.Length);
-
-                AudioClip recievedClip = LoadAudioClip(receivedMessageContentNoHeader, elevenlabs_enabled.Value ? 44100 : 24000);
-                recievedClip.name = clipN;
-                bool doWeHaveTheClip = false;
-
-                if (!audioClips.Keys.Contains(realSenderId))
-                    audioClips.Add(realSenderId, new List<AudioClip>());
-
-                if (IsServer)
-                {
-                    WriteToConsole($"Sever received ({receivedMessageContentNoHeader}) from client ({realSenderId})");
-                    foreach (AudioClip clip in audioClips[realSenderId])
-                    {
-                        if (clip.name == recievedClip.name || senderId == 0)
-                        {
-                            WriteToConsole(clip.name);
-                            WriteToConsole("We already have this clip!");
-                            doWeHaveTheClip = true;
-                            WriteToConsole("AudioClip count is now: " + get_clips_count());
-                        }
-                    }
-                    if (!doWeHaveTheClip)
-                    {
-                        audioClips[realSenderId].Add(recievedClip);
-
-                        // only update clips for server
-                        clipNamesArr.Add((FixedString128Bytes)("" + realSenderId + recievedClip.name));
-                        WriteToConsole("Added Clip.");
-                        WriteToConsole("AudioClip count is now: " + get_clips_count());
-                    }
-                }
-                else
-                {
-                    WriteToConsole($"Client received ({receivedMessageContentNoHeader}) from the server.");
-                    foreach (AudioClip clip in audioClips[realSenderId])
-                    {
-                        if (clip.name == recievedClip.name || realSenderId == NetworkManager.Singleton.LocalClientId)
-                        {
-                            WriteToConsole("We already have this clip!");
-                            doWeHaveTheClip = true;
-                            WriteToConsole("AudioClip count is now: " + get_clips_count());
-                        }
-                    }
-                    if (!doWeHaveTheClip)
-                    {
-                        audioClips[realSenderId].Add(recievedClip);
-                        WriteToConsole("Added Clip.");
-                        WriteToConsole("AudioClip count is now: " + get_clips_count());
-                    }
-                }
-            }
-
-            /// <summary>
-            /// Invoke this with a Guid by a client or server-host to send a
-            /// custom named message.
-            /// </summary>
-            private void SendMessage(byte[] audioClipFragment, ulong destClient = 0, bool specificClient = false)
-            {
-                var messageContent = audioClipFragment;
-                //WriteToConsole("Writing message...");
-                specificClient = false;
-
-                // Steam has max size of 512kb (C)
-                var writer = new FastBufferWriter(messageContent.Length, Unity.Collections.Allocator.Temp, 512000);
-                //WriteToConsole("Wrote Message");
-                var customMessagingManager = NetworkManager.Singleton.CustomMessagingManager;
-
-                using (writer)
-                {
-                    //WriteToConsole($"Writing {messageContent.Length} bytes of data...");
-                    // Issue is here
-                    writer.WriteValueSafe(messageContent);
-                    //WriteToConsole("Wrote data");
-
-                    if (specificClient)
-                    {
-                        customMessagingManager.SendNamedMessage(MessageName, destClient, writer, NetworkDelivery.ReliableFragmentedSequenced);
-                    }
-                    else
-                    {
-
-                        if (NetworkManager.Singleton.IsServer)
-                        {
-                            // This is a server-only method that will broadcast the named message.
-                            // Caution: Invoking this method on a client will throw an exception!
-                            //WriteToConsole("Sending Message...");
-                            customMessagingManager.SendNamedMessageToAll(MessageName, writer, NetworkDelivery.ReliableFragmentedSequenced);
-                            //WriteToConsole("Sent Message");
-                        }
-                        else
-                        {
-                            // This is a client or server method that sends a named message to one target destination
-                            // (client to server or server to client)
-                            //WriteToConsole("Sending Message...");
-                            customMessagingManager.SendNamedMessage(MessageName, NetworkManager.ServerClientId, writer, NetworkDelivery.ReliableFragmentedSequenced);
-                            //WriteToConsole("Sent Message");
-                        }
-                    }
-                }
-            }
-
-            public void SendFragmentedMessage(AudioClip audioClip, ulong destClient = 0, bool specificClient = false, ulong originClient = 0)
-            {
-                print("Compressing...");
-                var message = Compress(ConvertToByteArr(audioClip), originClient, audioClip.name);
-                //var message = audioClip;
-                WriteToConsole($"Sending message of length {message.Length}");
-                if (message.Length > Math.Ceiling(512000 * (float)numberOfFragments))
-                {
-                    throw new Exception("clip is too large to send! Try increasing the number of message fragments.");
-                }
-
-                int offset = (int)Math.Ceiling(message.Length / (float)numberOfFragments);
-                //WriteToConsole("Offset size is " + offset);
-                List<byte[]> fragments = new List<byte[]>();
-                for (int i = 0; i < numberOfFragments; i++)
-                {
-                    if (i != numberOfFragments - 1)
-                    {
-                        fragments.Add(new byte[offset]);
-                        Buffer.BlockCopy(message, offset * i, fragments[i], 0, offset);
-                    }
-                    else
-                    {
-                        fragments.Add(new byte[message.Length - (numberOfFragments - 1) * offset]);
-                        Buffer.BlockCopy(message, offset * i, fragments[i], 0, message.Length - (numberOfFragments - 1) * offset);
-                    }
-                }
-                foreach (var fragment in fragments)
-                {
-                    SendMessage(fragment, destClient, specificClient);
-                }
-            }
-
-            public async Task SendClipListAsync(List<AudioClip> clips, ulong destClient = 0, bool specificClient = false, bool shouldSync = false, ulong originClient = 0)
-            {
-                foreach (var clip in clips)
-                {
-                    WriteToConsole("Sending " + originClient + "'s clips");
-                    SendFragmentedMessage(clip, destClient, specificClient, originClient);
-
-                    // Wait so steam doesnt lump all messages together and yell at me
-                    await Task.Delay(300);
-                }
-                if (IsServer && specificClient)
-                {
-                    ClientRpcParams clientRpcParams = new ClientRpcParams
-                    {
-                        Send = new ClientRpcSendParams
-                        {
-                            TargetClientIds = new ulong[] { destClient }
-                        }
-                    };
-
-                    // Send connected client's clips to server
-                    SendServerMyClipsClientRpc(clientRpcParams);
-                }
-                else if (!IsServer && shouldSync)
-                {
-                    var clips_count = get_clips_count();
-                    WriteToConsole("Sent " + clips_count + " Clips");
-
-                    // Send all new clips to everyone
-                    BroadcastAllNewClipsServerRpc(originClient);
-                }
-            }
-
-            [ServerRpc(RequireOwnership = false)]
-            public void UpdateClientListServerRpc(ulong newClient)
-            {
-                UpdateClientListClientRpc(newClient);
-            }
-
-            [ClientRpc]
-            public void UpdateClientListClientRpc(ulong newClient)
-            {
-                if (!ConnectedClientIDs.Contains(newClient))
-                    ConnectedClientIDs.Add(newClient);
-                WriteToConsole("New ClientID list is: [" + string.Join(",", ConnectedClientIDs.Select(x => x.ToString()).ToArray()) + "]");
-            }
-
-            // ISSUE HERE
-            [ServerRpc(RequireOwnership = false)]
-            public void BroadcastAllNewClipsServerRpc(ulong senderID)
-            {
-                if (!audioClips.Keys.Contains(senderID))
-                {
-                    WriteToConsole("Client " + senderID + " has not synced yet. Requesting sync...");
-                    ClientRpcParams clientRpcParams = new ClientRpcParams
-                    {
-                        Send = new ClientRpcSendParams
-                        {
-                            TargetClientIds = new ulong[] { senderID }
-                        }
-                    };
-                    SendServerMyClipsClientRpc(clientRpcParams);
-                }
-                else
-                {
-
-                    WriteToConsole("Broadcasting " + senderID + "'s clips - " + audioClips[senderID].Count);
-                    List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[senderID]);
-                    // Send new clips to everyone
-                    var task = Task.Run(() => SendClipListAsync(clipsCopy, originClient: senderID));
-                    //task.Wait();
-                    ClientRpcParams clientRpcParams = new ClientRpcParams
-                    {
-                        Send = new ClientRpcSendParams
-                        {
-                            TargetClientIds = new ulong[] { senderID }
-                        }
-                    };
-                    //var task2 = waitForMSeconds(200);
-                    //task2.Wait();
-                    ValidateClipsClientRpc(clientRpcParams);
-                }
-            }
-
-            [ClientRpc]
-            public void SendServerMyClipsClientRpc(ClientRpcParams p = default)
-            {
-                // Send server client's clips and tell it to sync them with everyone
-                var task = Task.Run(() => SendClipListAsync(myClips, shouldSync:mod_enabled.Value, originClient:NetworkManager.Singleton.LocalClientId));
-                //task.Wait();
-                
             }
 
             [ClientRpc]
@@ -476,131 +94,6 @@ namespace Wendigos
                 catch (Exception ex)
                 {
                     WriteToConsole(ex.Message);
-                }
-            }
-
-            public async Task waitForMSeconds(int Mseconds)
-            {
-                await Task.Delay(Mseconds);
-            }
-
-            public async Task askServerResendList(List<(ulong COrID, FixedString128Bytes cname)> clipTuples)
-            {
-                foreach (var tup in clipTuples)
-                {
-                    AskServerResendClipServerRpc(tup.COrID, tup.cname, NetworkManager.Singleton.LocalClientId);
-                    await Task.Delay(200);
-                }
-
-            }
-
-            [ClientRpc]
-            public void ValidateClipsClientRpc(ClientRpcParams param = default)
-            {
-                // pass 1 - validate server got all of our clips
-                try
-                {
-                    List<FixedString128Bytes> allClipNames = new List<FixedString128Bytes>();
-                    List<AudioClip> missingClips = new List<AudioClip>();
-                    foreach (var originId in audioClips.Keys)
-                    {
-                        bool resend = false;
-                        foreach (var clip in audioClips[originId])
-                        {
-                            allClipNames.Add((FixedString128Bytes)("" + originId + clip.name));
-                            if (clipNamesArr.Contains((FixedString128Bytes)("" + originId + clip.name)))
-                                continue;
-
-                            // send server missing clip
-                            WriteToConsole("Client resending " + originId + clip.name);
-                            missingClips.Add(clip);
-                            //SendClipListAsync(new List<AudioClip>() { clip }, 0, false, originClient: originId);
-                            //SendFragmentedMessage(clip, 0, false, originId);
-                            //var task = waitForMSeconds(200);
-                            //task.Wait();
-                            resend = true;
-                        }
-                        if (resend)
-                        {
-                            Task.Run(() => SendClipListAsync(missingClips, 0, false, true, originId));
-                        }
-                    }
-
-                    List<(ulong COrID, FixedString128Bytes cname)> clipTuples = new List<(ulong COrID, FixedString128Bytes cname)>();
-                    // pass 2 - validate we got all clips from server
-                    foreach (var clipName in clipNamesArr)
-                    {
-                        if (!allClipNames.Contains(clipName))
-                        {
-                            ulong clipOrigID = 0;
-                            foreach (var c in clipName.ToString())
-                            {
-                                if (c >= 'a' && c <= 'z')
-                                    break;
-                                clipOrigID *= 10;
-                                clipOrigID += (ulong)(c - '0');
-                            }
-                            clipTuples.Add((clipOrigID, (FixedString128Bytes)(clipName.ToString().Substring(1))));
-                            //AskServerResendClipServerRpc(clipOrigID, (FixedString128Bytes)(clipName.ToString().Substring(1)), NetworkManager.Singleton.LocalClientId);
-                            //var task = waitForMSeconds(200);
-                            //task.Wait();
-                        }
-                    }
-                    askServerResendList(clipTuples);
-                }
-                catch
-                {
-                    WriteToConsole("SYNC ERROR");
-                }
-            }
-
-            [ServerRpc(RequireOwnership = false)]
-            public void AskServerResendClipServerRpc(ulong originClipId, FixedString128Bytes name, ulong senderID)
-            {
-                WriteToConsole("Resending...");
-                List<AudioClip> missingClips = new List<AudioClip>();   
-                foreach (var clip in audioClips[originClipId])
-                {
-                    if (clip.name == name)
-                    {
-                        WriteToConsole("Server Resending " + originClipId + clip.name);
-                        missingClips.Add(clip);
-                        
-                        //SendFragmentedMessage(clip, senderID, false, originClipId);
-                        //var task = waitForMSeconds(200);
-                        //task.Wait();
-                    }
-                }
-                if (missingClips.Count > 0)
-                {
-                    Task.Run(() => SendClipListAsync(missingClips, senderID, false, originClient: originClipId));
-                }
-            }
-
-            [ServerRpc(RequireOwnership = false)]
-            public void TellServerReadyToSendServerRpc(string maskedID, bool ready, ServerRpcParams serverRpcParams = default)
-            {
-                WriteToConsole("Server got ready signal");
-                var clientId = serverRpcParams.Receive.SenderClientId;
-                WriteToConsole("Recieved " + ready + " from " + clientId);
-
-                try
-                {
-                    if (!serverReadyDict[maskedID].ContainsKey(clientId))
-                    {
-                        serverReadyDict[maskedID].Add(clientId, ready);
-                    }
-                    else
-                    {
-                        serverReadyDict[maskedID][clientId] = ready;
-                    }
-                }
-                catch (Exception e)
-                {
-                    WriteToConsole("ERROR HERE");
-                    WriteToConsole(e.Message);
-                    foreach (var id in serverReadyDict.Keys)
-                        WriteToConsole("" + id);
                 }
             }
 
@@ -619,75 +112,6 @@ namespace Wendigos
             }
 
             [ClientRpc]
-            public void SortAudioClipsClientRpc()
-            {
-                // Cant be async with latecompany
-                sort_audioclips();
-            }
-
-            [ServerRpc(RequireOwnership = false)]
-            public void TryPlayAudioServerRpc(ulong MimickingID, string maskedID, char lineType = ' ', uint talkProbability = 10)
-            {
-                bool ready = true;
-                foreach (bool clientReady in serverReadyDict[maskedID].Values)
-                {
-                    ready = clientReady & ready;
-                }
-
-                if (ready || lineType == 'd')
-                {
-                    if (serverRand.Next() % 100 + talkProbability >= 100 || lineType == 'd')
-                    {
-                        WriteToConsole("Trying to play audio");
-                        int indexToPlay = 0;
-                        int indexOffset = -1;
-                        List < AudioClip > clipList = new List<AudioClip>();
-                        if (lineType != ' ')
-                        {
-                            for (int i = 0; i < audioClips[MimickingID].Count; i++)
-                            {
-                                if (audioClips[MimickingID][i].name[0] == lineType)
-                                {
-                                    clipList.Add(audioClips[MimickingID][i]);
-                                    if (indexOffset == -1)
-                                        indexOffset = i;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            clipList = audioClips[MimickingID];
-                        }
-
-                        if (indexOffset == -1)
-                            indexOffset = 0;
-                        if (clipList.Count > 0)
-                        {
-                            indexToPlay = (serverRand.Next() % clipList.Count) + indexOffset;
-                            PlayAudioClientRpc(MimickingID, indexToPlay, maskedID);
-                        }
-                    }
-                }
-            }
-
-            [ClientRpc]
-            public void PlayAudioClientRpc(ulong MimickingID, int indexToPlay, string maskedID)
-            {
-                WriteToConsole($"Masked {maskedID} playing {MimickingID}[{indexToPlay}] - {audioClips[MimickingID][indexToPlay].name}");
-                TryToPlayAudio(audioClips[MimickingID][indexToPlay], maskedID);
-            }
-
-            [ServerRpc(RequireOwnership = false)]
-            public void ShareVoiceIDServerRpc(ulong clientID, string VoiceID)
-            {
-                if (!clientVoiceIDLookup.ContainsKey(clientID))
-                {
-                    clientVoiceIDLookup.Add(clientID, VoiceID);
-                    WriteToConsole("Server adding " + clientID + " " + VoiceID);
-                }
-            }
-
-            [ClientRpc]
             public void ShareVoiceIDClientRpc(ulong clientID, string VoiceID)
             {
                 if (!clientVoiceIDLookup.ContainsKey(clientID))
@@ -695,18 +119,6 @@ namespace Wendigos
                     clientVoiceIDLookup.Add(clientID, VoiceID);
                     WriteToConsole("Client adding " + clientID + " " + VoiceID);
                 }
-            }
-
-            [ServerRpc(RequireOwnership = false)]
-            public void PlaySpecificAudioClipServerRpc(string name, string MaskedID)
-            {
-                PlaySpecificAudioClipClientRpc(name, MaskedID);
-            }
-
-            [ClientRpc]
-            public void PlaySpecificAudioClipClientRpc(string name, string MaskedID)
-            {
-                Task.Factory.StartNew(() => TryPlayClip(name, MaskedID));
             }
 
             [ClientRpc]
@@ -749,38 +161,6 @@ namespace Wendigos
                 queue.Enqueue(mp3Data);
             }
 
-            private async Task TryPlayClip(string name, string MaskedID)
-            {
-                int checks = 0;
-                while (checks < 10)
-                {
-                    foreach (var user in audioClips.Keys)
-                    {
-                        foreach (var item in audioClips[user])
-                        {
-                            if (item.name == name)
-                            {
-                                try
-                                {
-                                    if (!maskedInstanceLookup[MaskedID].creatureVoice.isPlaying)
-                                    {
-                                        maskedInstanceLookup[MaskedID].creatureVoice.minDistance = 2;
-                                        maskedInstanceLookup[MaskedID].creatureVoice.PlayOneShot(item);
-                                    }
-                                    return;
-                                }
-                                catch
-                                {
-                                    WriteToConsole("Masked not found");
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    await Task.Delay(50);
-                }
-                WriteToConsole("COULD NOT FIND CLIP");
-            }
         }
 
         public class WendigosLog
@@ -815,19 +195,6 @@ namespace Wendigos
             }
         }
 
-        public class MainThreadInvoker
-        {
-            public static readonly ConcurrentQueue<Action> _actions = new ConcurrentQueue<Action>();
-
-            public static void Enqueue(Action action)
-            {
-                if (action == null)
-                    throw new ArgumentNullException(nameof(action));
-
-                _actions.Enqueue(action);
-            }
-        }
-
         public static string[] LanguagesList = { 
                 "en", "es", "fr", "de", "it", "pt", 
                 "pl", "tr", "ru", "nl", "cs", "ar",
@@ -855,13 +222,14 @@ namespace Wendigos
 
         }
 
-        static void sort_audioclips()
+        public readonly struct LineType
         {
-            foreach (var clipList in audioClips.Values)
-            {
-                clipList.Sort((c1, c2) => c1.name.CompareTo(c2.name));
-            }
-            WriteToConsole("sorted");
+            public static readonly string Idle = "idle";
+            public static readonly string Nearby = "Nearby";
+            public static readonly string Chasing = "Chasing";
+            public static readonly string Damaged = "Damaged";
+
+            public LineType() { }
         }
 
 
@@ -886,21 +254,6 @@ namespace Wendigos
                     return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
                 }
             }
-        }
-
-        public static void SendClipForMe(AudioClip clip, string maskedID = "")
-        {
-            MainThreadInvoker.Enqueue(() =>
-            {
-                // Your code that needs to run on the main thread
-                audioClips[NetworkManager.Singleton.LocalClientId].Add(clip);
-
-                WendigosMessageHandler.Instance.SendFragmentedMessage(clip, 0, false, NetworkManager.Singleton.LocalClientId);
-
-                WendigosMessageHandler.Instance.PlaySpecificAudioClipServerRpc(clip.name, maskedID);
-
-            });
-            
         }
 
         static string MAIN_HASH_VALUE = "20ca39002a389704d5499df0f522848ec21fe724f8d13de830d596f28df69a7ae860aa4bb58e0b7ddbefcdf3e96b902fc2f98fca37777a4bf08de15af231f36e";
@@ -1259,12 +612,13 @@ namespace Wendigos
         private static ConfigEntry<bool> optimize_for_speed;
         private static ConfigEntry<bool> enable_realtime_responses;
         private static ConfigEntry<string> player_name;
+
         static System.Random serverRand = new System.Random();
-        private static Dictionary<string, Dictionary<ulong, bool>> serverReadyDict = new Dictionary<string, Dictionary<ulong, bool>>();
+
         public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
         public static Dictionary<ulong, string> clientVoiceIDLookup = new Dictionary<ulong, string>();
 
-        Harmony harmonyInstance = new Harmony("my-instance");
+        Harmony harmonyInstance = new Harmony("wendigos-instance");
 
         private static string config_path;
         public static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -1277,8 +631,7 @@ namespace Wendigos
 
         static AudioClip mic_audio_clip;
 
-        static List<AudioClip> myClips = new List<AudioClip>();
-        public static Dictionary<ulong, List<AudioClip>> audioClips = new Dictionary<ulong, List<AudioClip>>() { { 0, new List<AudioClip>() } };
+        static Dictionary<string, List<AudioClip>> myClips = new Dictionary<string, List<AudioClip>>();
 
 
         private void Awake()
@@ -1418,7 +771,7 @@ namespace Wendigos
             
 
             // Allow players to hear voices even if mod is disabled
-            SceneManager.sceneLoaded += WendigosMessageHandler.ClientConnectInitializer;
+            SceneManager.sceneLoaded += WendigosNetworkManager.ClientConnectInitializer;
 
             if (!mod_enabled.Value)
             {
@@ -1518,15 +871,9 @@ namespace Wendigos
         {
             static void Prefix(int playerObjectNumber, ulong clientId)
             {
-                WriteToConsole($"Clearing {clientId}'s audio clips");
-                WriteToConsole($"Removed {audioClips[clientId].Count} Clips");
-                audioClips[clientId].Clear();
-                WriteToConsole("AudioClip count is now " + get_clips_count());
 
-                if (WendigosMessageHandler.Instance.IsServer)
+                if (WendigosNetworkManager.Instance.IsServer)
                 {
-                    WendigosMessageHandler.ConnectedClientIDs.Remove(clientId);
-
                     var sharedMaskedClientDictCopy = new Dictionary<string, ulong>(sharedMaskedClientDict);
 
                     foreach (var maskedID in sharedMaskedClientDictCopy.Keys)
@@ -1534,25 +881,7 @@ namespace Wendigos
                         if (sharedMaskedClientDict[maskedID] == clientId)
                             sharedMaskedClientDict.Remove(maskedID);
                     }
-
-                    // When player leaves, they are always ready
-                    foreach (var maskedID in serverReadyDict.Keys)
-                    {
-                        serverReadyDict[maskedID][clientId] = true;
-                    }
                 }
-            }
-        }
-
-
-        [HarmonyPatch(typeof(StartOfRound), "OnLocalDisconnect")]
-        class DisconnectPatch
-        {
-            static void Postfix()
-            {
-                foreach (var clipList in audioClips.Values)
-                    clipList.Clear();
-                sent_localID = false;
             }
         }
 
@@ -1600,99 +929,6 @@ namespace Wendigos
             return null;
         }
 
-        static AudioClip LoadMP3File(string audioFilePath)
-        {
-            if (File.Exists(audioFilePath))
-            {
-                using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.MPEG))
-                {
-                    request.SendWebRequest();
-
-                    while (request.result == UnityWebRequest.Result.InProgress)
-                        continue;
-                    if (request.result != UnityWebRequest.Result.Success)
-                    {
-                        WriteToConsole("www.error " + request.error);
-                        WriteToConsole(" www.uri " + request.uri);
-                        WriteToConsole(" www.url " + request.url);
-                        WriteToConsole(" www.result " + request.result);
-                        return null;
-                    }
-                    else
-                    {
-                        AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
-                        return myClip;
-                    }
-                }
-            }
-            WriteToConsole("AUDIO FILE NOT FOUND");
-            return null;
-        }
-
-        static void TryToPlayAudio(AudioClip clip, string maskedID)
-        {
-            try
-            {
-                WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, false);
-                var __instance = maskedInstanceLookup[maskedID];
-                if (clip && !__instance.creatureVoice.isPlaying)
-                {
-                    __instance.creatureVoice.PlayOneShot(clip);
-                    waitThenSayReady(__instance, maskedID);
-                }
-                else if (clip && clip.name[0] == 'd')
-                {
-                    __instance.creatureVoice.Stop();
-                    __instance.creatureVoice.PlayOneShot(clip);
-                    waitThenSayReady(__instance, maskedID);
-                }
-            }
-            catch (Exception e)
-            {
-                WriteToConsole("Playing audio failed: " + e.Message + ": " + e.Source);
-            }
-        }
-
-        static async void waitThenSayReady(MaskedPlayerEnemy __instance, string maskedID)
-        {
-            try
-            {
-                WriteToConsole("WAITING");
-                while (__instance.creatureVoice.isPlaying)
-                    await Task.Delay(10);
-
-                WriteToConsole("SAYING READY");
-                WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, true);
-                return;
-            }
-            catch
-            {
-                WendigosMessageHandler.Instance.TellServerReadyToSendServerRpc(maskedID, true);
-                return;
-            }
-
-        }
-
-        static string GetPathOfWav(string type, int lineNum = -1)
-        {
-            if (lineNum < 0)
-            {
-                System.Random random = new System.Random();
-                lineNum = random.Next(CountFilesInDir(GetPathOfType(type)));
-            }
-            return assembly_path + "\\audio_output" + $"\\player0\\{type}\\{type}0_line" + lineNum + ".wav";
-        }
-
-        static string GetPathOfType(string type)
-        {
-            return assembly_path + "\\audio_output" + $"\\player0\\{type}";
-        }
-
-        static int CountFilesInDir(string path)
-        {
-            return Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly).Length;
-        }
-
         public static MaskedPlayerEnemy GetClosestMasked()
         {
             var allPlayers = FindObjectsOfType<PlayerControllerB>();
@@ -1728,6 +964,39 @@ namespace Wendigos
             return null;
         }
 
+
+        public static void PlayLocalAudioClipAndQueue(MaskedPlayerEnemy __instance, string type)
+        {
+            if (serverRand.Next(100) >= (100 - talk_probability.Value))
+            {
+                var clips = myClips[type];
+                if (clips.Count > 0)
+                {
+                    var clip = clips[serverRand.Next(clips.Count)];
+                    var audioData = new float[clip.samples * clip.channels];
+                    WriteToConsole("Playing clip type: " + type);
+                    if (clip.GetData(audioData, 0))
+                    {
+                        int totalSamples = audioData.Length;
+                        int totalChunks = Mathf.CeilToInt((float)totalSamples / 1024);
+
+                        for (int i = 0; i < totalChunks; i++)
+                        {
+                            int start = i * 1024;
+                            int length = Mathf.Min(1024, totalSamples - start);
+
+                            // Create the chunk array
+                            float[] chunk = new float[length];
+                            System.Array.Copy(audioData, start, chunk, 0, length);
+
+                            StreamingMp3Decoder
+                            WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, __instance.GetComponent<MaskedEnemyIdentifier>().id);
+                        }
+                    }
+                }
+            }
+        }
+
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
         class MaskedPlayerEnemyAIPatch
         {
@@ -1738,9 +1007,6 @@ namespace Wendigos
                     __instance.agent.speed = 0f;
                     return;
                 }
-
-                string[] types = ["idle", "nearby", "chasing"];
-                string type = types[serverRand.Next(types.Length)];
 
                 string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
                 ulong MimickingClientID = 0;
@@ -1754,19 +1020,27 @@ namespace Wendigos
                     MimickingClientID = sharedMaskedClientDict[thisMaskedID];
                 }
 
+                // Handle audio only on local client
+                if (MimickingClientID != NetworkManager.Singleton.LocalClientId)
+                    return;
+
 
                 switch (__instance.currentBehaviourStateIndex)
                 {
                     case 0:
+                        // Chasing
                         if (__instance.CheckLineOfSightForClosestPlayer() != null)
                         {
                             // Play clip when can see player
                             if (!enable_realtime_responses.Value)
-                                WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'c', talk_probability.Value);
+                            {
+                                PlayLocalAudioClipAndQueue(__instance, LineType.Chasing);
+                            }
                         }
+                        // Nearby
                         else
                         {
-                            WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'n', talk_probability.Value);
+                            PlayLocalAudioClipAndQueue(__instance, LineType.Nearby);
                         }
 
                         break;
@@ -1809,7 +1083,7 @@ namespace Wendigos
 
                 // Play clip when setting hands out
                 if (!enable_realtime_responses.Value)
-                    WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'c', talk_probability.Value);
+                    PlayLocalAudioClipAndQueue(__instance, LineType.Chasing);
 
             }
 
@@ -1827,7 +1101,7 @@ namespace Wendigos
 
                     // Speak when damaged
                     if (__instance.enemyHP > 0)
-                        WendigosMessageHandler.Instance.TryPlayAudioServerRpc(MimickingClientID, thisMaskedID, 'd', 100);
+                        PlayLocalAudioClipAndQueue(__instance, LineType.Damaged);
                 }
                 catch
                 {
@@ -1869,14 +1143,14 @@ namespace Wendigos
                 WriteToConsole("Spawned Masked. ID: " + ID);
 
                 AudioStreamer streamer = __instance.gameObject.AddComponent<AudioStreamer>();
-                streamer.OnAudioSamplePlayed += (obj, data) => WendigosMessageHandler.Instance.ShareAudioDataServerRpc(data, ID);
+                streamer.OnAudioSamplePlayed += (obj, data) => WendigosNetworkManager.Instance.ShareAudioDataServerRpc(data, ID);
 
-                if (WendigosMessageHandler.Instance.IsServer)
+                if (WendigosNetworkManager.Instance.IsServer)
                 {
                     List<ulong> unassignedClientIDs = new List<ulong>();
-                    WriteToConsole(WendigosMessageHandler.ConnectedClientIDs.ToString());
+                    WriteToConsole("Number of connected clients: " + NetworkManager.Singleton.ConnectedClientsIds.Count);
 
-                    foreach (var clientID in WendigosMessageHandler.ConnectedClientIDs)
+                    foreach (var clientID in NetworkManager.Singleton.ConnectedClientsIds)
                     {
                         if (!sharedMaskedClientDict.Values.Contains(clientID))
                             unassignedClientIDs.Add(clientID);
@@ -1889,28 +1163,17 @@ namespace Wendigos
 
                     ulong randomClientID = unassignedClientIDs[serverRand.Next() % unassignedClientIDs.Count];
 
-                    WendigosMessageHandler.Instance.AddToMaskedClientDictServerRpc(
+                    WendigosNetworkManager.Instance.AddToMaskedClientDictServerRpc(
                                 __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
                                 randomClientID
                             );
-
-                    // clientID add and check is done in network manager
-                    var result = serverReadyDict.TryAdd(
-                            __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id,
-                            new Dictionary<ulong, bool>()
-                        );
-
-                    if (!result)
-                        WriteToConsole("Failed to add masked");
-
-                    WriteToConsole("added masked to per_masked_ready_dict");
 
                     var players = StartOfRound.Instance.allPlayerScripts;
                     foreach (var player in players)
                     {
                         if (player.actualClientId == randomClientID)
                         {
-                            WendigosMessageHandler.Instance.SetMaskedSuitClientRpc(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id, player.currentSuitID);
+                            WendigosNetworkManager.Instance.SetMaskedSuitClientRpc(__instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id, player.currentSuitID);
                             break;
                         }
                     }
@@ -1918,11 +1181,6 @@ namespace Wendigos
 
                 WriteToConsole("Finished Spawning Masked");
             }
-        }
-
-        public static bool isLowercaseLetter(char c)
-        {
-            return (97 <= c && c <= 122);
         }
 
         [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.LoadNewLevel))]
@@ -1934,15 +1192,11 @@ namespace Wendigos
                 WriteToConsole("Created GUI Manager");
                 WriteToConsole("Chat Manager Object is: " + WendigosChatManager.chatManagerComponent);
                 WriteToConsole("Clearing chared masked dict");
-                serverReadyDict.Clear();
                 sharedMaskedClientDict.Clear();
 
-                WriteToConsole("Sorting Audioclips");
-                sort_audioclips();
                 if (NetworkManager.Singleton.IsServer)
                 {
-                    WendigosMessageHandler.Instance.SortAudioClipsClientRpc();
-                    WendigosMessageHandler.Instance.InitAzureClientRpc();
+                    WendigosNetworkManager.Instance.InitAzureClientRpc();
                 }
 
 
@@ -1965,41 +1219,8 @@ namespace Wendigos
                     {
                         WriteToConsole($"CLIENT IDS: {key} {clientVoiceIDLookup[key]}");
                     }
-
-
-                    // Garbage collection for elevenlabs clips
-                    foreach (var playerID in audioClips.Keys)
-                    {
-                        List<AudioClip> clipsCopy = new List<AudioClip>(audioClips[playerID]);
-                        foreach (var clip in clipsCopy)
-                        {
-                            if (!isLowercaseLetter(clip.name[0]))
-                            {
-                                audioClips[playerID].Remove(clip);
-                            }
-                        }
-                    }
-
                     
                 }
-
-                /*
-                if (DissonanceManager.Instance == null)
-                {
-                    try
-                    {
-                        liveClient = DeepgramManager.Main();
-                        new DissonanceManager();
-                        WriteToConsole("Created Dissonance Manager");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("TypeLoadException: " + ex.Message);
-                        //Console.WriteLine("Type: " + ex.TypeName);
-                        Console.WriteLine("Stack Trace: " + ex.StackTrace);
-                    }
-                }
-                */
             }
         }
 
@@ -2108,41 +1329,51 @@ namespace Wendigos
 
             // Generate audio clips
             byte count = 0;
+            myClips.Add(LineType.Idle, new List<AudioClip>());
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
             {
                 AudioClip clip = LoadAudioFile(line);
                 clip.name = "i" + count;
-                myClips.Add(clip);
+                myClips[LineType.Idle].Add(clip);
                 count++;
             }
 
             count = 0;
+            myClips.Add(LineType.Nearby, new List<AudioClip>());
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
             {
                 AudioClip clip = LoadAudioFile(line);
                 clip.name = "n" + count;
-                myClips.Add(clip);
+                myClips[LineType.Nearby].Add(clip);
                 count++;
             }
 
             count = 0;
+            myClips.Add(LineType.Chasing, new List<AudioClip>());
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
             {
                 AudioClip clip = LoadAudioFile(line);
                 clip.name = "c" + count;
-                myClips.Add(clip);
+                myClips[LineType.Chasing].Add(clip);
                 count++;
             }
 
             count = 0;
+            myClips.Add(LineType.Damaged, new List<AudioClip>());
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\damaged"))
             {
                 AudioClip clip = LoadAudioFile(line);
                 clip.name = "d" + count;
-                myClips.Add(clip);
+                myClips[LineType.Damaged].Add(clip);
                 count++;
             }
-            WriteToConsole("Generated Player Clips. Count: " + myClips.Count);
+
+            WriteToConsole("Generated Player Clips");
+            foreach (var key in myClips.Keys)
+            {
+                WriteToConsole(key + " count: " +  myClips[key].Count);
+            }
+            
         }
 
         [HarmonyPatch(typeof(MenuManager), "Start")]
@@ -2272,79 +1503,12 @@ namespace Wendigos
             }
         }
 
-        public static byte[] Compress(byte[] data, ulong realID, string name = "b0")
-        {
-            ulong firstChar = Convert.ToUInt64(name[0]);
-            ulong num = Convert.ToUInt64(name.Substring(1));
-
-            realID |= firstChar << 7 * 8;
-            realID |= num << 6 * 8;
-
-            MemoryStream output = new MemoryStream();
-            using (DeflateStream dstream = new DeflateStream(output, System.IO.Compression.CompressionLevel.Optimal))
-            {
-                dstream.Write(BitConverter.GetBytes(realID), 0, 8);
-                dstream.Write(data, 0, data.Length);
-            }
-            return output.ToArray();
-        }
-
-        public static byte[] Decompress(byte[] data)
-        {
-            MemoryStream input = new MemoryStream(data);
-            MemoryStream output = new MemoryStream();
-            using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
-            {
-                dstream.CopyTo(output);
-            }
-            return output.ToArray();
-        }
-        static bool sent_localID = false;
-
-        public static int get_clips_count()
-        {
-            int clips_count = 0;
-            string outputString = "";
-            foreach (var audioListKey in audioClips.Keys)
-            {
-                clips_count += audioClips[audioListKey].Count;
-                outputString += "{";
-                foreach (var clip in audioClips[audioListKey])
-                {
-                    outputString += audioListKey + ":" + clip.name + ", ";
-                }
-                outputString += "} -- ";
-            }
-            print(outputString);
-            return clips_count;
-        }
-
         [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.ShowNameBillboard))]
         class HidePlayerNamePatch
         {
             static void Postfix(PlayerControllerB __instance)
             {
                 __instance.usernameAlpha.alpha = 0f;
-            }
-        }
-
-        [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
-        class PlayerConnectPatch
-        {
-            static void Postfix()
-            {
-                if (!sent_localID)
-                {
-
-                    WendigosMessageHandler.Instance.UpdateClientListServerRpc(NetworkManager.Singleton.LocalClientId);
-
-                    if (!audioClips.Keys.Contains(NetworkManager.Singleton.LocalClientId))
-                        audioClips.Add(NetworkManager.Singleton.LocalClientId, new List<AudioClip>());
-
-                    //WriteToConsole("Clips count: " + SoundTool.networkedClips.Count);
-                    sent_localID = true;
-                }
-
             }
         }
 
