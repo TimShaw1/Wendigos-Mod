@@ -973,25 +973,19 @@ namespace Wendigos
                 if (clips.Count > 0)
                 {
                     var clip = clips[serverRand.Next(clips.Count)];
-                    var audioData = new float[clip.samples * clip.channels];
                     WriteToConsole("Playing clip type: " + type);
-                    if (clip.GetData(audioData, 0))
+                    StreamingAudioDecoder decoder = new StreamingAudioDecoder();
+                    decoder.Feed(clip);
+
+                    List<float> accumulator = new List<float>();
+
+                    // Loop until the decoder runs out of data
+                    while (decoder.TryGetSample(out float sample))
                     {
-                        int totalSamples = audioData.Length;
-                        int totalChunks = Mathf.CeilToInt((float)totalSamples / 1024);
-
-                        for (int i = 0; i < totalChunks; i++)
-                        {
-                            int start = i * 1024;
-                            int length = Mathf.Min(1024, totalSamples - start);
-
-                            // Create the chunk array
-                            float[] chunk = new float[length];
-                            System.Array.Copy(audioData, start, chunk, 0, length);
-
-                            WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, __instance.GetComponent<MaskedEnemyIdentifier>().id);
-                        }
+                        accumulator.Add(sample);
                     }
+
+                    WendigosNetworkManager.Instance.ShareAudioDataServerRpc(accumulator.ToArray(), __instance.GetComponent<MaskedEnemyIdentifier>().id);
                 }
             }
         }
