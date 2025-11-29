@@ -130,8 +130,12 @@ namespace Wendigos
 
         }
 
-        public static void StreamAudio(string prompt, AudioStreamer audioStreamer)
+        public static void StreamAudio(string prompt, string voiceID, AudioStreamer audioStreamer)
         {
+            //var modifiedConfig = (ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig);
+            //modifiedConfig.voiceId = voiceID;
+            //ttsManagerComponent.textToSpeechConfig = modifiedConfig;
+
             ttsManagerComponent.RequestAudioAndStream(prompt, audioStreamer);
         }
 

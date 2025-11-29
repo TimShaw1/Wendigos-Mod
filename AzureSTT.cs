@@ -89,15 +89,10 @@ namespace Wendigos
                 {
                     Console.WriteLine("RESPONSE: " + response);
 
-                    ElevenLabs.StreamAudio(
-                        response,
-                        closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().child.GetComponent<AudioStreamer>()
-                    );
-
                     string voice_id;
                     var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;
                     try
-                    {                    
+                    {
                         var client = Plugin.sharedMaskedClientDict[masked_id];
                         voice_id = Plugin.clientVoiceIDLookup[client];
                     }
@@ -105,6 +100,14 @@ namespace Wendigos
                     {
                         voice_id = ElevenLabs.VOICE_ID;
                     }
+
+                    ElevenLabs.StreamAudio(
+                        response,
+                        voice_id,
+                        closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().child.GetComponent<AudioStreamer>()
+                    );
+
+                    
 
 
                     // Overlap handled in this function
