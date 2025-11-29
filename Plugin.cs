@@ -2,38 +2,33 @@
 using BepInEx.Configuration;
 using GameNetcodeStuff;
 using HarmonyLib;
+using Newtonsoft.Json;
 using System;
+using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
+using TimShaw.VoiceBox.Components;
+using TimShaw.VoiceBox.Core;
+using TimShaw.VoiceBox.GUI;
+using Unity.Collections;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Networking;
-using Unity.Netcode;
 using UnityEngine.SceneManagement;
-using System.IO.Compression;
-using System.Buffers;
-using Unity.Collections;
-using Newtonsoft.Json;
-using UnityEngine.XR;
-using System.Net;
-using System.Security.Cryptography;
-using UnityEditor;
-using System.Collections.Concurrent;
-using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
-using NAudio.Wave;
-using TimShaw.VoiceBox.Core;
-using TimShaw.VoiceBox.Components;
-using TimShaw.VoiceBox.GUI;
 
 // StartOfRound requires adding the game's Assembly-CSharp to dependencies
 
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.10")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.11")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosNetworkManager : NetworkBehaviour
@@ -136,7 +131,7 @@ namespace Wendigos
             }
 
             [ServerRpc(RequireOwnership = false)]
-            public void ShareAudioDataServerRpc(float[] mp3Data, string MaskedID, ServerRpcParams serverRpcParams = default)
+            public void ShareAudioDataServerRpc(float[] audioData, string MaskedID, ServerRpcParams serverRpcParams = default)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
 
@@ -148,17 +143,44 @@ namespace Wendigos
                     }
                 };
 
-                PlayAudioDataClientRpc(mp3Data, MaskedID, clientRpcParams);
+                PlayAudioDataClientRpc(audioData, MaskedID, clientRpcParams);
             }
 
             [ClientRpc]
-            public void PlayAudioDataClientRpc(float[] mp3Data, string MaskedID, ClientRpcParams clientRpcParams = default)
+            public void PlayAudioDataClientRpc(float[] audioData, string MaskedID, ClientRpcParams clientRpcParams = default)
             {
                 var masked = maskedInstanceLookup[MaskedID];
                 var identifier = masked.GetComponent<MaskedEnemyIdentifier>();
                 //WriteToConsole("2");
-                var queue = identifier.audioQueue;
-                queue.Enqueue(mp3Data);
+                if (identifier != null)
+                {
+                    foreach (float sample in audioData)
+                    {
+                        identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Enqueue(sample);
+                    }
+                }
+            }
+
+            [ServerRpc(RequireOwnership = false)]
+            public void RequestMaskedResponseServerRpc(string maskedID, string playerName, string playerSpeech)
+            {
+                var clientID = Plugin.sharedMaskedClientDict[maskedID];
+
+                ClientRpcParams clientRpcParams = new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams
+                    {
+                        TargetClientIds = [clientID]
+                    }
+                };
+
+                RequestMaskedResponseClientRpc(maskedID, playerName, playerSpeech, clientRpcParams);
+            }
+
+            [ClientRpc]
+            public void RequestMaskedResponseClientRpc(string maskedID, string playerName, string playerSpeech, ClientRpcParams clientParams = default)
+            {
+                AzureSTT.SendToChatAndStreamAudioResponse(maskedInstanceLookup[maskedID], playerName, playerSpeech);
             }
 
         }
@@ -975,19 +997,62 @@ namespace Wendigos
                     var clip = clips[serverRand.Next(clips.Count)];
                     WriteToConsole("Playing clip type: " + type);
                     StreamingAudioDecoder decoder = new StreamingAudioDecoder();
+                    MaskedEnemyIdentifier identifier = __instance.GetComponent<MaskedEnemyIdentifier>();
+                    // __instance.creatureVoice.Play();
                     decoder.Feed(clip);
 
-                    List<float> accumulator = new List<float>();
+                    WriteToConsole("Decoder has samples? " + decoder.HasSamples);
+
+                    float[] accumulator = new float[512];
+                    int i = 0;
 
                     // Loop until the decoder runs out of data
                     while (decoder.TryGetSample(out float sample))
                     {
-                        accumulator.Add(sample);
+                        accumulator[i] = sample;
+                        i++;
+
+                        if (i == 512)
+                        {
+                            // 1. Create the copy for the NETWORK (Keep this array-based)
+                            float[] cnkToQueue = accumulator.ToArray();
+
+                            // 2. Feed the LOCAL Audio Engine (Float-based)
+                            // We loop through the chunk and push it into the Thread-Safe queue
+                            foreach (float sampleToQueue in cnkToQueue)
+                            {
+                                identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Enqueue(sampleToQueue);
+                            }
+
+                            // 3. Send Network RPC
+                            WendigosNetworkManager.Instance.ShareAudioDataServerRpc(cnkToQueue, identifier.id);
+
+                            i = 0;
+                        }
                     }
 
-                    WendigosNetworkManager.Instance.ShareAudioDataServerRpc(accumulator.ToArray(), __instance.GetComponent<MaskedEnemyIdentifier>().id);
+                    while (i < 512)
+                    {
+                        accumulator[i] = 0;
+                        i++;
+                    }
+
+                    // 1. Create the copy for the NETWORK (Keep this array-based)
+                    float[] chunkToQueue = accumulator.ToArray();
+
+                    // 2. Feed the LOCAL Audio Engine (Float-based)
+                    // We loop through the chunk and push it into the Thread-Safe queue
+                    foreach (float sampleToQueue in chunkToQueue)
+                    {
+                        identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Enqueue(sampleToQueue);
+                    }
+
+                    WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunkToQueue, identifier.id);
+                    WriteToConsole("Sent audio data");
                 }
             }
+
+            return;
         }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
@@ -1106,20 +1171,96 @@ namespace Wendigos
         public class MaskedEnemyIdentifier : MonoBehaviour
         {
             public string id;
-            public Queue<float[]> audioQueue = new Queue<float[]>();
+            public GameObject child;
+        }
 
-            private void OnAudioFilterRead(float[] data, int channels)
+        public class MaskedAudioComponent : MonoBehaviour
+        {
+            // CHANGE 1: Use ConcurrentQueue for thread safety
+            // CHANGE 2: Queue individual floats, not arrays
+            public ConcurrentQueue<float> audioQueue = new ConcurrentQueue<float>();
+
+            private AudioSource _audioSource;
+            private AudioClip _streamingClip;
+
+            private int SampleRate = 48000;
+            private int Channels = 2;
+
+            public void Awake()
             {
-                float[] newData;
-                if (audioQueue.TryDequeue(out newData))
+                var voiceBoxAudioSource = GetComponent<AudioSource>();
+
+                if (voiceBoxAudioSource != null)
+                    transform.parent.GetComponent<MaskedPlayerEnemy>().creatureVoice.CopyTo(voiceBoxAudioSource);
+
+                _audioSource = gameObject.AddComponent<AudioSource>();
+                _audioSource.playOnAwake = false;
+                transform.parent.GetComponent<MaskedPlayerEnemy>().creatureVoice.CopyTo(_audioSource);
+
+                
+
+            }
+
+            private void Start()
+            {
+                audioQueue.Clear();
+                SampleRate = AudioSettings.outputSampleRate;
+                Channels = (AudioSettings.speakerMode == AudioSpeakerMode.Mono) ? 1 : 2;
+
+                _streamingClip = AudioClip.Create("NetworkStream", SampleRate, Channels, SampleRate, true, OnAudioRead);
+
+                _audioSource.clip = _streamingClip;
+                _audioSource.loop = true;
+
+                if (!_audioSource.isPlaying)
+                    _audioSource.Play();
+            }
+
+            private void OnAudioRead(float[] data)
+            {
+                for (int i = 0; i < data.Length; i++)
                 {
-                    for (int i = 0; i < newData.Length && i < data.Length; i++)
-                        data[i] = newData[i];
+                    if (audioQueue.TryDequeue(out float sample))
+                    {
+                        data[i] = sample;
+                    }
+                    else
+                    {
+                        // Fill with silence to avoid noise/glitches.
+                        data[i] = 0f;
+                    }
                 }
             }
         }
 
         static Dictionary<string, MaskedPlayerEnemy> maskedInstanceLookup = new Dictionary<string, MaskedPlayerEnemy>();
+
+        public static void InitMaskedAudio(MaskedPlayerEnemy __instance)
+        {
+            var identifier = __instance.gameObject.AddComponent<MaskedEnemyIdentifier>();
+
+            GameObject maskedAudioStreamer = new GameObject("MaskedAudioStreamer");
+            maskedAudioStreamer.transform.position = __instance.transform.position;
+            maskedAudioStreamer.transform.parent = __instance.transform;
+
+            identifier.child = maskedAudioStreamer;
+
+            // id is starting position since only 1 enemy can spawn per vent
+            identifier.id = __instance.transform.position.ToString();
+            string ID = identifier.id;
+            maskedInstanceLookup.TryAdd(ID, __instance);
+            WriteToConsole("Spawned Masked. ID: " + ID);
+
+            AudioStreamer streamer = maskedAudioStreamer.AddComponent<AudioStreamer>();
+
+            __instance.creatureVoice.GetComponent<OccludeAudio>().CopyOcclusion(maskedAudioStreamer);
+
+            MaskedAudioComponent audioComponent = maskedAudioStreamer.AddComponent<MaskedAudioComponent>();
+            streamer.OnAudioSamplePlayed += (obj, data) => 
+            {
+                WendigosNetworkManager.Instance.ShareAudioDataServerRpc(data, ID); 
+            };
+        }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Start))]
         class MaskedStartPatch
@@ -1127,16 +1268,7 @@ namespace Wendigos
             public static void Postfix(MaskedPlayerEnemy __instance)
             {
 
-                __instance.gameObject.AddComponent<MaskedEnemyIdentifier>();
-
-                // id is starting position since only 1 enemy can spawn per vent
-                __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id = __instance.transform.position.ToString();
-                string ID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
-                maskedInstanceLookup.TryAdd(ID, __instance);
-                WriteToConsole("Spawned Masked. ID: " + ID);
-
-                AudioStreamer streamer = __instance.gameObject.AddComponent<AudioStreamer>();
-                streamer.OnAudioSamplePlayed += (obj, data) => WendigosNetworkManager.Instance.ShareAudioDataServerRpc(data, ID);
+                InitMaskedAudio(__instance);
 
                 if (WendigosNetworkManager.Instance.IsServer)
                 {

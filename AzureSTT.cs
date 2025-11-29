@@ -62,34 +62,7 @@ namespace Wendigos
                         {
                             if (!WendigosChatManager.init_success) return;
 
-                            WendigosChatManager.SendPromptToChatService(
-                                Chat_System_Prompt + (player_name == "" ? "\n" : "\n" + player_name + ": ") + e.Result.Text,
-                                response =>
-                                {
-                                    Console.WriteLine("RESPONSE: " + response);
-
-                                    var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;
-                                    string voice_id;
-                                    try
-                                    {
-                                        var client = Plugin.sharedMaskedClientDict[masked_id];
-                                        voice_id = Plugin.clientVoiceIDLookup[client];
-                                    }
-                                    catch
-                                    {
-                                        voice_id = ElevenLabs.VOICE_ID;
-                                    }
-
-
-                                    // Overlap handled in this function
-                                    ElevenLabs.StreamAudio(
-                                        response,
-                                        closest_masked.GetComponent<AudioStreamer>()
-                                    );
-
-                                    // Have closest masked to player play the new audio file
-                                }
-                            );
+                            SendToChatAndStreamAudioResponse(closest_masked, player_name, e.Result.Text);
 
                         }
                         catch (Exception ex)
@@ -106,6 +79,40 @@ namespace Wendigos
             }
 
             is_init = true;
+        }
+
+        public static void SendToChatAndStreamAudioResponse(MaskedPlayerEnemy closest_masked, string playerName, string player_speech)
+        {
+            WendigosChatManager.SendPromptToChatService(
+                Chat_System_Prompt + (player_name == "" ? "\n" : "\n" + playerName + ": ") + player_speech,
+                response =>
+                {
+                    Console.WriteLine("RESPONSE: " + response);
+
+                    ElevenLabs.StreamAudio(
+                        response,
+                        closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().child.GetComponent<AudioStreamer>()
+                    );
+
+                    string voice_id;
+                    var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;
+                    try
+                    {                    
+                        var client = Plugin.sharedMaskedClientDict[masked_id];
+                        voice_id = Plugin.clientVoiceIDLookup[client];
+                    }
+                    catch
+                    {
+                        voice_id = ElevenLabs.VOICE_ID;
+                    }
+
+
+                    // Overlap handled in this function
+                    
+
+                    // Have closest masked to player play the new audio file
+                }
+            );
         }
 
         static void GetAudioDevices(string[] args)
