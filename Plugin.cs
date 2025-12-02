@@ -127,7 +127,7 @@ namespace Wendigos
                 }
 
                 if (enable_realtime_responses.Value)
-                    AzureSTT.StartSpeechTranscription(ChatGPT_prompt.Value);
+                    AzureSTT.StartSpeechTranscription(Chat_prompt.Value);
             }
 
             [ServerRpc(RequireOwnership = false)]
@@ -625,15 +625,17 @@ namespace Wendigos
         private static ConfigEntry<string> elevenlabs_api_key;
         public static ConfigEntry<string> elevenlabs_voice_id;
         public static ConfigEntry<float> elevenlabs_voice_volume_boost;
-        private static ConfigEntry<string> ChatGPT_api_key;
-        private static ConfigEntry<string> ChatGPT_model;
-        private static ConfigEntry<string> ChatGPT_prompt;
+        private static ConfigEntry<string> ChatServiceProvider;
+        private static ConfigEntry<string> Chat_api_key;
+        private static ConfigEntry<string> Chat_model;
+        private static ConfigEntry<string> Chat_prompt;
         private static ConfigEntry<string> Azure_api_key;
         private static ConfigEntry<string> Azure_region;
         private static ConfigEntry<string> Azure_language;
         private static ConfigEntry<bool> optimize_for_speed;
         private static ConfigEntry<bool> enable_realtime_responses;
         private static ConfigEntry<string> player_name;
+        
 
         static System.Random serverRand = new System.Random();
 
@@ -725,26 +727,36 @@ namespace Wendigos
                 )
                 );
 
-            ChatGPT_api_key = Config.Bind<string>(
-                "ChatGPT",
+            ChatServiceProvider = Config.Bind<string>(
+                "Chat",
+                "Chat Service Provider",
+                "Gemini",
+                new ConfigDescription(
+                    "Which chat service providers to use. Allowed values are ChatGPT, Gemini, Claude, and Ollama",
+                    new AcceptableValueList<string>("ChatGPT", "Gemini", "Claude", "Ollama")
+                )
+            );
+
+            Chat_api_key = Config.Bind<string>(
+                "Chat",
                 "API key",
                 "",
-                "Your ChatGPT API key. Do NOT add extra characters like \""
+                "Your Chat API key. Do NOT add extra characters like \""
                 );
 
-            ChatGPT_model = Config.Bind<string>(
-                "ChatGPT",
+            Chat_model = Config.Bind<string>(
+                "Chat",
                 "Model",
-                "gpt-5-nano",
-                "Which gpt model to use. Defaults to gpt-5-nano."
+                "gemini-2.5-flash-lite",
+                "Which chat model to use. Defaults to gemini-2.5-flash-lite."
 
                 );
 
-            ChatGPT_prompt = Config.Bind<string>(
-                "ChatGPT",
+            Chat_prompt = Config.Bind<string>(
+                "Chat",
                 "Prompt",
                 "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.",
-                "The prompt given to ChatGPT to determine what to say."
+                "The prompt given to the Chat service to determine what to say."
                 );
 
             Azure_api_key = Config.Bind<string>(
@@ -779,14 +791,14 @@ namespace Wendigos
                 "Experimental",
                 "Realtime Responses",
                 false,
-                "Enables ChatGPT voice line generation so masked can reply in real time. You MUST have Elevenlabs, Azure, and ChatGPT api keys set."
+                "Enables Chat voice line generation so masked can reply in real time. You MUST have Elevenlabs, Azure, and Chat api keys set."
                 );
 
             player_name = Config.Bind<string>(
                 "Experimental",
                 "Your name",
                 "",
-                "Your name. Allows ChatGPT to know who is who"
+                "Your name. Allows Chat service to know who is who"
                 );
 
             GUIManager.CreateGUIManagerObject();
@@ -854,7 +866,7 @@ namespace Wendigos
 
 
 
-                WendigosChatManager.Init(ChatGPT_api_key.Value, ChatGPT_model.Value);
+                WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
                 AzureSTT.player_name = player_name.Value;
                 if (optimize_for_speed.Value)
                     ElevenLabs.optimize_for_speed = true;
@@ -1000,8 +1012,6 @@ namespace Wendigos
                     MaskedEnemyIdentifier identifier = __instance.GetComponent<MaskedEnemyIdentifier>();
                     // __instance.creatureVoice.Play();
                     decoder.Feed(clip);
-
-                    WriteToConsole("Decoder has samples? " + decoder.HasSamples);
 
                     float[] accumulator = new float[512];
                     int i = 0;
@@ -1329,7 +1339,7 @@ namespace Wendigos
                 {
                     
                     if (WendigosChatManager.chatManagerComponent == null)
-                        WendigosChatManager.Init(ChatGPT_api_key.Value, ChatGPT_model.Value);
+                        WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
                     try
                     {
                         if (elevenlabs_enabled.Value && ElevenLabs.ttsManagerComponent == null)
@@ -1356,8 +1366,9 @@ namespace Wendigos
             {
                 try
                 {
-                    // reset speech recognition
+                    // reset speech recognition and chat history
                     AIManager.Instance.StopSpeechTranscription();
+                    WendigosChatManager.chats.Clear();
                     
                 }
                 catch (Exception ex)

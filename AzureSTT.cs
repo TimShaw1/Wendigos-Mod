@@ -83,23 +83,27 @@ namespace Wendigos
 
         public static void SendToChatAndStreamAudioResponse(MaskedPlayerEnemy closest_masked, string playerName, string player_speech)
         {
+            string voice_id;
+            var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;
+            try
+            {
+                var client = Plugin.sharedMaskedClientDict[masked_id];
+                voice_id = Plugin.clientVoiceIDLookup[client];
+            }
+            catch
+            {
+                voice_id = ElevenLabs.VOICE_ID;
+            }
+
+            var newConfig = ElevenLabs.ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig;
+            newConfig.voiceId = voice_id;
+            ElevenLabs.ttsManagerComponent.textToSpeechConfig = newConfig;
+
             WendigosChatManager.SendPromptToChatService(
                 Chat_System_Prompt + (player_name == "" ? "\n" : "\n" + playerName + ": ") + player_speech,
                 response =>
                 {
-                    Console.WriteLine("RESPONSE: " + response);
-
-                    string voice_id;
-                    var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;
-                    try
-                    {
-                        var client = Plugin.sharedMaskedClientDict[masked_id];
-                        voice_id = Plugin.clientVoiceIDLookup[client];
-                    }
-                    catch
-                    {
-                        voice_id = ElevenLabs.VOICE_ID;
-                    }
+                    //Console.WriteLine("RESPONSE: " + response);
 
                     ElevenLabs.StreamAudio(
                         response,
@@ -107,13 +111,7 @@ namespace Wendigos
                         closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().child.GetComponent<AudioStreamer>()
                     );
 
-                    
-
-
-                    // Overlap handled in this function
-                    
-
-                    // Have closest masked to player play the new audio file
+                    num_gens++;
                 }
             );
         }

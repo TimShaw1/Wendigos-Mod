@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using TimShaw.VoiceBox.Components;
 using TimShaw.VoiceBox.Core;
 using TimShaw.VoiceBox.Data;
+using TimShaw.VoiceBox.Generics;
 using TimShaw.VoiceBox.Modding;
 using UnityEngine;
 using static TimShaw.VoiceBox.Core.ChatUtils;
@@ -22,7 +23,7 @@ namespace Wendigos
         public static bool init_success = false;
         public static ChatManager chatManagerComponent;
         public static List<ChatUtils.VoiceBoxChatMessage> chats;
-        public static void Init(string api_key, string modelToUse)
+        public static void Init(string api_key, string modelToUse, string chatService = "ChatGPT")
         {
             try
             {
@@ -37,7 +38,25 @@ namespace Wendigos
                 chatManagerComponent = chatManager.AddComponent<ChatManager>();
 
                 // Create a ChatGPTServiceConfig object and choose a model name
-                ChatGPTServiceConfig chatConfig = ModdingTools.CreateChatServiceConfig<ChatGPTServiceConfig>();
+                GenericChatServiceConfig chatConfig;
+                switch (chatService)
+                {
+                    case "ChatGPT":
+                        chatConfig = ModdingTools.CreateChatServiceConfig<ChatGPTServiceConfig>();
+                        break;
+                    case "Gemini":
+                        chatConfig = ModdingTools.CreateChatServiceConfig<GeminiServiceConfig>();
+                        break;
+                    case "Claude":
+                        chatConfig = ModdingTools.CreateChatServiceConfig<ClaudeServiceConfig>();
+                        break;
+                    case "Ollama":
+                        chatConfig = ModdingTools.CreateChatServiceConfig<OllamaChatServiceConfig>();
+                        break;
+                    default:
+                        Console.WriteLine("Wendigos: Unknown chat service type");
+                        return;
+                }
                 chatConfig.modelName = modelToUse;
                 chatConfig.useFunctionInvokation = false;
 
@@ -68,11 +87,11 @@ namespace Wendigos
 
                 var tokenSource = new CancellationTokenSource();
 
-                chats.Clear();      // Simplest approach
+                chats.Clear();      // TODO
                 chats.Add(chat);
                 chatManagerComponent.SendChatMessage(
                     chats,
-                    msg => onSuccess.Invoke(msg.Text),
+                    msg => { onSuccess.Invoke(msg.Text); chats.Add(msg); },
                     err => Console.WriteLine(err),
                     token: tokenSource.Token
                 );
