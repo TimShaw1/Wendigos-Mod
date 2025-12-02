@@ -39,7 +39,7 @@ namespace Wendigos
                 // Create an ElevenlabsServiceConfig object and choose a voiceId
                 ElevenlabsTTSServiceConfig elevenlabsConfig = ModdingTools.CreateTTSServiceConfig<ElevenlabsTTSServiceConfig>();
                 elevenlabsConfig.voiceId = voice_id;
-                elevenlabsConfig.modelID = "eleven_turbo_v2_5";
+                elevenlabsConfig.modelID = "eleven_flash_v2_5";
 
                 if (api_key.Length == 0)
                 {
@@ -136,6 +136,7 @@ namespace Wendigos
             //modifiedConfig.voiceId = voiceID;
             //ttsManagerComponent.textToSpeechConfig = modifiedConfig;
 
+            audioStreamer.StopStreaming(ttsManagerComponent.TextToSpeechService);
             ttsManagerComponent.RequestAudioAndStream(prompt, audioStreamer);
         }
 
