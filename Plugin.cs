@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
+using Dissonance;
 using GameNetcodeStuff;
 using HarmonyLib;
 using Newtonsoft.Json;
@@ -1013,7 +1014,8 @@ namespace Wendigos
                     // __instance.creatureVoice.Play();
                     decoder.Feed(clip);
 
-                    float[] accumulator = new float[512];
+                    int batchSize = 1024;
+                    float[] accumulator = new float[batchSize];
                     int i = 0;
 
                     // Loop until the decoder runs out of data
@@ -1022,7 +1024,7 @@ namespace Wendigos
                         accumulator[i] = sample;
                         i++;
 
-                        if (i == 512)
+                        if (i == batchSize)
                         {
                             // 1. Create the copy for the NETWORK (Keep this array-based)
                             float[] cnkToQueue = accumulator.ToArray();
@@ -1041,7 +1043,7 @@ namespace Wendigos
                         }
                     }
 
-                    while (i < 512)
+                    while (i < batchSize)
                     {
                         accumulator[i] = 0;
                         i++;
@@ -1268,7 +1270,25 @@ namespace Wendigos
             MaskedAudioComponent audioComponent = maskedAudioStreamer.AddComponent<MaskedAudioComponent>();
             streamer.OnAudioSamplePlayed += (obj, data) => 
             {
-                WendigosNetworkManager.Instance.ShareAudioDataServerRpc(data, ID); 
+                int batchSize = 1024;
+                // Cast to float ensures we don't lose the remainder during division
+                int chunksToSend = Mathf.CeilToInt(data.Length / (float)batchSize);
+
+                for (int i = 0; i < chunksToSend; i++)
+                {
+                    // 1. Calculate where this chunk starts
+                    int startIndex = i * batchSize;
+
+                    // 2. Calculate the size (handling the last chunk which might be smaller than 512)
+                    int currentChunkSize = Mathf.Min(batchSize, data.Length - startIndex);
+
+                    // 3. Create the temporary array
+                    float[] chunk = new float[currentChunkSize];
+                    System.Array.Copy(data, startIndex, chunk, 0, currentChunkSize);
+
+                    // 4. Send the specific chunk
+                    WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, ID);
+                }
             };
         }
 
