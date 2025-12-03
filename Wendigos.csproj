@@ -45,9 +45,6 @@
 			<HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
 			<HintPath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll')">C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
 		</Reference>
-		<Reference Include="DissonanceVoip">
-			<HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\DissonanceVoip.dll</HintPath>
-		</Reference>
 		<Reference Include="Facepunch.Steamworks.Win64">
 			<HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
 			<HintPath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll')">C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
