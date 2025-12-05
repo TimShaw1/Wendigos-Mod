@@ -132,7 +132,7 @@ namespace Wendigos
             }
 
             [ServerRpc(RequireOwnership = false)]
-            public void ShareAudioDataServerRpc(float[] audioData, string MaskedID, ServerRpcParams serverRpcParams = default)
+            public void ShareAudioDataServerRpc(byte[] audioData, string MaskedID, ServerRpcParams serverRpcParams = default)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
 
@@ -148,17 +148,14 @@ namespace Wendigos
             }
 
             [ClientRpc]
-            public void PlayAudioDataClientRpc(float[] audioData, string MaskedID, ClientRpcParams clientRpcParams = default)
+            public void PlayAudioDataClientRpc(byte[] audioData, string MaskedID, ClientRpcParams clientRpcParams = default)
             {
                 var masked = maskedInstanceLookup[MaskedID];
                 var identifier = masked.GetComponent<MaskedEnemyIdentifier>();
                 //WriteToConsole("2");
                 if (identifier != null)
                 {
-                    foreach (float sample in audioData)
-                    {
-                        identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Enqueue(sample);
-                    }
+                    identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(audioData);
                 }
             }
 
@@ -656,7 +653,7 @@ namespace Wendigos
 
         static AudioClip mic_audio_clip;
 
-        static Dictionary<string, List<AudioClip>> myClips = new Dictionary<string, List<AudioClip>>();
+        static Dictionary<string, List<byte[]>> myClips = new Dictionary<string, List<byte[]>>();
 
 
         private void Awake()
@@ -932,14 +929,14 @@ namespace Wendigos
 
         public static AudioClip LoadAudioFile(string audioFilePath)
         {
-            return LoadWavFile(audioFilePath);
+            return LoadMp3File(audioFilePath);
         }
 
-        static AudioClip LoadWavFile(string audioFilePath)
+        static AudioClip LoadMp3File(string audioFilePath)
         {
             if (File.Exists(audioFilePath))
             {
-                using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.WAV))
+                using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.MPEG))
                 {
                     request.SendWebRequest();
 
@@ -1009,57 +1006,45 @@ namespace Wendigos
                 {
                     var clip = clips[serverRand.Next(clips.Count)];
                     WriteToConsole("Playing clip type: " + type);
-                    StreamingAudioDecoder decoder = new StreamingAudioDecoder();
+
                     MaskedEnemyIdentifier identifier = __instance.GetComponent<MaskedEnemyIdentifier>();
                     // __instance.creatureVoice.Play();
-                    decoder.Feed(clip);
+                    identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(clip);
+                    // Configuration
+                    const int MAX_CHUNK_SIZE = 32768;
+                    int clipPosition = 0;
+                    int totalLength = clip.Length;
 
-                    int batchSize = 1024;
-                    float[] accumulator = new float[batchSize];
-                    int i = 0;
-
-                    // Loop until the decoder runs out of data
-                    while (decoder.TryGetSample(out float sample))
+                    // Loop until we have processed the entire clip
+                    while (clipPosition < totalLength)
                     {
-                        accumulator[i] = sample;
-                        i++;
+                        // 1. Calculate the size of the current chunk
+                        // It will be MAX_CHUNK_SIZE, unless we are at the very end and have less than MAX_CHUNK_SIZE remaining.
+                        int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
 
-                        if (i == batchSize)
-                        {
-                            // 1. Create the copy for the NETWORK (Keep this array-based)
-                            float[] cnkToQueue = accumulator.ToArray();
+                        // 2. Create the chunk buffer
+                        byte[] chunk = new byte[currentChunkSize];
 
-                            // 2. Feed the LOCAL Audio Engine (Float-based)
-                            // We loop through the chunk and push it into the Thread-Safe queue
-                            foreach (float sampleToQueue in cnkToQueue)
-                            {
-                                identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Enqueue(sampleToQueue);
-                            }
+                        // 3. Copy data from the main clip into the chunk
+                        // specific arguments: (source, sourceIndex, destination, destIndex, length)
+                        System.Array.Copy(clip, clipPosition, chunk, 0, currentChunkSize);
 
-                            // 3. Send Network RPC
-                            WendigosNetworkManager.Instance.ShareAudioDataServerRpc(cnkToQueue, identifier.id);
+                        // --- YOUR CALLS BELOW ---
 
-                            i = 0;
-                        }
+                        // 2. Feed the LOCAL Audio Engine
+                        // (We pass the chunk directly here so the local playback happens in sync with the network send)
+                        //identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(chunk);
+
+                        // 3. Send Network RPC
+                        // (We pass the chunk instead of the whole accumulator)
+                        WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, identifier.id);
+
+                        // ------------------------
+
+                        // Advance the position
+                        clipPosition += currentChunkSize;
                     }
 
-                    while (i < batchSize)
-                    {
-                        accumulator[i] = 0;
-                        i++;
-                    }
-
-                    // 1. Create the copy for the NETWORK (Keep this array-based)
-                    float[] chunkToQueue = accumulator.ToArray();
-
-                    // 2. Feed the LOCAL Audio Engine (Float-based)
-                    // We loop through the chunk and push it into the Thread-Safe queue
-                    foreach (float sampleToQueue in chunkToQueue)
-                    {
-                        identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Enqueue(sampleToQueue);
-                    }
-
-                    WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunkToQueue, identifier.id);
                     WriteToConsole("Sent audio data");
                 }
             }
@@ -1184,13 +1169,51 @@ namespace Wendigos
         {
             public string id;
             public GameObject child;
+            public ConcurrentQueue<byte[]> audioNetworkQueue = new ConcurrentQueue<byte[]>();
+
+            private void Update()
+            {
+                if (audioNetworkQueue.TryDequeue(out byte[] data))
+                {
+                    // Configuration
+                    const int MAX_CHUNK_SIZE = 32768;
+                    int clipPosition = 0;
+                    int totalLength = data.Length;
+
+                    // Loop until we have processed the entire clip
+                    while (clipPosition < totalLength)
+                    {
+                        // 1. Calculate the size of the current chunk
+                        // It will be 4096, unless we are at the very end and have less than 4096 remaining.
+                        int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
+
+                        // 2. Create the chunk buffer
+                        byte[] chunk = new byte[currentChunkSize];
+
+                        // 3. Copy data from the main clip into the chunk
+                        // specific arguments: (source, sourceIndex, destination, destIndex, length)
+                        System.Array.Copy(data, clipPosition, chunk, 0, currentChunkSize);
+
+                        // --- YOUR CALLS BELOW ---
+
+
+                        // Send Network RPC
+                        WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk.ToArray(), id);
+
+                        // ------------------------
+
+                        // Advance the position
+                        clipPosition += currentChunkSize;
+                    }
+                }
+            }
         }
 
         public class MaskedAudioComponent : MonoBehaviour
         {
             // CHANGE 1: Use ConcurrentQueue for thread safety
             // CHANGE 2: Queue individual floats, not arrays
-            public ConcurrentQueue<float> audioQueue = new ConcurrentQueue<float>();
+            public StreamingAudioDecoder audioQueue = new StreamingAudioDecoder();
 
             private AudioSource _audioSource;
             private AudioClip _streamingClip;
@@ -1215,7 +1238,7 @@ namespace Wendigos
 
             private void Start()
             {
-                audioQueue.Clear();
+                audioQueue.Reset();
                 SampleRate = AudioSettings.outputSampleRate;
                 Channels = (AudioSettings.speakerMode == AudioSpeakerMode.Mono) ? 1 : 2;
 
@@ -1232,7 +1255,7 @@ namespace Wendigos
             {
                 for (int i = 0; i < data.Length; i++)
                 {
-                    if (audioQueue.TryDequeue(out float sample))
+                    if (audioQueue.TryGetSample(out float sample))
                     {
                         data[i] = sample;
                     }
@@ -1268,28 +1291,12 @@ namespace Wendigos
             __instance.creatureVoice.GetComponent<OccludeAudio>().CopyOcclusion(maskedAudioStreamer);
 
             MaskedAudioComponent audioComponent = maskedAudioStreamer.AddComponent<MaskedAudioComponent>();
-            streamer.OnAudioSamplePlayed += (obj, data) => 
+            
+            ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataRecieved += (obj, data) => 
             {
-                int batchSize = 1024;
-                // Cast to float ensures we don't lose the remainder during division
-                int chunksToSend = Mathf.CeilToInt(data.Length / (float)batchSize);
-
-                for (int i = 0; i < chunksToSend; i++)
-                {
-                    // 1. Calculate where this chunk starts
-                    int startIndex = i * batchSize;
-
-                    // 2. Calculate the size (handling the last chunk which might be smaller than 512)
-                    int currentChunkSize = Mathf.Min(batchSize, data.Length - startIndex);
-
-                    // 3. Create the temporary array
-                    float[] chunk = new float[currentChunkSize];
-                    System.Array.Copy(data, startIndex, chunk, 0, currentChunkSize);
-
-                    // 4. Send the specific chunk
-                    WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, ID);
-                }
+                identifier.audioNetworkQueue.Enqueue(data);
             };
+            
         }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Start))]
@@ -1485,41 +1492,37 @@ namespace Wendigos
 
             // Generate audio clips
             byte count = 0;
-            myClips.Add(LineType.Idle, new List<AudioClip>());
+            myClips.Add(LineType.Idle, new List<byte[]>());
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
             {
-                AudioClip clip = LoadAudioFile(line);
-                clip.name = "i" + count;
+                byte[] clip = File.ReadAllBytes(line);
                 myClips[LineType.Idle].Add(clip);
                 count++;
             }
 
             count = 0;
-            myClips.Add(LineType.Nearby, new List<AudioClip>());
+            myClips.Add(LineType.Nearby, new List<byte[]>());
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
             {
-                AudioClip clip = LoadAudioFile(line);
-                clip.name = "n" + count;
+                byte[] clip = File.ReadAllBytes(line);
                 myClips[LineType.Nearby].Add(clip);
                 count++;
             }
 
             count = 0;
-            myClips.Add(LineType.Chasing, new List<AudioClip>());
+            myClips.Add(LineType.Chasing, new List<byte[]>());
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
             {
-                AudioClip clip = LoadAudioFile(line);
-                clip.name = "c" + count;
+                byte[] clip = File.ReadAllBytes(line);
                 myClips[LineType.Chasing].Add(clip);
                 count++;
             }
 
             count = 0;
-            myClips.Add(LineType.Damaged, new List<AudioClip>());
+            myClips.Add(LineType.Damaged, new List<byte[]>());
             foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\damaged"))
             {
-                AudioClip clip = LoadAudioFile(line);
-                clip.name = "d" + count;
+                byte[] clip = File.ReadAllBytes(line);
                 myClips[LineType.Damaged].Add(clip);
                 count++;
             }

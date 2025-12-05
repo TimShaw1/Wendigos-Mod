@@ -109,8 +109,9 @@ namespace Wendigos
             }
             fileName = fileName + fileNum.ToString();
             string fullFilePath = null;
-            ttsManagerComponent.GenerateSpeechFileFromText(prompt, fileName, dir, result => { 
-
+            ttsManagerComponent.GenerateSpeechFileFromText(prompt, fileName, dir, result => {
+                onSuccess.Invoke(dir + fileName + ".mp3");
+                /*
                 try
                 {
                     ConvertMp3ToWav(dir + fileName + ".mp3", dir + fileName + "z.wav");
@@ -126,6 +127,7 @@ namespace Wendigos
                     Console.WriteLine(ex.ToString());
                     onSuccess.Invoke("");
                 }
+                */
             }, err => Debug.LogError(err));
 
         }
