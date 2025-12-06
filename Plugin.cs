@@ -945,6 +945,7 @@ namespace Wendigos
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+            #region CONFIG_BINDING
             mod_enabled = Config.Bind<bool>(
                 "General",
                 "Enable mod?",
@@ -1082,6 +1083,7 @@ namespace Wendigos
                 "",
                 "Your name. Allows Chat service to know who is who"
                 );
+            #endregion
 
             GUIManager.CreateGUIManagerObject();
             
