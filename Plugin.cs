@@ -79,6 +79,7 @@ namespace Wendigos
                 }
 
             }
+            #region RPCS
 
             [ClientRpc]
             public void SetMaskedSuitClientRpc(string maskedId, int suitid)
@@ -180,6 +181,7 @@ namespace Wendigos
             {
                 AzureSTT.SendToChatAndStreamAudioResponse(maskedInstanceLookup[maskedID], playerName, playerSpeech);
             }
+            #endregion
 
         }
 
@@ -215,6 +217,7 @@ namespace Wendigos
             }
         }
 
+        #region CONFIG
         public static string[] LanguagesList = { 
                 "en", "es", "fr", "de", "it", "pt", 
                 "pl", "tr", "ru", "nl", "cs", "ar",
@@ -252,7 +255,84 @@ namespace Wendigos
             public LineType() { }
         }
 
+        // --------------- CONFIG ---------------
+        private static ConfigEntry<bool> mod_enabled;
+        private static ConfigEntry<bool> need_new_player_audio;
+        private static ConfigEntry<Languages> voice_language;
+        private static ConfigEntry<uint> talk_probability;
+        private static ConfigEntry<bool> elevenlabs_enabled;
+        private static ConfigEntry<string> elevenlabs_api_key;
+        public static ConfigEntry<string> elevenlabs_voice_id;
+        public static ConfigEntry<float> elevenlabs_voice_volume_boost;
+        private static ConfigEntry<string> ChatServiceProvider;
+        private static ConfigEntry<string> Chat_api_key;
+        private static ConfigEntry<string> Chat_model;
+        private static ConfigEntry<string> Chat_prompt;
+        private static ConfigEntry<string> Azure_api_key;
+        private static ConfigEntry<string> Azure_region;
+        private static ConfigEntry<string> Azure_language;
+        private static ConfigEntry<bool> optimize_for_speed;
+        private static ConfigEntry<bool> enable_realtime_responses;
+        private static ConfigEntry<string> player_name;
 
+        // --------------- LOOKUPS -----------------
+        public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
+        public static Dictionary<ulong, string> clientVoiceIDLookup = new Dictionary<ulong, string>();
+        static Dictionary<string, MaskedPlayerEnemy> maskedInstanceLookup = new Dictionary<string, MaskedPlayerEnemy>();
+        static Dictionary<string, List<byte[]>> myClips = new Dictionary<string, List<byte[]>>();
+
+        // --------------- MAIN EXE -----------------
+        static string MAIN_HASH_VALUE = "20ca39002a389704d5499df0f522848ec21fe724f8d13de830d596f28df69a7ae860aa4bb58e0b7ddbefcdf3e96b902fc2f98fca37777a4bf08de15af231f36e";
+        static bool main_downloaded = false;
+
+        static string[] lines_to_read = """
+            Prosecutors have opened a massive investigation into allegations of fixing games and illegal betting.
+            Different telescope designs perform differently and have different strengths and weaknesses.
+            We can continue to strengthen the education of good lawyers.
+            Feedback must be timely and accurate throughout the project.
+            Humans also judge distance by using the relative sizes of objects.
+            Churches should not encourage it or make it look harmless.
+            Learn about setting up wireless network configuration.
+            You can eat them fresh, cooked or fermented.
+            If this is true then those who tend to think creatively really are somehow different.
+            She will likely jump for joy and want to skip straight to the honeymoon.
+            The sugar syrup should create very fine strands of sugar that drape over the handles.
+            But really in the grand scheme of things, this information is insignificant.
+            I let the positive overrule the negative.
+            He wiped his brow with his forearm.
+            Instead of fixing it, they give it a nickname.
+            About half the people who are infected also lose weight.
+            The second half of the book focuses on argument and essay writing.
+            We have the means to help ourselves.
+            The large items are put into containers for disposal.
+            He loves to watch me drink this stuff.
+            Still, it is an odd fashion choice.
+            Funding is always an issue after the fact.
+            Let us encourage each other.
+            Subscribe to @Tim-Shaw on YouTube
+            """.Split('\n').OrderBy(a => serverRand.Next()).ToArray();
+
+        // --------------- MISC -----------------
+        static System.Random serverRand = new System.Random();
+
+        Harmony harmonyInstance = new Harmony("wendigos-instance");
+
+        private static string config_path;
+        public static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+
+        // used to track if we need to generate new audio files
+        private static DateTime last_successful_generation;
+        private static WendigosLog log = new WendigosLog();
+
+        internal static string mic_name;
+
+        static AudioClip mic_audio_clip;
+
+        static bool doneGenerating = false;
+        static int sentenceTypesCompleted = 0;
+        #endregion
+
+        #region UTILITY_FUNCTIONS
         static void WriteToConsole(string output)
         {
             Console.WriteLine("Wendigos: " + output);
@@ -276,8 +356,7 @@ namespace Wendigos
             }
         }
 
-        static string MAIN_HASH_VALUE = "20ca39002a389704d5499df0f522848ec21fe724f8d13de830d596f28df69a7ae860aa4bb58e0b7ddbefcdf3e96b902fc2f98fca37777a4bf08de15af231f36e";
-        static bool main_downloaded = false;
+        
         private static async Task download_main_exe()
         {
             if (File.Exists(assembly_path + "\\main.exe"))
@@ -332,6 +411,88 @@ namespace Wendigos
             }
             else
                 WriteToConsole("main.exe failed to download");
+        }
+
+        public static byte[] ConvertToByteArr(AudioClip clip)
+        {
+            var samples = new float[clip.samples];
+            clip.GetData(samples, 0);
+
+            MemoryStream stream = new MemoryStream();
+            BinaryWriter writer = new BinaryWriter(stream);
+
+            int length = samples.Length;
+            writer.Write(length);
+
+            foreach (var sample in samples)
+            {
+                writer.Write(sample);
+            }
+
+            return stream.ToArray();
+        }
+
+        public static AudioClip LoadAudioClip(byte[] receivedBytes, int sampleRate = 24000)
+        {
+            float[] samples = new float[receivedBytes.Length / 4]; //size of a float is 4 bytes
+
+            Buffer.BlockCopy(receivedBytes, 0, samples, 0, receivedBytes.Length);
+
+            int channels = 1; //Assuming audio is mono because microphone input usually is
+
+            AudioClip clip = AudioClip.Create("NONAME", samples.Length, channels, sampleRate, false);
+            clip.SetData(samples, 0);
+
+            return clip;
+        }
+
+        public static void GeneratePlayerAudioClips()
+        {
+            myClips.Clear();
+
+            // Generate audio clips
+            byte count = 0;
+            myClips.Add(LineType.Idle, new List<byte[]>());
+            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
+            {
+                byte[] clip = File.ReadAllBytes(line);
+                myClips[LineType.Idle].Add(clip);
+                count++;
+            }
+
+            count = 0;
+            myClips.Add(LineType.Nearby, new List<byte[]>());
+            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
+            {
+                byte[] clip = File.ReadAllBytes(line);
+                myClips[LineType.Nearby].Add(clip);
+                count++;
+            }
+
+            count = 0;
+            myClips.Add(LineType.Chasing, new List<byte[]>());
+            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
+            {
+                byte[] clip = File.ReadAllBytes(line);
+                myClips[LineType.Chasing].Add(clip);
+                count++;
+            }
+
+            count = 0;
+            myClips.Add(LineType.Damaged, new List<byte[]>());
+            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\damaged"))
+            {
+                byte[] clip = File.ReadAllBytes(line);
+                myClips[LineType.Damaged].Add(clip);
+                count++;
+            }
+
+            WriteToConsole("Generated Player Clips");
+            foreach (var key in myClips.Keys)
+            {
+                WriteToConsole(key + " count: " + myClips[key].Count);
+            }
+
         }
 
         /// <summary>
@@ -436,8 +597,6 @@ namespace Wendigos
             while (i != completedCounter) continue;
         }
 
-        static bool doneGenerating = false;
-        static int sentenceTypesCompleted = 0;
         static void GenerateAllPlayerSentences(bool new_player_audio = false)
         {
             if (doneGenerating)
@@ -615,46 +774,171 @@ namespace Wendigos
             }
         }
 
-        private static ConfigEntry<bool> mod_enabled;
-        private static ConfigEntry<bool> need_new_player_audio;
-        private static ConfigEntry<Languages> voice_language;
-        private static ConfigEntry<uint> talk_probability;
-        private static ConfigEntry<bool> elevenlabs_enabled;
-        private static ConfigEntry<string> elevenlabs_api_key;
-        public static ConfigEntry<string> elevenlabs_voice_id;
-        public static ConfigEntry<float> elevenlabs_voice_volume_boost;
-        private static ConfigEntry<string> ChatServiceProvider;
-        private static ConfigEntry<string> Chat_api_key;
-        private static ConfigEntry<string> Chat_model;
-        private static ConfigEntry<string> Chat_prompt;
-        private static ConfigEntry<string> Azure_api_key;
-        private static ConfigEntry<string> Azure_region;
-        private static ConfigEntry<string> Azure_language;
-        private static ConfigEntry<bool> optimize_for_speed;
-        private static ConfigEntry<bool> enable_realtime_responses;
-        private static ConfigEntry<string> player_name;
-        
+        public static string GetHashSHA1(byte[] data)
+        {
+            using (var sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider())
+            {
+                return string.Concat(sha1.ComputeHash(data).Select(x => x.ToString("X2")));
+            }
+        }
 
-        static System.Random serverRand = new System.Random();
 
-        public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
-        public static Dictionary<ulong, string> clientVoiceIDLookup = new Dictionary<ulong, string>();
 
-        Harmony harmonyInstance = new Harmony("wendigos-instance");
+        public static AudioClip LoadAudioFile(string audioFilePath)
+        {
+            return LoadMp3File(audioFilePath);
+        }
 
-        private static string config_path;
-        public static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        static AudioClip LoadMp3File(string audioFilePath)
+        {
+            if (File.Exists(audioFilePath))
+            {
+                using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.MPEG))
+                {
+                    request.SendWebRequest();
 
-        // used to track if we need to generate new audio files
-        private static DateTime last_successful_generation;
-        private static WendigosLog log = new WendigosLog();
+                    while (request.result == UnityWebRequest.Result.InProgress)
+                        continue;
+                    if (request.result != UnityWebRequest.Result.Success)
+                    {
+                        WriteToConsole("www.error " + request.error);
+                        WriteToConsole(" www.uri " + request.uri);
+                        WriteToConsole(" www.url " + request.url);
+                        WriteToConsole(" www.result " + request.result);
+                        return null;
+                    }
+                    else
+                    {
+                        AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
+                        return myClip;
+                    }
+                }
+            }
+            WriteToConsole("AUDIO FILE NOT FOUND");
+            return null;
+        }
 
-        internal static string mic_name;
+        public static MaskedPlayerEnemy GetClosestMasked()
+        {
+            var allPlayers = FindObjectsOfType<PlayerControllerB>();
+            PlayerControllerB localPlayer = null;
+            foreach (var player in allPlayers)
+            {
+                if (player.actualClientId == NetworkManager.Singleton.LocalClientId)
+                    localPlayer = player;
+            }
 
-        static AudioClip mic_audio_clip;
+            try
+            {
+                var allMasked = FindObjectsOfType<MaskedPlayerEnemy>();
+                WriteToConsole("COUNT: " + allMasked.Length.ToString());
+                foreach (var masked in allMasked)
+                {
+                    var dist = Vector3.Distance(masked.transform.position, localPlayer.transform.position);
+                    WriteToConsole("Masked dist is: " + dist);
+                    if (dist < 20)
+                    {
+                        var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
+                        if (!sharedMaskedClientDict.Keys.Contains(id))
+                            continue;
+                        if (masked.isEnemyDead)
+                            continue;
+                        return masked;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteToConsole(ex.ToString());
+            }
+            return null;
+        }
 
-        static Dictionary<string, List<byte[]>> myClips = new Dictionary<string, List<byte[]>>();
 
+        public static void PlayLocalAudioClipAndQueue(MaskedPlayerEnemy __instance, string type)
+        {
+            if (serverRand.Next(100) >= (100 - talk_probability.Value))
+            {
+                var clips = myClips[type];
+                if (clips.Count > 0)
+                {
+                    var clip = clips[serverRand.Next(clips.Count)];
+                    WriteToConsole("Playing clip type: " + type);
+
+                    MaskedEnemyIdentifier identifier = __instance.GetComponent<MaskedEnemyIdentifier>();
+                    // __instance.creatureVoice.Play();
+                    identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(clip);
+                    // Configuration
+                    const int MAX_CHUNK_SIZE = 32768;
+                    int clipPosition = 0;
+                    int totalLength = clip.Length;
+
+                    // Loop until we have processed the entire clip
+                    while (clipPosition < totalLength)
+                    {
+                        // 1. Calculate the size of the current chunk
+                        // It will be MAX_CHUNK_SIZE, unless we are at the very end and have less than MAX_CHUNK_SIZE remaining.
+                        int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
+
+                        // 2. Create the chunk buffer
+                        byte[] chunk = new byte[currentChunkSize];
+
+                        // 3. Copy data from the main clip into the chunk
+                        // specific arguments: (source, sourceIndex, destination, destIndex, length)
+                        System.Array.Copy(clip, clipPosition, chunk, 0, currentChunkSize);
+
+                        // --- YOUR CALLS BELOW ---
+
+                        // 2. Feed the LOCAL Audio Engine
+                        // (We pass the chunk directly here so the local playback happens in sync with the network send)
+                        //identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(chunk);
+
+                        // 3. Send Network RPC
+                        // (We pass the chunk instead of the whole accumulator)
+                        WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, identifier.id);
+
+                        // ------------------------
+
+                        // Advance the position
+                        clipPosition += currentChunkSize;
+                    }
+
+                    WriteToConsole("Sent audio data");
+                }
+            }
+
+            return;
+        }
+
+        public static void InitMaskedAudio(MaskedPlayerEnemy __instance)
+        {
+            var identifier = __instance.gameObject.AddComponent<MaskedEnemyIdentifier>();
+
+            GameObject maskedAudioStreamer = new GameObject("MaskedAudioStreamer");
+            maskedAudioStreamer.transform.position = __instance.transform.position;
+            maskedAudioStreamer.transform.parent = __instance.transform;
+
+            identifier.child = maskedAudioStreamer;
+
+            // id is starting position since only 1 enemy can spawn per vent
+            identifier.id = __instance.transform.position.ToString();
+            string ID = identifier.id;
+            maskedInstanceLookup.TryAdd(ID, __instance);
+            WriteToConsole("Spawned Masked. ID: " + ID);
+
+            AudioStreamer streamer = maskedAudioStreamer.AddComponent<AudioStreamer>();
+
+            __instance.creatureVoice.GetComponent<OccludeAudio>().CopyOcclusion(maskedAudioStreamer);
+
+            MaskedAudioComponent audioComponent = maskedAudioStreamer.AddComponent<MaskedAudioComponent>();
+
+            ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataRecieved += (obj, data) =>
+            {
+                identifier.audioNetworkQueue.Enqueue(data);
+            };
+
+        }
+        #endregion
 
         private void Awake()
         {
@@ -898,6 +1182,113 @@ namespace Wendigos
 
         }
 
+        #region MASKED_CLASSES
+        public class MaskedEnemyIdentifier : MonoBehaviour
+        {
+            public string id;
+            public GameObject child;
+            public ConcurrentQueue<byte[]> audioNetworkQueue = new ConcurrentQueue<byte[]>();
+
+            private void Update()
+            {
+                if (audioNetworkQueue.TryDequeue(out byte[] data))
+                {
+                    // Configuration
+                    const int MAX_CHUNK_SIZE = 32768;
+                    int clipPosition = 0;
+                    int totalLength = data.Length;
+
+                    // Loop until we have processed the entire clip
+                    while (clipPosition < totalLength)
+                    {
+                        // 1. Calculate the size of the current chunk
+                        // It will be 4096, unless we are at the very end and have less than 4096 remaining.
+                        int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
+
+                        // 2. Create the chunk buffer
+                        byte[] chunk = new byte[currentChunkSize];
+
+                        // 3. Copy data from the main clip into the chunk
+                        // specific arguments: (source, sourceIndex, destination, destIndex, length)
+                        System.Array.Copy(data, clipPosition, chunk, 0, currentChunkSize);
+
+                        // --- YOUR CALLS BELOW ---
+
+
+                        // Send Network RPC
+                        WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk.ToArray(), id);
+
+                        // ------------------------
+
+                        // Advance the position
+                        clipPosition += currentChunkSize;
+                    }
+                }
+            }
+        }
+
+        public class MaskedAudioComponent : MonoBehaviour
+        {
+            // CHANGE 1: Use ConcurrentQueue for thread safety
+            // CHANGE 2: Queue individual floats, not arrays
+            public StreamingAudioDecoder audioQueue = new StreamingAudioDecoder();
+
+            private AudioSource _audioSource;
+            private AudioClip _streamingClip;
+
+            private int SampleRate = 48000;
+            private int Channels = 2;
+
+            public void Awake()
+            {
+                var voiceBoxAudioSource = GetComponent<AudioSource>();
+
+                if (voiceBoxAudioSource != null)
+                    transform.parent.GetComponent<MaskedPlayerEnemy>().creatureVoice.CopyTo(voiceBoxAudioSource);
+
+                _audioSource = gameObject.AddComponent<AudioSource>();
+                _audioSource.playOnAwake = false;
+                transform.parent.GetComponent<MaskedPlayerEnemy>().creatureVoice.CopyTo(_audioSource);
+
+
+
+            }
+
+            private void Start()
+            {
+                audioQueue.Reset();
+                SampleRate = AudioSettings.outputSampleRate;
+                Channels = (AudioSettings.speakerMode == AudioSpeakerMode.Mono) ? 1 : 2;
+
+                _streamingClip = AudioClip.Create("NetworkStream", SampleRate, Channels, SampleRate, true, OnAudioRead);
+
+                _audioSource.clip = _streamingClip;
+                _audioSource.loop = true;
+
+                if (!_audioSource.isPlaying)
+                    _audioSource.Play();
+            }
+
+            private void OnAudioRead(float[] data)
+            {
+                for (int i = 0; i < data.Length; i++)
+                {
+                    if (audioQueue.TryGetSample(out float sample))
+                    {
+                        data[i] = sample;
+                    }
+                    else
+                    {
+                        // Fill with silence to avoid noise/glitches.
+                        data[i] = 0f;
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region PATCHES
+
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnPlayerDC))]
         class PlayerDCPatch
         {
@@ -917,140 +1308,7 @@ namespace Wendigos
             }
         }
 
-        public static string GetHashSHA1(byte[] data)
-        {
-            using (var sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider())
-            {
-                return string.Concat(sha1.ComputeHash(data).Select(x => x.ToString("X2")));
-            }
-        }
 
-        
-
-        public static AudioClip LoadAudioFile(string audioFilePath)
-        {
-            return LoadMp3File(audioFilePath);
-        }
-
-        static AudioClip LoadMp3File(string audioFilePath)
-        {
-            if (File.Exists(audioFilePath))
-            {
-                using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.MPEG))
-                {
-                    request.SendWebRequest();
-
-                    while (request.result == UnityWebRequest.Result.InProgress)
-                        continue;
-                    if (request.result != UnityWebRequest.Result.Success)
-                    {
-                        WriteToConsole("www.error " + request.error);
-                        WriteToConsole(" www.uri " + request.uri);
-                        WriteToConsole(" www.url " + request.url);
-                        WriteToConsole(" www.result " + request.result);
-                        return null;
-                    }
-                    else
-                    {
-                        AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
-                        return myClip;
-                    }
-                }
-            }
-            WriteToConsole("AUDIO FILE NOT FOUND");
-            return null;
-        }
-
-        public static MaskedPlayerEnemy GetClosestMasked()
-        {
-            var allPlayers = FindObjectsOfType<PlayerControllerB>();
-            PlayerControllerB localPlayer = null;
-            foreach (var player in allPlayers)
-            {
-                if (player.actualClientId == NetworkManager.Singleton.LocalClientId)
-                    localPlayer = player;
-            }
-
-            try
-            {
-                var allMasked = FindObjectsOfType<MaskedPlayerEnemy>();
-                WriteToConsole("COUNT: " + allMasked.Length.ToString());
-                foreach (var masked in allMasked)
-                {
-                    var dist = Vector3.Distance(masked.transform.position, localPlayer.transform.position);
-                    WriteToConsole("Masked dist is: " + dist);
-                    if (dist < 20)
-                    {
-                        var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
-                        if (!sharedMaskedClientDict.Keys.Contains(id))
-                            continue;
-                        if (masked.isEnemyDead)
-                            continue;
-                        return masked;
-                    }
-                }
-            } catch (Exception ex)
-            {
-                WriteToConsole(ex.ToString());
-            }
-            return null;
-        }
-
-
-        public static void PlayLocalAudioClipAndQueue(MaskedPlayerEnemy __instance, string type)
-        {
-            if (serverRand.Next(100) >= (100 - talk_probability.Value))
-            {
-                var clips = myClips[type];
-                if (clips.Count > 0)
-                {
-                    var clip = clips[serverRand.Next(clips.Count)];
-                    WriteToConsole("Playing clip type: " + type);
-
-                    MaskedEnemyIdentifier identifier = __instance.GetComponent<MaskedEnemyIdentifier>();
-                    // __instance.creatureVoice.Play();
-                    identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(clip);
-                    // Configuration
-                    const int MAX_CHUNK_SIZE = 32768;
-                    int clipPosition = 0;
-                    int totalLength = clip.Length;
-
-                    // Loop until we have processed the entire clip
-                    while (clipPosition < totalLength)
-                    {
-                        // 1. Calculate the size of the current chunk
-                        // It will be MAX_CHUNK_SIZE, unless we are at the very end and have less than MAX_CHUNK_SIZE remaining.
-                        int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
-
-                        // 2. Create the chunk buffer
-                        byte[] chunk = new byte[currentChunkSize];
-
-                        // 3. Copy data from the main clip into the chunk
-                        // specific arguments: (source, sourceIndex, destination, destIndex, length)
-                        System.Array.Copy(clip, clipPosition, chunk, 0, currentChunkSize);
-
-                        // --- YOUR CALLS BELOW ---
-
-                        // 2. Feed the LOCAL Audio Engine
-                        // (We pass the chunk directly here so the local playback happens in sync with the network send)
-                        //identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(chunk);
-
-                        // 3. Send Network RPC
-                        // (We pass the chunk instead of the whole accumulator)
-                        WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, identifier.id);
-
-                        // ------------------------
-
-                        // Advance the position
-                        clipPosition += currentChunkSize;
-                    }
-
-                    WriteToConsole("Sent audio data");
-                }
-            }
-
-            return;
-        }
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.DoAIInterval))]
         class MaskedPlayerEnemyAIPatch
@@ -1164,140 +1422,7 @@ namespace Wendigos
                 }
             }
         }
-
-        public class MaskedEnemyIdentifier : MonoBehaviour
-        {
-            public string id;
-            public GameObject child;
-            public ConcurrentQueue<byte[]> audioNetworkQueue = new ConcurrentQueue<byte[]>();
-
-            private void Update()
-            {
-                if (audioNetworkQueue.TryDequeue(out byte[] data))
-                {
-                    // Configuration
-                    const int MAX_CHUNK_SIZE = 32768;
-                    int clipPosition = 0;
-                    int totalLength = data.Length;
-
-                    // Loop until we have processed the entire clip
-                    while (clipPosition < totalLength)
-                    {
-                        // 1. Calculate the size of the current chunk
-                        // It will be 4096, unless we are at the very end and have less than 4096 remaining.
-                        int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
-
-                        // 2. Create the chunk buffer
-                        byte[] chunk = new byte[currentChunkSize];
-
-                        // 3. Copy data from the main clip into the chunk
-                        // specific arguments: (source, sourceIndex, destination, destIndex, length)
-                        System.Array.Copy(data, clipPosition, chunk, 0, currentChunkSize);
-
-                        // --- YOUR CALLS BELOW ---
-
-
-                        // Send Network RPC
-                        WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk.ToArray(), id);
-
-                        // ------------------------
-
-                        // Advance the position
-                        clipPosition += currentChunkSize;
-                    }
-                }
-            }
-        }
-
-        public class MaskedAudioComponent : MonoBehaviour
-        {
-            // CHANGE 1: Use ConcurrentQueue for thread safety
-            // CHANGE 2: Queue individual floats, not arrays
-            public StreamingAudioDecoder audioQueue = new StreamingAudioDecoder();
-
-            private AudioSource _audioSource;
-            private AudioClip _streamingClip;
-
-            private int SampleRate = 48000;
-            private int Channels = 2;
-
-            public void Awake()
-            {
-                var voiceBoxAudioSource = GetComponent<AudioSource>();
-
-                if (voiceBoxAudioSource != null)
-                    transform.parent.GetComponent<MaskedPlayerEnemy>().creatureVoice.CopyTo(voiceBoxAudioSource);
-
-                _audioSource = gameObject.AddComponent<AudioSource>();
-                _audioSource.playOnAwake = false;
-                transform.parent.GetComponent<MaskedPlayerEnemy>().creatureVoice.CopyTo(_audioSource);
-
-                
-
-            }
-
-            private void Start()
-            {
-                audioQueue.Reset();
-                SampleRate = AudioSettings.outputSampleRate;
-                Channels = (AudioSettings.speakerMode == AudioSpeakerMode.Mono) ? 1 : 2;
-
-                _streamingClip = AudioClip.Create("NetworkStream", SampleRate, Channels, SampleRate, true, OnAudioRead);
-
-                _audioSource.clip = _streamingClip;
-                _audioSource.loop = true;
-
-                if (!_audioSource.isPlaying)
-                    _audioSource.Play();
-            }
-
-            private void OnAudioRead(float[] data)
-            {
-                for (int i = 0; i < data.Length; i++)
-                {
-                    if (audioQueue.TryGetSample(out float sample))
-                    {
-                        data[i] = sample;
-                    }
-                    else
-                    {
-                        // Fill with silence to avoid noise/glitches.
-                        data[i] = 0f;
-                    }
-                }
-            }
-        }
-
-        static Dictionary<string, MaskedPlayerEnemy> maskedInstanceLookup = new Dictionary<string, MaskedPlayerEnemy>();
-
-        public static void InitMaskedAudio(MaskedPlayerEnemy __instance)
-        {
-            var identifier = __instance.gameObject.AddComponent<MaskedEnemyIdentifier>();
-
-            GameObject maskedAudioStreamer = new GameObject("MaskedAudioStreamer");
-            maskedAudioStreamer.transform.position = __instance.transform.position;
-            maskedAudioStreamer.transform.parent = __instance.transform;
-
-            identifier.child = maskedAudioStreamer;
-
-            // id is starting position since only 1 enemy can spawn per vent
-            identifier.id = __instance.transform.position.ToString();
-            string ID = identifier.id;
-            maskedInstanceLookup.TryAdd(ID, __instance);
-            WriteToConsole("Spawned Masked. ID: " + ID);
-
-            AudioStreamer streamer = maskedAudioStreamer.AddComponent<AudioStreamer>();
-
-            __instance.creatureVoice.GetComponent<OccludeAudio>().CopyOcclusion(maskedAudioStreamer);
-
-            MaskedAudioComponent audioComponent = maskedAudioStreamer.AddComponent<MaskedAudioComponent>();
-            
-            ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataRecieved += (obj, data) => 
-            {
-                identifier.audioNetworkQueue.Enqueue(data);
-            };
-            
-        }
+        
 
         [HarmonyPatch(typeof(MaskedPlayerEnemy), nameof(MaskedPlayerEnemy.Start))]
         class MaskedStartPatch
@@ -1436,118 +1561,24 @@ namespace Wendigos
             }
         }
 
-        static string[] lines_to_read = """
-            Prosecutors have opened a massive investigation into allegations of fixing games and illegal betting.
-            Different telescope designs perform differently and have different strengths and weaknesses.
-            We can continue to strengthen the education of good lawyers.
-            Feedback must be timely and accurate throughout the project.
-            Humans also judge distance by using the relative sizes of objects.
-            Churches should not encourage it or make it look harmless.
-            Learn about setting up wireless network configuration.
-            You can eat them fresh, cooked or fermented.
-            If this is true then those who tend to think creatively really are somehow different.
-            She will likely jump for joy and want to skip straight to the honeymoon.
-            The sugar syrup should create very fine strands of sugar that drape over the handles.
-            But really in the grand scheme of things, this information is insignificant.
-            I let the positive overrule the negative.
-            He wiped his brow with his forearm.
-            Instead of fixing it, they give it a nickname.
-            About half the people who are infected also lose weight.
-            The second half of the book focuses on argument and essay writing.
-            We have the means to help ourselves.
-            The large items are put into containers for disposal.
-            He loves to watch me drink this stuff.
-            Still, it is an odd fashion choice.
-            Funding is always an issue after the fact.
-            Let us encourage each other.
-            Subscribe to @Tim-Shaw on YouTube
-            """.Split('\n').OrderBy(a => serverRand.Next()).ToArray();
-
-        public static byte[] ConvertToByteArr(AudioClip clip)
-        {
-            var samples = new float[clip.samples];
-            clip.GetData(samples, 0);
-
-            MemoryStream stream = new MemoryStream();
-            BinaryWriter writer = new BinaryWriter(stream);
-
-            int length = samples.Length;
-            writer.Write(length);
-
-            foreach (var sample in samples)
-            {
-                writer.Write(sample);
-            }
-
-            return stream.ToArray();
-        }
-
-        public static AudioClip LoadAudioClip(byte[] receivedBytes, int sampleRate = 24000)
-        {
-            float[] samples = new float[receivedBytes.Length / 4]; //size of a float is 4 bytes
-
-            Buffer.BlockCopy(receivedBytes, 0, samples, 0, receivedBytes.Length);
-
-            int channels = 1; //Assuming audio is mono because microphone input usually is
-
-            AudioClip clip = AudioClip.Create("NONAME", samples.Length, channels, sampleRate, false);
-            clip.SetData(samples, 0);
-
-            return clip;
-        }
-
-        public static void GeneratePlayerAudioClips()
-        {
-            myClips.Clear();
-
-            // Generate audio clips
-            byte count = 0;
-            myClips.Add(LineType.Idle, new List<byte[]>());
-            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\idle"))
-            {
-                byte[] clip = File.ReadAllBytes(line);
-                myClips[LineType.Idle].Add(clip);
-                count++;
-            }
-
-            count = 0;
-            myClips.Add(LineType.Nearby, new List<byte[]>());
-            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\nearby"))
-            {
-                byte[] clip = File.ReadAllBytes(line);
-                myClips[LineType.Nearby].Add(clip);
-                count++;
-            }
-
-            count = 0;
-            myClips.Add(LineType.Chasing, new List<byte[]>());
-            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\chasing"))
-            {
-                byte[] clip = File.ReadAllBytes(line);
-                myClips[LineType.Chasing].Add(clip);
-                count++;
-            }
-
-            count = 0;
-            myClips.Add(LineType.Damaged, new List<byte[]>());
-            foreach (string line in Directory.GetFiles(assembly_path + "\\audio_output\\player0\\damaged"))
-            {
-                byte[] clip = File.ReadAllBytes(line);
-                myClips[LineType.Damaged].Add(clip);
-                count++;
-            }
-
-            WriteToConsole("Generated Player Clips");
-            foreach (var key in myClips.Keys)
-            {
-                WriteToConsole(key + " count: " +  myClips[key].Count);
-            }
-            
-        }
-
         [HarmonyPatch(typeof(MenuManager), "Start")]
         class MenuManagerPatch
         {
+            public static async void GeneratingAnimation(MenuManager __instance)
+            {
+                string[] characterList = ["/", "-", "\\", "|"];
+                __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/6] |";
+                while (!doneGenerating)
+                {
+                    foreach (string c in characterList)
+                    {
+                        __instance.menuNotificationText.text = __instance.menuNotificationText.text.Remove(__instance.menuNotificationText.text.Length - 7);
+                        __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/6] " + c;
+                        await Task.Delay(200);
+                    }
+                }
+            }
+
             static void Postfix(MenuManager __instance)
             {
                 if (__instance.isInitScene)
@@ -1578,21 +1609,6 @@ namespace Wendigos
                         __instance.DisplayMenuNotification($"Please wait for audio clips to finish generating", "[ close ]");
                         GeneratingAnimation(__instance);
                     }
-                }
-            }
-        }
-
-        static async void GeneratingAnimation(MenuManager __instance)
-        {
-            string[] characterList = ["/", "-", "\\", "|"];
-            __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/6] |";
-            while (!doneGenerating)
-            {
-                foreach (string c in characterList)
-                {
-                    __instance.menuNotificationText.text = __instance.menuNotificationText.text.Remove(__instance.menuNotificationText.text.Length-7);
-                    __instance.menuNotificationText.text += "[" + sentenceTypesCompleted + "/6] "+ c;
-                    await Task.Delay(200);
                 }
             }
         }
@@ -1637,7 +1653,7 @@ namespace Wendigos
                         if (task1 == null)
                             task1 = Task.Factory.StartNew(() => GenerateAllPlayerSentences(true));
                         need_new_player_audio.Value = false;
-                        GeneratingAnimation(__instance);
+                        MenuManagerPatch.GeneratingAnimation(__instance);
 
 
                     }
@@ -1658,7 +1674,7 @@ namespace Wendigos
                             if (task1 == null)
                                 task1 = Task.Factory.StartNew(() => GenerateAllPlayerSentences(true));
                             need_new_player_audio.Value = false;
-                            GeneratingAnimation(__instance);
+                            MenuManagerPatch.GeneratingAnimation(__instance);
 
                         }
                     }
@@ -1680,6 +1696,6 @@ namespace Wendigos
                 __instance.usernameAlpha.alpha = 0f;
             }
         }
-
+        #endregion
     }
 }
