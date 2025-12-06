@@ -124,7 +124,7 @@ namespace Wendigos
                 if (enable_realtime_responses.Value && AzureSTT.manager == null)
                 {
                     AzureSTT.num_gens = 0;
-                    AzureSTT.Init(Azure_api_key.Value, Azure_region.Value, Azure_language.Value);
+                    AzureSTT.Init(Azure_api_key.Value, Azure_region.Value, Azure_language.Value, mic_name);
                 }
 
                 if (enable_realtime_responses.Value)
@@ -1394,7 +1394,7 @@ namespace Wendigos
                 try
                 {
                     // reset speech recognition and chat history
-                    AIManager.Instance.StopSpeechTranscription();
+                    AzureSTT.StopSpeechTranscription();
                     WendigosChatManager.chats.Clear();
                     
                 }
@@ -1411,6 +1411,10 @@ namespace Wendigos
             static void Postfix(IngamePlayerSettings __instance)
             {
                 mic_name = IngamePlayerSettings.Instance.settings.micDevice;
+                if (enable_realtime_responses.Value)
+                {
+                    AzureSTT.ChangeMicDevice(mic_name);
+                }
                 WriteToConsole(mic_name);
             }
         }
@@ -1422,6 +1426,12 @@ namespace Wendigos
             {
                 // changes mic to primary mic
                 mic_name = IngamePlayerSettings.Instance.settings.micDevice;
+
+                if (enable_realtime_responses.Value)
+                {
+                    AzureSTT.ChangeMicDevice(mic_name);
+                }
+
                 WriteToConsole("Set to " + mic_name);
             }
         }
