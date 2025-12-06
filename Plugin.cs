@@ -43,6 +43,33 @@ namespace Wendigos
             public override void OnNetworkSpawn()
             {
                 base.OnNetworkSpawn();
+
+                NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
+
+                ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, elevenlabs_voice_id.Value);
+                ShareNameServerRpc(NetworkManager.Singleton.LocalClientId, player_name.Value);
+            }
+
+            private void OnClientConnectedCallback(ulong obj)
+            {
+                if (IsServer)
+                {
+                    foreach (ulong connectedClient in NetworkManager.Singleton.ConnectedClientsIds)
+                    {
+                        foreach (var key in clientVoiceIDLookup.Keys)
+                        {
+                            ShareVoiceIDClientRpc(key, clientVoiceIDLookup[key]);
+                        }
+
+                        foreach (var key in clientNameLookup.Keys)
+                        {
+                            ShareNameClientRpc(key, clientNameLookup[key]);
+                        }
+                    }
+
+                    WriteToConsole(clientVoiceIDLookup.Values.ToArray().ToString());
+                    WriteToConsole(clientNameLookup.Values.ToArray().ToString());
+                }
             }
 
             internal static void ClientConnectInitializer(Scene sceneName, LoadSceneMode sceneEnum)
@@ -108,13 +135,59 @@ namespace Wendigos
                 WriteToConsole($"added masked {maskedID} to masked_client_dict");
             }
 
+            [ServerRpc(RequireOwnership = false)]
+            public void ShareVoiceIDServerRpc(ulong clientID, string VoiceID)
+            {
+                if (!clientVoiceIDLookup.ContainsKey(clientID))
+                {
+                    clientVoiceIDLookup.Add(clientID, VoiceID);
+                    WriteToConsole("Server added " + clientID + " " + VoiceID);
+                }
+                else
+                {
+                    WriteToConsole("Server has " + clientID + " " + VoiceID);
+                }
+            }
+
             [ClientRpc]
             public void ShareVoiceIDClientRpc(ulong clientID, string VoiceID)
             {
                 if (!clientVoiceIDLookup.ContainsKey(clientID))
                 {
                     clientVoiceIDLookup.Add(clientID, VoiceID);
-                    WriteToConsole("Client adding " + clientID + " " + VoiceID);
+                    WriteToConsole("Client added " + clientID + " " + VoiceID);
+                }
+                else
+                {
+                    WriteToConsole("Client has " + clientID + " " + VoiceID);
+                }
+            }
+
+            [ServerRpc(RequireOwnership = false)]
+            public void ShareNameServerRpc(ulong clientID, string name)
+            {
+                if (!clientNameLookup.ContainsKey(clientID))
+                {
+                    clientNameLookup.Add(clientID, name);
+                    WriteToConsole("Server added " + clientID + " " + name);
+                }
+                else
+                {
+                    WriteToConsole("Server has " + clientID + " " + name);
+                }
+            }
+
+            [ClientRpc]
+            public void ShareNameClientRpc(ulong clientID, string name)
+            {
+                if (!clientNameLookup.ContainsKey(clientID))
+                {
+                    clientNameLookup.Add(clientID, name);
+                    WriteToConsole("Client added " + clientID + " " + name);
+                }
+                else
+                {
+                    WriteToConsole("Client has " + clientID + " " + name);
                 }
             }
 
@@ -255,6 +328,8 @@ namespace Wendigos
             public LineType() { }
         }
 
+        static System.Random serverRand = new System.Random();
+
         // --------------- CONFIG ---------------
         private static ConfigEntry<bool> mod_enabled;
         private static ConfigEntry<bool> need_new_player_audio;
@@ -277,6 +352,7 @@ namespace Wendigos
 
         // --------------- LOOKUPS -----------------
         public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
+        public static Dictionary<ulong, string> clientNameLookup = new Dictionary<ulong, string>();
         public static Dictionary<ulong, string> clientVoiceIDLookup = new Dictionary<ulong, string>();
         static Dictionary<string, MaskedPlayerEnemy> maskedInstanceLookup = new Dictionary<string, MaskedPlayerEnemy>();
         static Dictionary<string, List<byte[]>> myClips = new Dictionary<string, List<byte[]>>();
@@ -313,7 +389,6 @@ namespace Wendigos
             """.Split('\n').OrderBy(a => serverRand.Next()).ToArray();
 
         // --------------- MISC -----------------
-        static System.Random serverRand = new System.Random();
 
         Harmony harmonyInstance = new Harmony("wendigos-instance");
 
