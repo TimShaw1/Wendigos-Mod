@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TimShaw.VoiceBox.Components;
@@ -27,6 +28,9 @@ namespace Wendigos
         public static string player_name = "";
         public static GameObject manager;
         public static AzureSTTServiceConfig config;
+        public static Dictionary<string, byte[]> speakingClips = new Dictionary<string, byte[]>();
+
+        private const int MAX_CLIP_COUNT = 10;
 
         public static void StartSpeechTranscription(string prompt)
         {
@@ -113,6 +117,7 @@ namespace Wendigos
 
         public static void InitCallbacks()
         {
+            NAudio.Lame.LameDLL.LoadNativeDLL(Plugin.assembly_path);
             AIManager.Instance.SpeechToTextService.OnRecognizing += (s, e) =>
             {
                 //Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}");
@@ -124,19 +129,50 @@ namespace Wendigos
                 if (e.Result.Text.Length > 0)
                 {
                     Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
-                    var closest_masked = Plugin.GetClosestMasked();
-                    if (closest_masked == null || closest_masked.creatureVoice.isPlaying)
-                        return;
-                    try
+                    if (Microphone.IsRecording(Plugin.mic_name))
                     {
-                        if (!WendigosChatManager.init_success) return;
+                        Console.WriteLine("Adding clip...");
+                        try
+                        {
+                            var trimConfig = AudioUtils.AnalyzeAudioLevels(Plugin.mic_audio_clip);
+                            var clip = AudioUtils.TrimSpeechToMp3(Plugin.mic_audio_clip, trimConfig);
+                            if (clip.Length != 0)
+                            {
+                                if (speakingClips.Count >= MAX_CLIP_COUNT)
+                                    speakingClips.Remove(speakingClips.Keys.ToList()[Plugin.serverRand.Next(MAX_CLIP_COUNT)]);
+                                speakingClips.Add(e.Result.Text, clip);
+                            }
+                            else
+                                Console.WriteLine("Clip length is 0!");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.ToString());
+                        }
+                        Console.WriteLine("Added clip");
 
-                        SendToChatAndStreamAudioResponse(closest_masked, player_name, e.Result.Text);
-
+                        int minfreq;
+                        int maxfreq;
+                        Microphone.GetDeviceCaps(Plugin.mic_name, out minfreq, out maxfreq);
+                        Plugin.mic_audio_clip = Microphone.Start(Plugin.mic_name, true, 20, maxfreq);
                     }
-                    catch (Exception ex)
+
+                    if (Plugin.enable_realtime_responses.Value)
                     {
-                        Console.WriteLine($"GETRESPONSE BROKE: {ex.ToString()}");
+                        var closest_masked = Plugin.GetClosestMasked();
+                        if (closest_masked == null || closest_masked.creatureVoice.isPlaying)
+                            return;
+                        try
+                        {
+                            if (!WendigosChatManager.init_success) return;
+
+                            SendToChatAndStreamAudioResponse(closest_masked, player_name, e.Result.Text);
+
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"GETRESPONSE BROKE: {ex.ToString()}");
+                        }
                     }
                 }
             };
