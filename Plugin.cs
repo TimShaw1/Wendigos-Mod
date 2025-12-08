@@ -98,14 +98,24 @@ namespace Wendigos
                 Instance = this;
             }
 
+            private void Update()
+            {
+                while (MainThreadInvoker._actions.TryDequeue(out var action))
+                {
+                    action();
+                }
+            }
+
             public override void OnNetworkDespawn()
             {
                 AzureSTT.StopSpeechTranscription();
                 WendigosChatManager.chats.Clear();
-                if (IsServer)
-                {
-                    sharedMaskedClientDict.Clear();
-                }
+
+                sharedMaskedClientDict.Clear();
+                clientNameLookup.Clear();
+                clientVoiceIDLookup.Clear();
+
+
 
             }
             #region RPCS
@@ -236,7 +246,7 @@ namespace Wendigos
             }
 
             [ServerRpc(RequireOwnership = false)]
-            public void RequestMaskedResponseServerRpc(string maskedID, string playerName, string playerSpeech)
+            public void RequestMaskedResponseServerRpc(string maskedID, string playerName, string playerSpeech, bool respondingToPlayer = true)
             {
                 var clientID = Plugin.sharedMaskedClientDict[maskedID];
 
@@ -248,16 +258,29 @@ namespace Wendigos
                     }
                 };
 
-                RequestMaskedResponseClientRpc(maskedID, playerName, playerSpeech, clientRpcParams);
+                RequestMaskedResponseClientRpc(maskedID, playerName, playerSpeech, respondingToPlayer, clientRpcParams);
             }
 
             [ClientRpc]
-            public void RequestMaskedResponseClientRpc(string maskedID, string playerName, string playerSpeech, ClientRpcParams clientParams = default)
+            public void RequestMaskedResponseClientRpc(string maskedID, string playerName, string playerSpeech, bool respondingToPlayer = true, ClientRpcParams clientParams = default)
             {
-                AzureSTT.SendToChatAndStreamAudioResponse(maskedInstanceLookup[maskedID], playerName, playerSpeech);
+                AzureSTT.SendToChatAndChooseResponse(maskedInstanceLookup[maskedID], playerName, playerSpeech, respondingToPlayer);
             }
             #endregion
 
+        }
+
+        public class MainThreadInvoker
+        {
+            public static readonly ConcurrentQueue<Action> _actions = new ConcurrentQueue<Action>();
+
+            public static void Enqueue(Action action)
+            {
+                if (action == null)
+                    throw new ArgumentNullException(nameof(action));
+
+                _actions.Enqueue(action);
+            }
         }
 
         #region CONFIG
@@ -323,8 +346,6 @@ namespace Wendigos
         public static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
         internal static string mic_name;
-
-        public static AudioClip mic_audio_clip;
         #endregion
 
         #region UTILITY_FUNCTIONS
@@ -451,60 +472,63 @@ namespace Wendigos
         }
 
 
-        public static void PlayLocalAudioClipAndQueue(MaskedPlayerEnemy __instance)
+        public static void PlayLocalAudioClipAndQueue(MaskedPlayerEnemy __instance, int clipChoice = -1)
         {
             MaskedEnemyIdentifier identifier = __instance.GetComponent<MaskedEnemyIdentifier>();
+
             var audioComponent = identifier.child.GetComponent<MaskedAudioComponent>();
-
-            if (!audioComponent.audioQueue.HasSamples && serverRand.Next(100) >= (100 - talk_probability.Value))
+            var clips = AzureSTT.speakingClips.Values.ToList();
+            WriteToConsole("Clips count: " + clips.Count.ToString());
+            if (clips.Count > 0)
             {
-                var clips = AzureSTT.speakingClips.Values.ToList();
-                WriteToConsole("Clips count: " + clips.Count.ToString());
-                if (clips.Count > 0)
-                {
-                    var clip = clips[serverRand.Next(clips.Count)];
-                    WriteToConsole("Playing clip. Length: " + clip.Length);
+                byte[] clip;
+                if (clipChoice == -1)
+                    clip = clips[serverRand.Next(clips.Count)];
+                else
+                    clip = clips[clipChoice];
+                    
+                WriteToConsole($"Playing clip {(clipChoice == -1 ? "random" : clipChoice)}. Length: {clip.Length}");
 
-                    // __instance.creatureVoice.Play();
-                    identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(clip);
-                    // Configuration
-                    const int MAX_CHUNK_SIZE = 32768;
-                    int clipPosition = 0;
-                    int totalLength = clip.Length;
+                // __instance.creatureVoice.Play();
+                identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(clip);
+                // Configuration
+                const int MAX_CHUNK_SIZE = 32768;
+                int clipPosition = 0;
+                int totalLength = clip.Length;
                     
 
-                    // Loop until we have processed the entire clip
-                    while (clipPosition < totalLength)
-                    {
-                        // 1. Calculate the size of the current chunk
-                        // It will be MAX_CHUNK_SIZE, unless we are at the very end and have less than MAX_CHUNK_SIZE remaining.
-                        int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
+                // Loop until we have processed the entire clip
+                while (clipPosition < totalLength)
+                {
+                    // 1. Calculate the size of the current chunk
+                    // It will be MAX_CHUNK_SIZE, unless we are at the very end and have less than MAX_CHUNK_SIZE remaining.
+                    int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
 
-                        // 2. Create the chunk buffer
-                        byte[] chunk = new byte[currentChunkSize];
+                    // 2. Create the chunk buffer
+                    byte[] chunk = new byte[currentChunkSize];
 
-                        // 3. Copy data from the main clip into the chunk
-                        // specific arguments: (source, sourceIndex, destination, destIndex, length)
-                        System.Array.Copy(clip, clipPosition, chunk, 0, currentChunkSize);
+                    // 3. Copy data from the main clip into the chunk
+                    // specific arguments: (source, sourceIndex, destination, destIndex, length)
+                    System.Array.Copy(clip, clipPosition, chunk, 0, currentChunkSize);
 
-                        // --- YOUR CALLS BELOW ---
+                    // --- YOUR CALLS BELOW ---
 
-                        // 2. Feed the LOCAL Audio Engine
-                        // (We pass the chunk directly here so the local playback happens in sync with the network send)
-                        //identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(chunk);
+                    // 2. Feed the LOCAL Audio Engine
+                    // (We pass the chunk directly here so the local playback happens in sync with the network send)
+                    //identifier.child.GetComponent<MaskedAudioComponent>().audioQueue.Feed(chunk);
 
-                        // 3. Send Network RPC
-                        // (We pass the chunk instead of the whole accumulator)
-                        WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, identifier.id);
+                    // 3. Send Network RPC
+                    // (We pass the chunk instead of the whole accumulator)
+                    WendigosNetworkManager.Instance.ShareAudioDataServerRpc(chunk, identifier.id);
 
-                        // ------------------------
+                    // ------------------------
 
-                        // Advance the position
-                        clipPosition += currentChunkSize;
-                    }
-
-                    WriteToConsole("Sent audio data");
+                    // Advance the position
+                    clipPosition += currentChunkSize;
                 }
+
+                WriteToConsole("Sent audio data");
+                
             }
 
             return;
@@ -669,7 +693,7 @@ namespace Wendigos
             #endregion
 
             GUIManager.CreateGUIManagerObject();
-            
+
 
             // Allow players to hear voices even if mod is disabled
             SceneManager.sceneLoaded += WendigosNetworkManager.ClientConnectInitializer;
@@ -906,18 +930,20 @@ namespace Wendigos
                 {
                     case 0:
                         // Chasing
-                        if (__instance.CheckLineOfSightForClosestPlayer() != null)
+                        var closest_player = __instance.CheckLineOfSightForClosestPlayer();
+                        if (closest_player != null)
                         {
                             // Play clip when can see player
-                            if (!enable_realtime_responses.Value)
+                            if (!enable_realtime_responses.Value && serverRand.Next(100) >= (100 - talk_probability.Value) && Vector3.Distance(closest_player.gameplayCamera.transform.position, __instance.eye.position) > 15)
                             {
-                                PlayLocalAudioClipAndQueue(__instance);
+                                WendigosNetworkManager.Instance.RequestMaskedResponseServerRpc(thisMaskedID, "", "", false);
                             }
                         }
                         // Nearby
                         else
                         {
-                            PlayLocalAudioClipAndQueue(__instance);
+                            if (serverRand.Next(100) >= (100 - talk_probability.Value))
+                                PlayLocalAudioClipAndQueue(__instance);
                         }
 
                         break;
@@ -950,17 +976,6 @@ namespace Wendigos
             public static void Prefix(ref bool setOut, MaskedPlayerEnemy __instance)
             {
                 setOut = false;
-                string type = "chasing";
-
-                string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
-                if (!sharedMaskedClientDict.Keys.Contains(thisMaskedID))
-                    return;
-
-                ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
-
-                // Play clip when setting hands out
-                if (!enable_realtime_responses.Value)
-                    PlayLocalAudioClipAndQueue(__instance);
 
             }
 
@@ -977,8 +992,10 @@ namespace Wendigos
                     ulong MimickingClientID = sharedMaskedClientDict[thisMaskedID];
 
                     // Speak when damaged
-                    if (__instance.enemyHP > 0)
-                        PlayLocalAudioClipAndQueue(__instance);
+                    if (!enable_realtime_responses.Value && serverRand.Next(3) == 0)
+                    {
+                        WendigosNetworkManager.Instance.RequestMaskedResponseServerRpc(thisMaskedID, "", "{DAMAGED}", false);
+                    }
                 }
                 catch
                 {
@@ -1043,14 +1060,6 @@ namespace Wendigos
                 WriteToConsole("Chat Manager Object is: " + WendigosChatManager.chatManagerComponent);
                 WriteToConsole("Clearing chared masked dict");
                 sharedMaskedClientDict.Clear();
-
-                // Get max frequency of mic device
-                int minfreq;
-                int maxfreq;
-                Microphone.GetDeviceCaps(mic_name, out minfreq, out maxfreq);
-
-                // Max 10 minutes
-                mic_audio_clip = Microphone.Start(mic_name, true, 20, maxfreq);
 
                 // Tell clients to start azure (clients with realtime disabled ignore this!)
                 if (NetworkManager.Singleton.IsServer)

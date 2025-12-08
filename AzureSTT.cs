@@ -14,8 +14,10 @@ using TimShaw.VoiceBox.Core;
 using TimShaw.VoiceBox.Data;
 using TimShaw.VoiceBox.Generics;
 using TimShaw.VoiceBox.Modding;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Wendigos
 {
@@ -31,6 +33,13 @@ namespace Wendigos
         public static Dictionary<string, byte[]> speakingClips = new Dictionary<string, byte[]>();
 
         private const int MAX_CLIP_COUNT = 10;
+        private static DateTime _azureSessionStartTime;
+
+        private static RollingRecorder recorder;
+
+        public static List<byte[]> recordingBuffer = new List<byte[]>();
+        
+        private static bool midRequest = false;
 
         public static void StartSpeechTranscription(string prompt)
         {
@@ -38,6 +47,7 @@ namespace Wendigos
             Chat_System_Prompt = prompt;
             is_recognizing = true;
             AIManager.Instance.StartSpeechTranscription();
+            recorder.StartRecording(Plugin.mic_name);
         }
 
         public static void StopSpeechTranscription()
@@ -45,6 +55,7 @@ namespace Wendigos
             if (!is_init) return;
             is_recognizing = false;
             AIManager.Instance.StopSpeechTranscription();
+            recorder.StopRecording();
         }
 
         public static void Init(string api_key, string region, string language, string deviceName = "Default")
@@ -63,6 +74,9 @@ namespace Wendigos
                     ModdingTools.CreateTTSServiceConfig<GenericTTSServiceConfig>(),
                     sttKey: api_key
                 );
+                _azureSessionStartTime = DateTime.Now;
+
+                recorder = new RollingRecorder();
 
             }
 
@@ -97,9 +111,10 @@ namespace Wendigos
             var newConfig = ElevenLabs.ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig;
             newConfig.voiceId = voice_id;
             ElevenLabs.ttsManagerComponent.textToSpeechConfig = newConfig;
+            
 
             WendigosChatManager.SendPromptToChatService(
-                Chat_System_Prompt + (player_name == "" ? "\n" : "\n" + playerName + ": ") + player_speech,
+                Chat_System_Prompt + " A player just spoke to you, saying the following: " + (player_name == "" ? "\n" : "\n" + playerName + ": ") + player_speech,
                 response =>
                 {
                     //Console.WriteLine("RESPONSE: " + response);
@@ -115,65 +130,179 @@ namespace Wendigos
             );
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="closest_masked"></param>
+        /// <param name="playerName"></param>
+        /// <param name="player_speech">Either the player's spoken speech or context for the AI if not responding</param>
+        /// <param name="respondingToPlayer"></param>
+        public static void SendToChatAndChooseResponse(MaskedPlayerEnemy closest_masked, string playerName, string player_speech, bool respondingToPlayer = true)
+        {
+            if (!is_init) return;
+            if (speakingClips.Keys.Count == 0) return;
+            if (midRequest && !respondingToPlayer) return;
+
+            midRequest = true;
+
+            var masked_id = closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id;
+
+            string choicePrompt;
+            if (respondingToPlayer)
+            {
+                choicePrompt = Chat_System_Prompt + " A player just spoke to you, saying the following: " + (player_name == "" ? "\n" : "\n" + playerName + ": ") + player_speech
+                    + "\nYou have The following options to reply back:\n";
+            }
+            else
+            {
+                choicePrompt = Chat_System_Prompt;
+
+                if (player_speech == "{DAMAGED}") choicePrompt += " You just got damaged by a player.";
+
+                choicePrompt += " You can see a player in front of you. You have the following options to speak to them:\n";
+            }
+
+            string[] choices = new string[speakingClips.Keys.Count];
+
+            int i = 0;
+            foreach (var response in speakingClips.Keys)
+            {
+                choicePrompt += $"{i} -> {response}\n";
+                choices[i] = response;
+                i++;
+            }
+
+            choicePrompt += "Respond ONLY with the corresponding number of the line you would like to say. Do not return anything other than a number.";
+
+            WendigosChatManager.SendPromptToChatService(
+                choicePrompt,
+                response =>
+                {
+                    Console.WriteLine(response);
+                    int choiceIndex;
+
+                    try
+                    {
+                        choiceIndex = Convert.ToInt32(new string(response.SkipWhile(c => !char.IsDigit(c))
+                             .TakeWhile(c => char.IsDigit(c))
+                             .ToArray()));
+                    }
+                    catch
+                    {
+                        Console.WriteLine("AI is dumb, choosing option 0");
+                        choiceIndex = 0;
+                    }
+
+                    if (choiceIndex >= 0 && choiceIndex < choices.Length)
+                    {
+                        Plugin.PlayLocalAudioClipAndQueue(closest_masked, choiceIndex);
+                    }
+
+                    midRequest = false;
+                }
+            );
+        }
+
         public static void InitCallbacks()
         {
             NAudio.Lame.LameDLL.LoadNativeDLL(Plugin.assembly_path);
-            AIManager.Instance.SpeechToTextService.OnRecognizing += (s, e) =>
-            {
-                //Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}");
-            };
 
             AIManager.Instance.SpeechToTextService.OnRecognized += (s, e) =>
             {
-
+                
                 if (e.Result.Text.Length > 0)
                 {
-                    Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
-                    if (Microphone.IsRecording(Plugin.mic_name))
+                    Plugin.MainThreadInvoker.Enqueue(() =>
                     {
-                        Console.WriteLine("Adding clip...");
+                        Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
                         try
                         {
-                            var trimConfig = AudioUtils.AnalyzeAudioLevels(Plugin.mic_audio_clip);
-                            var clip = AudioUtils.TrimSpeechToMp3(Plugin.mic_audio_clip, trimConfig);
-                            if (clip.Length != 0)
+                            // --- CALCULATE ABSOLUTE TIMES ---
+                            // Convert Azure Ticks (relative to session start) to Real World Time
+                            long offsetTicks = e.Result.OffsetInTicks;
+                            TimeSpan offsetSpan = TimeSpan.FromTicks(offsetTicks);
+
+                            DateTime speechAbsStart = _azureSessionStartTime + offsetSpan;
+                            TimeSpan duration = e.Result.Duration;
+
+                            // --- EXTRACT ---
+                            // We pass the Absolute Time. The buffer handles the math.
+                            var clip = recorder.GetSegment(speechAbsStart, duration);
+
+                            if (clip != null && clip.Length > 0)
                             {
                                 if (speakingClips.Count >= MAX_CLIP_COUNT)
-                                    speakingClips.Remove(speakingClips.Keys.ToList()[Plugin.serverRand.Next(MAX_CLIP_COUNT)]);
-                                speakingClips.Add(e.Result.Text, clip);
+                                {
+                                    var keyToRemove = speakingClips.Keys.ToList()[Plugin.serverRand.Next(MAX_CLIP_COUNT)];
+                                    speakingClips.Remove(keyToRemove);
+                                }
+
+                                speakingClips.TryAdd(e.Result.Text, clip);
+                                Console.WriteLine("Added clip successfully.");
+
+                                
                             }
                             else
-                                Console.WriteLine("Clip length is 0!");
+                            {
+                                Console.WriteLine("Could not extract audio segment (buffer might be empty or timing mismatch).");
+                            }
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine(ex.ToString());
+                            Console.WriteLine($"Error processing audio clip: {ex}");
                         }
-                        Console.WriteLine("Added clip");
 
-                        int minfreq;
-                        int maxfreq;
-                        Microphone.GetDeviceCaps(Plugin.mic_name, out minfreq, out maxfreq);
-                        Plugin.mic_audio_clip = Microphone.Start(Plugin.mic_name, true, 20, maxfreq);
-                    }
-
-                    if (Plugin.enable_realtime_responses.Value)
-                    {
                         var closest_masked = Plugin.GetClosestMasked();
-                        if (closest_masked == null || closest_masked.creatureVoice.isPlaying)
+                        if (closest_masked == null)
                             return;
-                        try
-                        {
-                            if (!WendigosChatManager.init_success) return;
 
-                            SendToChatAndStreamAudioResponse(closest_masked, player_name, e.Result.Text);
+                        if (!WendigosChatManager.init_success) return;
 
-                        }
-                        catch (Exception ex)
+                        if (Plugin.enable_realtime_responses.Value)
                         {
-                            Console.WriteLine($"GETRESPONSE BROKE: {ex.ToString()}");
+                            
+                            try
+                            {
+                                SendToChatAndStreamAudioResponse(closest_masked, player_name, e.Text);
+
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"GETRESPONSE BROKE: {ex.ToString()}");
+                            }
                         }
-                    }
+                        else
+                        {
+                            string truncatedText = e.Text;
+                            if (truncatedText.Length > 128)
+                            {
+                                // 1. Calculate the raw starting index for the last 250 chars
+                                int startIndex = truncatedText.Length - 128;
+
+                                // 2. Check if we are splitting a word.
+                                // We only need to adjust if we are NOT at the start of the string,
+                                // the character BEFORE our cut is not a space (meaning the previous word continues),
+                                // and the character AT our cut is not a space.
+                                if (startIndex > 0 &&
+                                    !char.IsWhiteSpace(truncatedText[startIndex - 1]) &&
+                                    !char.IsWhiteSpace(truncatedText[startIndex]))
+                                {
+                                    // Find the next whitespace to skip the current partial word
+                                    int nextSpace = truncatedText.IndexOf(' ', startIndex);
+
+                                    if (nextSpace != -1)
+                                    {
+                                        // Move start index to the character immediately following the space
+                                        startIndex = nextSpace + 1;
+                                    }
+                                }
+
+                                // 3. Cut the string
+                                truncatedText = truncatedText.Substring(startIndex);
+                            }
+                            Plugin.WendigosNetworkManager.Instance.RequestMaskedResponseServerRpc(closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id, player_name, e.Result.Text);
+                        }
+                    });
                 }
             };
         }
