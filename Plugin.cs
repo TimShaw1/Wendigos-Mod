@@ -124,7 +124,7 @@ namespace Wendigos
                 clientNameLookup.Clear();
                 clientVoiceIDLookup.Clear();
 
-
+                NetworkManager.OnClientConnectedCallback -= OnClientConnectedCallback;
 
             }
             #region RPCS
