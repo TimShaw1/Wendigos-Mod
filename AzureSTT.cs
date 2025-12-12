@@ -195,7 +195,7 @@ namespace Wendigos
 
                     if (choiceIndex >= 0 && choiceIndex < choices.Length)
                     {
-                        Plugin.PlayLocalAudioClipAndQueue(closest_masked, choiceIndex);
+                        Plugin.MainThreadInvoker.Enqueue(() => Plugin.PlayLocalAudioClipAndQueue(closest_masked, choiceIndex));
                     }
 
                     midRequest = false;
