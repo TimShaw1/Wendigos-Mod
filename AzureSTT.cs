@@ -32,7 +32,7 @@ namespace Wendigos
         public static AzureSTTServiceConfig config;
         public static Dictionary<string, byte[]> speakingClips = new Dictionary<string, byte[]>();
 
-        private const int MAX_CLIP_COUNT = 10;
+        private static uint MAX_CLIP_COUNT = 10;
         private static DateTime _azureSessionStartTime;
 
         private static RollingRecorder recorder;
@@ -60,7 +60,7 @@ namespace Wendigos
 
         public static void Init(string api_key, string region, string language, string deviceName = "Default")
         {
-
+            MAX_CLIP_COUNT = Plugin.max_clip_count.Value;
             if (manager == null || AIManager.Instance == null || AIManager.Instance.SpeechToTextService == null)
             {
                 Console.WriteLine("No STT Service has been created. Creating one...");
@@ -233,7 +233,7 @@ namespace Wendigos
                             {
                                 if (speakingClips.Count >= MAX_CLIP_COUNT)
                                 {
-                                    var keyToRemove = speakingClips.Keys.ToList()[Plugin.serverRand.Next(MAX_CLIP_COUNT)];
+                                    var keyToRemove = speakingClips.Keys.ToList()[Plugin.serverRand.Next(((int)MAX_CLIP_COUNT))];
                                     speakingClips.Remove(keyToRemove);
                                 }
 

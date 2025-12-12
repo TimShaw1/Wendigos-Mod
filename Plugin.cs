@@ -324,6 +324,7 @@ namespace Wendigos
 
         // --------------- CONFIG ---------------
         private static ConfigEntry<bool> mod_enabled;
+        public static ConfigEntry<uint> max_clip_count;
         private static ConfigEntry<Languages> voice_language;
         private static ConfigEntry<uint> talk_probability;
         private static ConfigEntry<bool> elevenlabs_enabled;
@@ -584,6 +585,15 @@ namespace Wendigos
                 "Enable mod?",
                 false,
                 "Enables the mod. If disabled, you can only hear other people's voices. Your voice will not be cloned."
+                );
+
+            max_clip_count = Config.Bind<uint>(
+                "General",
+                "Max voice clips",
+                10,
+                new ConfigDescription(
+                "The maximum number of voice recordings the mod will keep in memory at a time.",
+                new AcceptableValueRange<uint>(1, 30))
                 );
 
             talk_probability = Config.Bind<uint>(
