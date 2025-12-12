@@ -14,6 +14,7 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using TimShaw.VoiceBox.Components;
 using TimShaw.VoiceBox.Core;
@@ -76,18 +77,20 @@ namespace Wendigos
             {
                 if (((Scene)(sceneName)).name == "SampleSceneRelay")
                 {
+                    var objectIdHash = BitConverter.ToUInt32(MD5.Create().ComputeHash(Encoding.UTF8.GetBytes($"{PluginInfo.PLUGIN_GUID}.MyNetworkPrefab")));
+
                     GameObject val = new GameObject("WendigosMessageHandler");
                     val.AddComponent<WendigosNetworkManager>();
                     val.AddComponent<NetworkObject>();
 
                     PropertyInfo item = typeof(NetworkObject).GetProperty("NetworkObjectId", BindingFlags.Instance | BindingFlags.Public);
                     WriteToConsole("" + (item == null));
-                    item.SetValue(val.GetComponent<NetworkObject>(), (System.UInt64)(127));
+                    item.SetValue(val.GetComponent<NetworkObject>(), (System.UInt64)(objectIdHash));
                     WriteToConsole("NETWORK MANAGER ID IS " + val.GetComponent<NetworkObject>().NetworkObjectId);
 
                     FieldInfo item2 = typeof(NetworkObject).GetField("GlobalObjectIdHash", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                     WriteToConsole("" + (item2 == null));
-                    item2.SetValue(val.GetComponent<NetworkObject>(), (System.UInt32)(127));
+                    item2.SetValue(val.GetComponent<NetworkObject>(), (System.UInt32)(objectIdHash));
                     //DontDestroyOnLoad(val);
 
                 }
@@ -95,6 +98,12 @@ namespace Wendigos
 
             private void Awake()
             {
+                if (Instance != null)
+                {
+                    Destroy(this);
+                    return;
+                }
+
                 Instance = this;
             }
 
@@ -791,7 +800,7 @@ namespace Wendigos
                     while (clipPosition < totalLength)
                     {
                         // 1. Calculate the size of the current chunk
-                        // It will be 4096, unless we are at the very end and have less than 4096 remaining.
+                        // It will be MAX_CHUNK_SIZE, unless we are at the very end and have less than MAX_CHUNK_SIZE remaining.
                         int currentChunkSize = System.Math.Min(MAX_CHUNK_SIZE, totalLength - clipPosition);
 
                         // 2. Create the chunk buffer
