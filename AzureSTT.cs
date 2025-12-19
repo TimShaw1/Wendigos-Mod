@@ -305,6 +305,11 @@ namespace Wendigos
                     });
                 }
             };
+
+            AIManager.Instance.SpeechToTextService.OnCanceled += (s, e) =>
+            {
+                Console.WriteLine("Speech to Text service cancelled: Reason=" + e.Reason + " Error: " + e.ErrorDetails);
+            };
         }
 
         public static void ChangeMicDevice(string deviceName)
