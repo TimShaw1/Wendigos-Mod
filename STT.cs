@@ -21,7 +21,7 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace Wendigos
 {
-    class AzureSTT
+    class STT
     {
         public static int num_gens = 0;
         public static bool is_init = false;
@@ -29,11 +29,11 @@ namespace Wendigos
         public static string Chat_System_Prompt = "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.";
         public static string player_name = "";
         public static GameObject manager;
-        public static AzureSTTServiceConfig config;
+        public static GenericSTTServiceConfig config;
         public static Dictionary<string, byte[]> speakingClips = new Dictionary<string, byte[]>();
 
         private static uint MAX_CLIP_COUNT = 10;
-        private static DateTime _azureSessionStartTime;
+        private static DateTime _sttSessionStartTime;
 
         private static RollingRecorder recorder;
 
@@ -64,17 +64,37 @@ namespace Wendigos
             if (manager == null || AIManager.Instance == null || AIManager.Instance.SpeechToTextService == null)
             {
                 Console.WriteLine("No STT Service has been created. Creating one...");
-                config = ModdingTools.CreateSTTServiceConfig<AzureSTTServiceConfig>();
-                config.region = region;
-                config.language = language;
-                config.audioInputDeviceName = deviceName;
-                manager = ModdingTools.CreateAIManagerObject(
-                    ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
-                    config,
-                    ModdingTools.CreateTTSServiceConfig<GenericTTSServiceConfig>(),
-                    sttKey: api_key
-                );
-                _azureSessionStartTime = DateTime.Now;
+                if (Plugin.STT_service.Value == "Azure")
+                {
+                    config = ModdingTools.CreateSTTServiceConfig<AzureSTTServiceConfig>();
+                    AzureSTTServiceConfig derivedConfig = config as AzureSTTServiceConfig;
+                    derivedConfig.region = region;
+                    derivedConfig.language = language;
+                    derivedConfig.audioInputDeviceName = deviceName;
+                    manager = ModdingTools.CreateAIManagerObject(
+                        ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
+                        config,
+                        ModdingTools.CreateTTSServiceConfig<GenericTTSServiceConfig>(),
+                        sttKey: api_key
+                    );
+                }
+                else
+                {
+                    config = ModdingTools.CreateSTTServiceConfig<ElevenlabsSTTServiceConfig>();
+                    ElevenlabsSTTServiceConfig derivedConfig = config as ElevenlabsSTTServiceConfig;
+                    derivedConfig.language = language;
+                    derivedConfig.audioInputDeviceName = deviceName;
+                    derivedConfig.vad_silence_threshold_secs = 0.65;
+                    manager = ModdingTools.CreateAIManagerObject(
+                        ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
+                        config,
+                        ModdingTools.CreateTTSServiceConfig<GenericTTSServiceConfig>(),
+                        sttKey: api_key
+                    );
+                }
+
+                
+                _sttSessionStartTime = DateTime.Now;
 
                 recorder = new RollingRecorder();
 
@@ -222,7 +242,7 @@ namespace Wendigos
                             long offsetTicks = e.Result.OffsetInTicks;
                             TimeSpan offsetSpan = TimeSpan.FromTicks(offsetTicks);
 
-                            DateTime speechAbsStart = _azureSessionStartTime + offsetSpan;
+                            DateTime speechAbsStart = _sttSessionStartTime + offsetSpan;
                             TimeSpan duration = e.Result.Duration;
 
                             // --- EXTRACT ---
@@ -316,8 +336,11 @@ namespace Wendigos
         {
             if (!is_init) return;
             bool was_recognizing = is_recognizing;
-            AzureSTT.StopSpeechTranscription();
-            config.audioInputDeviceName = deviceName;
+            STT.StopSpeechTranscription();
+            if (Plugin.STT_service.Value == "Azure")
+                (config as AzureSTTServiceConfig).audioInputDeviceName = deviceName;
+            else
+                (config as ElevenlabsSTTServiceConfig).audioInputDeviceName = deviceName;
             AIManager.Instance.SpeechToTextService.Initialize(config);
             //InitCallbacks();
 

@@ -47,7 +47,7 @@ namespace Wendigos
 
                 NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
 
-                ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, elevenlabs_voice_id.Value);
+                ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, TTS_voice_id.Value);
                 ShareNameServerRpc(NetworkManager.Singleton.LocalClientId, player_name.Value);
             }
 
@@ -117,7 +117,7 @@ namespace Wendigos
 
             public override void OnNetworkDespawn()
             {
-                AzureSTT.StopSpeechTranscription();
+                STT.StopSpeechTranscription();
                 WendigosChatManager.chats.Clear();
 
                 sharedMaskedClientDict.Clear();
@@ -213,16 +213,16 @@ namespace Wendigos
             }
 
             [ClientRpc]
-            public void InitAzureClientRpc()
+            public void InitSTTClientRpc()
             {
-                WriteToConsole("AZURE MANAGER IS: " + AzureSTT.manager);
-                if (AzureSTT.manager == null)
+                WriteToConsole("STT MANAGER IS: " + STT.manager);
+                if (STT.manager == null)
                 {
-                    AzureSTT.num_gens = 0;
-                    AzureSTT.Init(Azure_api_key.Value, Azure_region.Value, Azure_language.Value, mic_name);
+                    STT.num_gens = 0;
+                    STT.Init(STT_api_key.Value, STT_region.Value, STT_language.Value, mic_name);
                 }
 
-                AzureSTT.StartSpeechTranscription(Chat_prompt.Value);
+                STT.StartSpeechTranscription(Chat_prompt.Value);
             }
 
             [ServerRpc(RequireOwnership = false)]
@@ -273,7 +273,7 @@ namespace Wendigos
             [ClientRpc]
             public void RequestMaskedResponseClientRpc(string maskedID, string playerName, string playerSpeech, bool respondingToPlayer = true, ClientRpcParams clientParams = default)
             {
-                AzureSTT.SendToChatAndChooseResponse(maskedInstanceLookup[maskedID], playerName, playerSpeech, respondingToPlayer);
+                STT.SendToChatAndChooseResponse(maskedInstanceLookup[maskedID], playerName, playerSpeech, respondingToPlayer);
             }
             #endregion
 
@@ -327,18 +327,18 @@ namespace Wendigos
         public static ConfigEntry<uint> max_clip_count;
         private static ConfigEntry<Languages> voice_language;
         private static ConfigEntry<uint> talk_probability;
-        private static ConfigEntry<bool> elevenlabs_enabled;
-        private static ConfigEntry<string> elevenlabs_api_key;
-        public static ConfigEntry<string> elevenlabs_voice_id;
-        public static ConfigEntry<float> elevenlabs_voice_volume_boost;
+        private static ConfigEntry<bool> TTS_enabled;
+        private static ConfigEntry<string> TTS_api_key;
+        public static ConfigEntry<string> TTS_voice_id;
+        public static ConfigEntry<float> TTS_voice_volume_boost;
         private static ConfigEntry<string> ChatServiceProvider;
         private static ConfigEntry<string> Chat_api_key;
         private static ConfigEntry<string> Chat_model;
         private static ConfigEntry<string> Chat_prompt;
-        private static ConfigEntry<string> Azure_api_key;
-        private static ConfigEntry<string> Azure_region;
-        private static ConfigEntry<string> Azure_language;
-        private static ConfigEntry<bool> optimize_for_speed;
+        public static ConfigEntry<string> STT_service;
+        private static ConfigEntry<string> STT_api_key;
+        private static ConfigEntry<string> STT_region;
+        private static ConfigEntry<string> STT_language;
         public static ConfigEntry<bool> enable_realtime_responses;
         private static ConfigEntry<string> player_name;
 
@@ -487,7 +487,7 @@ namespace Wendigos
             MaskedEnemyIdentifier identifier = __instance.GetComponent<MaskedEnemyIdentifier>();
 
             var audioComponent = identifier.child.GetComponent<MaskedAudioComponent>();
-            var clips = AzureSTT.speakingClips.Values.ToList();
+            var clips = STT.speakingClips.Values.ToList();
             WriteToConsole("Clips count: " + clips.Count.ToString());
             if (clips.Count > 0)
             {
@@ -605,29 +605,29 @@ namespace Wendigos
                 new AcceptableValueRange<uint>(0, 100))
                 );
 
-            elevenlabs_enabled = Config.Bind<bool>(
-                "Elevenlabs",
+            TTS_enabled = Config.Bind<bool>(
+                "TTS",
                 "Enabled",
                 false,
-                "Whether to use elevenlabs for ai voice generation"
+                "Whether to use TTS service (Elevenlabs) for ai voice generation"
                 );
 
-            elevenlabs_api_key = Config.Bind<string>(
-                "Elevenlabs",
+            TTS_api_key = Config.Bind<string>(
+                "TTS",
                 "API key",
                 "",
-                "Your elevenlabs API key. Do NOT add extra characters like \""
+                "Your TTS (Elevenlabs) API key. Do NOT add extra characters like \""
                 );
 
-            elevenlabs_voice_id = Config.Bind<string>(
-                "Elevenlabs",
+            TTS_voice_id = Config.Bind<string>(
+                "TTS",
                 "Voice id",
                 "",
-                "Your elevenlabs voice id"
+                "Your TTS (Elevenlabs) voice id"
                 );
 
-            elevenlabs_voice_volume_boost = Config.Bind<float>(
-                "Elevenlabs",
+            TTS_voice_volume_boost = Config.Bind<float>(
+                "TTS",
                 "Masked Voice Volume Boost",
                 1f,
                 new ConfigDescription(
@@ -641,7 +641,7 @@ namespace Wendigos
                 "Chat Service Provider",
                 "Gemini",
                 new ConfigDescription(
-                    "Which chat service providers to use. Allowed values are ChatGPT, Gemini, Claude, and Ollama",
+                    "Which chat service provider to use. Allowed values are ChatGPT, Gemini, Claude, and Ollama",
                     new AcceptableValueList<string>("ChatGPT", "Gemini", "Claude", "Ollama")
                 )
             );
@@ -668,39 +668,43 @@ namespace Wendigos
                 "The prompt given to the Chat service to determine what to say."
                 );
 
-            Azure_api_key = Config.Bind<string>(
+            STT_service = Config.Bind<string>(
+                "STT",
+                "Service",
                 "Azure",
+                new ConfigDescription(
+                    "Which STT service provider to use. Allowed values are Azure and Elevenlabs",
+                    new AcceptableValueList<string>("Azure", "Elevenlabs")
+                )
+                );
+
+            STT_api_key = Config.Bind<string>(
+                "STT",
                 "API key",
                 "",
-                "Your Azure API key. Do NOT add extra characters like \""
+                "Your STT API key. Do NOT add extra characters like \""
                 );
 
-            Azure_region = Config.Bind<string>(
-                "Azure",
+            STT_region = Config.Bind<string>(
+                "STT",
                 "Region",
                 "canadacentral",
-                "Your Azure region"
+                "(Azure Only) Your Azure region"
                 );
 
-            Azure_language = Config.Bind<string>(
-                "Azure",
+            STT_language = Config.Bind<string>(
+                "STT",
                 "Language",
                 "en-US",
-                "Your desired speech recognition language, list of supported languages can be found here: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt"
-                );
-
-            optimize_for_speed = Config.Bind<bool>(
-                "Experimental",
-                "Optimize Elevenlabs for Speed",
-                false,
-                "(English ONLY) Enable if you want extremely fast voice generation. Reduces the quality of the voice clone."
+                "Your desired speech recognition language, Azure: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt or " +
+                "Elevenlabs: https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes"
                 );
 
             enable_realtime_responses = Config.Bind<bool>(
                 "Experimental",
                 "Realtime Responses",
                 false,
-                "Enables Chat voice line generation so masked can reply in real time. You MUST have Elevenlabs, Azure, and Chat api keys set."
+                "Enables Chat voice line generation so masked can reply in real time. You MUST have TTS, STT, and Chat api keys set."
                 );
 
             player_name = Config.Bind<string>(
@@ -770,13 +774,11 @@ namespace Wendigos
 
 
                 WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
-                AzureSTT.player_name = player_name.Value;
-                if (optimize_for_speed.Value)
-                    ElevenLabs.optimize_for_speed = true;
+                STT.player_name = player_name.Value;
                 try
                 {
-                    if (elevenlabs_enabled.Value)
-                        ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value, elevenlabs_voice_volume_boost.Value);
+                    if (TTS_enabled.Value)
+                        ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume_boost.Value);
                 }
                 catch (Exception ex)
                 {
@@ -1080,18 +1082,18 @@ namespace Wendigos
                 WriteToConsole("Clearing chared masked dict");
                 sharedMaskedClientDict.Clear();
 
-                // Tell clients to start azure (clients with realtime disabled ignore this!)
+                // Tell clients to start STT (clients with realtime disabled ignore this!)
                 if (NetworkManager.Singleton.IsServer)
                 {
-                    WendigosNetworkManager.Instance.InitAzureClientRpc();
+                    WendigosNetworkManager.Instance.InitSTTClientRpc();
                 }
                     
                 if (WendigosChatManager.chatManagerComponent == null)
                     WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
                 try
                 {
-                    if (elevenlabs_enabled.Value && ElevenLabs.ttsManagerComponent == null)
-                        ElevenLabs.Init(elevenlabs_api_key.Value, elevenlabs_voice_id.Value, elevenlabs_voice_volume_boost.Value);
+                    if (TTS_enabled.Value && ElevenLabs.ttsManagerComponent == null)
+                        ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume_boost.Value);
                 }
                 catch (Exception ex)
                 {
@@ -1113,7 +1115,7 @@ namespace Wendigos
                 try
                 {
                     // reset speech recognition and chat history
-                    AzureSTT.StopSpeechTranscription();
+                    STT.StopSpeechTranscription();
                     WendigosChatManager.chats.Clear();
                     
                 }
@@ -1130,7 +1132,7 @@ namespace Wendigos
             static void Postfix(IngamePlayerSettings __instance)
             {
                 mic_name = IngamePlayerSettings.Instance.settings.micDevice;
-                AzureSTT.ChangeMicDevice(mic_name);
+                STT.ChangeMicDevice(mic_name);
                 WriteToConsole(mic_name);
             }
         }
@@ -1142,7 +1144,7 @@ namespace Wendigos
             {
                 // changes mic to primary mic
                 mic_name = IngamePlayerSettings.Instance.settings.micDevice;
-                AzureSTT.ChangeMicDevice(mic_name);
+                STT.ChangeMicDevice(mic_name);
                 WriteToConsole("Set to " + mic_name);
             }
         }

@@ -22,7 +22,6 @@ namespace Wendigos
         const string baseDir = @".\"; // Base Directory of output file
         const string baseURL = "https://api.elevenlabs.io/v1/text-to-speech/"; // Base URL of HTTP request
         public static string VOICE_ID;
-        public static bool optimize_for_speed = false;
         public static float volume_boost = 0;
 
         public static TTSManager ttsManagerComponent;
