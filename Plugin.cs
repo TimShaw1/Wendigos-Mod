@@ -70,6 +70,10 @@ namespace Wendigos
 
                     WriteToConsole(clientVoiceIDLookup.Values.ToArray().ToString());
                     WriteToConsole(clientNameLookup.Values.ToArray().ToString());
+
+                    if (enable_config_sync.Value)
+                        PromptToShareDataWithClients();
+
                 }
             }
 
@@ -275,6 +279,130 @@ namespace Wendigos
             {
                 STT.SendToChatAndChooseResponse(maskedInstanceLookup[maskedID], playerName, playerSpeech, respondingToPlayer);
             }
+
+            private void PromptToShareDataWithClients()
+            {
+                var confirmationGUI = SimpleConfirmationGUI.CreateConfirmationGUI("Do you want to share your config with all clients (including API keys?). Close this window to decline.");
+
+                confirmationGUI.onButtonClicked = () =>
+                {
+                    if (IsServer) ShareConfigToClientsServerRpc();
+                };
+            }
+
+            [ServerRpc(RequireOwnership = false)]
+            public void ShareConfigToClientsServerRpc(ServerRpcParams serverRpcParams = default)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+
+                ClientRpcParams clientRpcParams = new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams
+                    {
+                        TargetClientIds = NetworkManager.Singleton.ConnectedClientsIds.Except(new[] { senderClientId }).ToList()
+                    }
+                };
+
+                // Send data to non-host clients
+                RecieveConfigClientRpc(
+                    ChatServiceProvider.Value,
+                    Chat_api_key.Value,
+                    Chat_model.Value,
+                    Chat_prompt.Value,
+
+                    enable_realtime_responses.Value,
+
+                    max_clip_count.Value,
+                    talk_probability.Value,
+
+                    STT_service.Value,
+                    STT_api_key.Value,
+                    STT_region.Value,
+                    STT_language.Value,
+
+                    TTS_enabled.Value,
+                    TTS_api_key.Value,
+                    clientRpcParams
+                );
+            }
+
+            [ClientRpc]
+            public void RecieveConfigClientRpc(
+                // Chat
+                string chatServiceProvider, 
+                string chatApiKey, 
+                string chatModel, 
+                string prompt, 
+
+                // Experimental
+                bool realtimeResponses,
+
+                // General
+                uint maxClips,
+                uint talkProbability,
+                
+                // STT
+                string sttService,
+                string sttApiKey,
+                string region,
+                string language,
+                
+                // TTS
+                bool ttsEnabled,
+                string ttsApiKey,
+                ClientRpcParams clientParams = default
+            )
+            {
+                string guiPrompt = "Host has requested to sync config with you!";
+                if (TTS_api_key.Value != "")
+                    guiPrompt += " You already have a TTS api key set so TTS options will be skipped.";
+
+                if (STT_api_key.Value != "")
+                    guiPrompt += " You already have an STT api key set so STT options will be skipped.";
+
+                if (Chat_api_key.Value != "")
+                    guiPrompt += " You already have a Chat api key set so Chat options will be skipped.";
+
+                guiPrompt += " Are you sure you want to continue?";
+                var confirmationGUI = SimpleConfirmationGUI.CreateConfirmationGUI(guiPrompt);
+
+                confirmationGUI.onButtonClicked = () =>
+                {
+                    if (Chat_api_key.Value == "")
+                    {
+                        ChatServiceProvider.Value = chatServiceProvider;
+                        Chat_api_key.Value = chatApiKey;
+                        Chat_model.Value = chatModel;
+                        Chat_prompt.Value = prompt;
+                        WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
+                    }
+
+                    enable_realtime_responses.Value = realtimeResponses;
+
+                    max_clip_count.Value = maxClips;
+                    talk_probability.Value = talkProbability;
+
+                    if (STT_api_key.Value == "")
+                    {
+                        STT_service.Value = sttService;
+                        STT_api_key.Value = sttApiKey;
+                        STT_region.Value = region;
+                        STT_language.Value = language;
+                    }
+
+                    if (TTS_api_key.Value == "")
+                    {
+                        TTS_enabled.Value = ttsEnabled;
+                        TTS_api_key.Value = ttsApiKey;
+                    }
+
+                    if (ElevenLabs.ttsManagerComponent == null)
+                    {
+                        if (TTS_enabled.Value || enable_realtime_responses.Value)
+                            ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
+                    }
+                };
+            }
             #endregion
 
         }
@@ -330,7 +458,7 @@ namespace Wendigos
         private static ConfigEntry<bool> TTS_enabled;
         private static ConfigEntry<string> TTS_api_key;
         public static ConfigEntry<string> TTS_voice_id;
-        public static ConfigEntry<float> TTS_voice_volume_boost;
+        public static ConfigEntry<float> TTS_voice_volume;
         private static ConfigEntry<string> ChatServiceProvider;
         private static ConfigEntry<string> Chat_api_key;
         private static ConfigEntry<string> Chat_model;
@@ -340,6 +468,7 @@ namespace Wendigos
         private static ConfigEntry<string> STT_region;
         private static ConfigEntry<string> STT_language;
         public static ConfigEntry<bool> enable_realtime_responses;
+        private static ConfigEntry<bool> enable_config_sync;
         private static ConfigEntry<string> player_name;
 
         // --------------- LOOKUPS -----------------
@@ -583,8 +712,8 @@ namespace Wendigos
             mod_enabled = Config.Bind<bool>(
                 "General",
                 "Enable mod?",
-                false,
-                "Enables the mod. If disabled, you can only hear other people's voices. Your voice will not be cloned."
+                true,
+                "Enables the mod. If disabled, you can only hear other people's voices. Your voice will not be recorded."
                 );
 
             max_clip_count = Config.Bind<uint>(
@@ -626,13 +755,13 @@ namespace Wendigos
                 "Your TTS (Elevenlabs) voice id"
                 );
 
-            TTS_voice_volume_boost = Config.Bind<float>(
+            TTS_voice_volume = Config.Bind<float>(
                 "TTS",
-                "Masked Voice Volume Boost",
+                "Masked Voice Volume",
                 1f,
                 new ConfigDescription(
-                "How much to boost the masked voices",
-                new AcceptableValueRange<float>(0f,4f)
+                "How loud the masked voices are",
+                new AcceptableValueRange<float>(0f,1f)
                 )
                 );
 
@@ -704,7 +833,15 @@ namespace Wendigos
                 "Experimental",
                 "Realtime Responses",
                 false,
-                "Enables Chat voice line generation so masked can reply in real time. You MUST have TTS, STT, and Chat api keys set."
+                "Enables Chat voice line generation so masked can reply in real time. You MUST have TTS, STT, and Chat api keys set. IMPORTANT: if you set this and " +
+                "dont set a VoiceID, your voice will be automatically be cloned by Elevenlabs."
+                );
+
+            enable_config_sync = Config.Bind<bool>(
+                "Experimental",
+                "Config sync prompt",
+                false,
+                "(Host only) Enables showing a popup each time a player connects that allows you to sync your config with all clients."
                 );
 
             player_name = Config.Bind<string>(
@@ -772,13 +909,16 @@ namespace Wendigos
                 }
 
 
+                if (Chat_api_key.Value != "")
+                    WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
+                else
+                    WriteToConsole("No Chat api key specified!");
 
-                WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
                 STT.player_name = player_name.Value;
                 try
                 {
-                    if (TTS_enabled.Value)
-                        ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume_boost.Value);
+                    if (TTS_enabled.Value || enable_realtime_responses.Value)
+                        ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
                 }
                 catch (Exception ex)
                 {
@@ -1092,8 +1232,8 @@ namespace Wendigos
                     WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
                 try
                 {
-                    if (TTS_enabled.Value && ElevenLabs.ttsManagerComponent == null)
-                        ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume_boost.Value);
+                    if ((TTS_enabled.Value || enable_realtime_responses.Value) && ElevenLabs.ttsManagerComponent == null)
+                        ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
                 }
                 catch (Exception ex)
                 {
