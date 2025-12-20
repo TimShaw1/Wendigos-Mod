@@ -85,6 +85,7 @@ namespace Wendigos
                     derivedConfig.language = language;
                     derivedConfig.audioInputDeviceName = deviceName;
                     derivedConfig.vad_silence_threshold_secs = 0.65;
+                    derivedConfig.include_timestamps = true;
                     manager = ModdingTools.CreateAIManagerObject(
                         ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
                         config,
@@ -240,10 +241,14 @@ namespace Wendigos
                             // --- CALCULATE ABSOLUTE TIMES ---
                             // Convert Azure Ticks (relative to session start) to Real World Time
                             long offsetTicks = e.Result.OffsetInTicks;
+                            //Console.WriteLine(e.Result.OffsetInTicks);
+                            //Console.WriteLine(e.Result.Duration);
+                            if (offsetTicks < 0) return;
                             TimeSpan offsetSpan = TimeSpan.FromTicks(offsetTicks);
 
                             DateTime speechAbsStart = _sttSessionStartTime + offsetSpan;
                             TimeSpan duration = e.Result.Duration;
+                            if (duration.TotalMilliseconds == 0) return;
 
                             // --- EXTRACT ---
                             // We pass the Absolute Time. The buffer handles the math.
