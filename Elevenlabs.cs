@@ -22,7 +22,7 @@ namespace Wendigos
         const string baseDir = @".\"; // Base Directory of output file
         const string baseURL = "https://api.elevenlabs.io/v1/text-to-speech/"; // Base URL of HTTP request
         public static string VOICE_ID;
-        public static float volume_boost = 0;
+        public static float masked_volume = 0;
 
         public static TTSManager ttsManagerComponent;
         public static void Init(string api_key, string voice_id, float volumeBoost)
@@ -56,7 +56,7 @@ namespace Wendigos
                 }
 
 
-                    volume_boost = volumeBoost;
+                masked_volume = volumeBoost;
             }
             catch (Exception ex) 
             {
@@ -138,6 +138,7 @@ namespace Wendigos
             //ttsManagerComponent.textToSpeechConfig = modifiedConfig;
 
             audioStreamer.StopStreaming(ttsManagerComponent.TextToSpeechService);
+            audioStreamer.GetComponent<AudioSource>().volume = masked_volume > 1f ? 1f : masked_volume;
             ttsManagerComponent.RequestAudioAndStream(prompt, audioStreamer);
         }
 
