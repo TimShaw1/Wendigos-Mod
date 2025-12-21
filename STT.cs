@@ -32,7 +32,7 @@ namespace Wendigos
         public static GenericSTTServiceConfig config;
         public static Dictionary<string, byte[]> speakingClips = new Dictionary<string, byte[]>();
 
-        private static uint MAX_CLIP_COUNT = 10;
+        public static uint MAX_CLIP_COUNT = 10;
         private static DateTime _sttSessionStartTime;
 
         private static RollingRecorder recorder;
@@ -123,6 +123,11 @@ namespace Wendigos
             {
                 var client = Plugin.sharedMaskedClientDict[masked_id];
                 voice_id = Plugin.clientVoiceIDLookup[client];
+                if (voice_id == "")
+                {
+                    voice_id = ElevenLabs.VOICE_ID;
+                    Plugin.WendigosNetworkManager.Instance.ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, voice_id);
+                }
             }
             catch
             {

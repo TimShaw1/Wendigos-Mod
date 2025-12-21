@@ -28,8 +28,17 @@ namespace Wendigos
         public static void Init(string api_key, string voice_id, float volumeBoost)
         {
             try
-            {           
-                VOICE_ID = voice_id;
+            {
+                if (voice_id == "pending")
+                { 
+                    return; 
+                }
+
+                if (ttsManagerComponent != null)
+                {
+                    Object.DestroyImmediate(ttsManagerComponent.gameObject);
+                    ttsManagerComponent = null;
+                }
 
                 // Create a new GameObject and attach a TTSManager component to it
                 GameObject ttsManager = new GameObject("wendigosTtsManager");
@@ -40,6 +49,7 @@ namespace Wendigos
                 elevenlabsConfig.voiceId = voice_id;
                 elevenlabsConfig.modelID = "eleven_flash_v2_5";
 
+                Console.WriteLine("Before: " + (ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig)?.voiceId);
                 if (api_key.Length == 0)
                 {
                     Console.WriteLine("No Elevenlabs API key found. Attempting to load from environment variable ELEVENLABS_API_KEY...");
@@ -54,6 +64,8 @@ namespace Wendigos
                     // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
                     ModdingTools.InitTTSManagerObject(ttsManagerComponent, elevenlabsConfig, ttsKey: api_key);
                 }
+                Console.WriteLine("After: " + (ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig)?.voiceId);
+                VOICE_ID = voice_id;
 
 
                 masked_volume = volumeBoost;
@@ -139,6 +151,7 @@ namespace Wendigos
 
             audioStreamer.StopStreaming(ttsManagerComponent.TextToSpeechService);
             audioStreamer.GetComponent<AudioSource>().volume = masked_volume > 1f ? 1f : masked_volume;
+            Console.WriteLine((ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig).voiceId);
             ttsManagerComponent.RequestAudioAndStream(prompt, audioStreamer);
         }
 

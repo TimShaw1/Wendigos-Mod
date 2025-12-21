@@ -127,6 +127,7 @@ namespace Wendigos
                 sharedMaskedClientDict.Clear();
                 clientNameLookup.Clear();
                 clientVoiceIDLookup.Clear();
+                STT.speakingClips.Clear();
 
                 NetworkManager.OnClientConnectedCallback -= OnClientConnectedCallback;
 
@@ -170,8 +171,10 @@ namespace Wendigos
                 }
                 else
                 {
+                    if (clientVoiceIDLookup[clientID] == "") clientVoiceIDLookup[clientID] = VoiceID;
                     WriteToConsole("Server has " + clientID + " " + VoiceID);
                 }
+                ShareVoiceIDClientRpc(clientID, VoiceID);
             }
 
             [ClientRpc]
@@ -184,6 +187,7 @@ namespace Wendigos
                 }
                 else
                 {
+                    if (clientVoiceIDLookup[clientID] == "") clientVoiceIDLookup[clientID] = VoiceID;
                     WriteToConsole("Client has " + clientID + " " + VoiceID);
                 }
             }
@@ -459,6 +463,7 @@ namespace Wendigos
         private static ConfigEntry<string> TTS_api_key;
         public static ConfigEntry<string> TTS_voice_id;
         public static ConfigEntry<float> TTS_voice_volume;
+        public static ConfigEntry<string> player_voice_description;
         private static ConfigEntry<string> ChatServiceProvider;
         private static ConfigEntry<string> Chat_api_key;
         private static ConfigEntry<string> Chat_model;
@@ -469,7 +474,7 @@ namespace Wendigos
         private static ConfigEntry<string> STT_language;
         public static ConfigEntry<bool> enable_realtime_responses;
         private static ConfigEntry<bool> enable_config_sync;
-        private static ConfigEntry<string> player_name;
+        public static ConfigEntry<string> player_name;
 
         // --------------- LOOKUPS -----------------
         public static Dictionary<string, ulong> sharedMaskedClientDict = new Dictionary<string, ulong>();
@@ -695,10 +700,43 @@ namespace Wendigos
 
             MaskedAudioComponent audioComponent = maskedAudioStreamer.AddComponent<MaskedAudioComponent>();
 
-            ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataRecieved += (obj, data) =>
+            // Autoclone
+            if (STT.speakingClips.Count >= STT.MAX_CLIP_COUNT && TTS_voice_id.Value == "")
             {
-                identifier.audioNetworkQueue.Enqueue(data);
-            };
+                // Hack - init to access ttsManagerComponent to call CloneVoiceAndGetVoiceIDAsync
+                if (ElevenLabs.ttsManagerComponent == null)
+                    ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
+
+                TTS_voice_id.Value = "pending";
+
+                ElevenLabs.ttsManagerComponent.CloneVoiceAndGetVoiceIDAsync(
+                        STT.speakingClips.Values.ToList(),
+                        player_name.Value == "" ? "WendigosClone" : player_name.Value,
+                        player_voice_description.Value,
+                        false
+                ).ContinueWith(
+                    (result) =>
+                    {
+                        TTS_voice_id.Value = result.Result;
+                        MainThreadInvoker.Enqueue(() => { 
+                            // Properly init now
+                            ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
+                            ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataRecieved += (obj, data) =>
+                            {
+                                identifier.audioNetworkQueue.Enqueue(data);
+                            };
+                        });
+                    }
+                );
+            }
+            else
+            {
+
+                ElevenLabs.ttsManagerComponent?.TextToSpeechService.OnAudioDataRecieved += (obj, data) =>
+                {
+                    identifier.audioNetworkQueue.Enqueue(data);
+                };
+            }
 
         }
         #endregion
@@ -763,6 +801,13 @@ namespace Wendigos
                 "How loud the masked voices are",
                 new AcceptableValueRange<float>(0f,1f)
                 )
+                );
+
+            player_voice_description = Config.Bind<string>(
+                "TTS",
+                "Voice Description",
+                "",
+                "A description of your voice (eg 'A high-energy male Canadian voice'). Used to improve auto voice clone quality."
                 );
 
             ChatServiceProvider = Config.Bind<string>(
@@ -848,7 +893,7 @@ namespace Wendigos
                 "Experimental",
                 "Your name",
                 "",
-                "Your name. Allows Chat service to know who is who"
+                "Your name. Allows Chat service to know who is who. Needed for autoclone."
                 );
             #endregion
 
