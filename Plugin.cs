@@ -718,6 +718,7 @@ namespace Wendigos
                     (result) =>
                     {
                         TTS_voice_id.Value = result.Result;
+                        WendigosNetworkManager.Instance.ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, result.Result);
                         MainThreadInvoker.Enqueue(() => { 
                             // Properly init now
                             ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
