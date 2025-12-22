@@ -29,7 +29,7 @@ namespace Wendigos
             {
                 if (api_key.Length == 0)
                 {
-                    throw new ArgumentException("No Chat API key!");
+                    Console.WriteLine("[Wendigos Chat] No Chat API key!");
                     return;
                 }
 
@@ -54,7 +54,7 @@ namespace Wendigos
                         chatConfig = ModdingTools.CreateChatServiceConfig<OllamaChatServiceConfig>();
                         break;
                     default:
-                        Console.WriteLine("Wendigos: Unknown chat service type");
+                        Console.WriteLine("[Wendigos Chat] Unknown chat service type");
                         return;
                 }
                 chatConfig.modelName = modelToUse;
@@ -70,7 +70,7 @@ namespace Wendigos
             }
             catch (Exception ex)
             {
-                Console.WriteLine("CHATGPT INIT FAILED");
+                Console.WriteLine("[Wendigos Chat] INIT FAILED");
                 Console.WriteLine(ex.Message);
             }
         }
@@ -99,7 +99,7 @@ namespace Wendigos
             }
             catch (Exception ex)
             {
-                Console.WriteLine("CHAT BROKE");
+                Console.WriteLine("[Wendigos Chat] ERROR");
                 Console.WriteLine(ex.ToString()); 
                 return; 
             }

@@ -425,39 +425,12 @@ namespace Wendigos
         }
 
         #region CONFIG
-        public static string[] LanguagesList = { 
-                "en", "es", "fr", "de", "it", "pt", 
-                "pl", "tr", "ru", "nl", "cs", "ar",
-                "zh-cn", "ja", "hu", "ko", "hi"
-            };
-        public enum Languages
-        {
-            English,
-            Spanish,
-            French,
-            German,
-            Italian,
-            Portuguese,
-            Polish,
-            Turkish,
-            Russian,
-            Dutch,
-            Czech,
-            Arabic,
-            Chinese,
-            Japanese,
-            Hungarian,
-            Korean,
-            Hindi
-
-        }
 
         public static System.Random serverRand = new System.Random();
 
         // --------------- CONFIG ---------------
         private static ConfigEntry<bool> mod_enabled;
         public static ConfigEntry<uint> max_clip_count;
-        private static ConfigEntry<Languages> voice_language;
         private static ConfigEntry<uint> talk_probability;
         private static ConfigEntry<bool> TTS_enabled;
         private static ConfigEntry<string> TTS_api_key;
@@ -495,88 +468,12 @@ namespace Wendigos
         #region UTILITY_FUNCTIONS
         static void WriteToConsole(string output)
         {
-            Console.WriteLine("Wendigos: " + output);
+            Console.WriteLine("[Wendigos Log] " + output);
         }
 
         private static void Open_YT_URL()
         {
             UnityEngine.Application.OpenURL("https://www.youtube.com/@Tim-Shaw");
-        }
-
-        public static void WriteToJsonFile<T>(string filePath, T objectToWrite, bool append = false) where T : new()
-        {
-            TextWriter writer = null;
-            try
-            {
-                var contentsToWriteToFile = JsonConvert.SerializeObject(objectToWrite);
-                writer = new StreamWriter(filePath, append);
-                writer.Write(contentsToWriteToFile);
-            }
-            finally
-            {
-                if (writer != null)
-                    writer.Close();
-            }
-        }
-
-        public static T ReadFromJsonFile<T>(string filePath) where T : new()
-        {
-            TextReader reader = null;
-            try
-            {
-                reader = new StreamReader(filePath);
-                var fileContents = reader.ReadToEnd();
-                return JsonConvert.DeserializeObject<T>(fileContents);
-            }
-            finally
-            {
-                if (reader != null)
-                    reader.Close();
-            }
-        }
-
-        public static string GetHashSHA1(byte[] data)
-        {
-            using (var sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider())
-            {
-                return string.Concat(sha1.ComputeHash(data).Select(x => x.ToString("X2")));
-            }
-        }
-
-
-
-        public static AudioClip LoadAudioFile(string audioFilePath)
-        {
-            return LoadMp3File(audioFilePath);
-        }
-
-        static AudioClip LoadMp3File(string audioFilePath)
-        {
-            if (File.Exists(audioFilePath))
-            {
-                using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(audioFilePath, AudioType.MPEG))
-                {
-                    request.SendWebRequest();
-
-                    while (request.result == UnityWebRequest.Result.InProgress)
-                        continue;
-                    if (request.result != UnityWebRequest.Result.Success)
-                    {
-                        WriteToConsole("www.error " + request.error);
-                        WriteToConsole(" www.uri " + request.uri);
-                        WriteToConsole(" www.url " + request.url);
-                        WriteToConsole(" www.result " + request.result);
-                        return null;
-                    }
-                    else
-                    {
-                        AudioClip myClip = DownloadHandlerAudioClip.GetContent(request);
-                        return myClip;
-                    }
-                }
-            }
-            WriteToConsole("AUDIO FILE NOT FOUND");
-            return null;
         }
 
         public static MaskedPlayerEnemy GetClosestMasked()
