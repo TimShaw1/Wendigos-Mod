@@ -139,12 +139,19 @@ namespace Wendigos
             {
                 try
                 {
-                    maskedInstanceLookup[maskedId].SetSuit(suitid);
+                    Task.Run(() => WaitThenSetSuit(maskedId, suitid));
                 }
                 catch (Exception ex)
                 {
-                    WriteToConsole(ex.Message);
+                    WriteToConsole("Error trying to set masked suit: " + ex.Message);
                 }
+            }
+
+            private async Task WaitThenSetSuit(string maskedId, int suitid)
+            {
+                int attempts = 0;
+                while (attempts < 3 && !maskedInstanceLookup.Keys.Contains(maskedId)) { await Task.Delay(100); attempts++; }
+                maskedInstanceLookup[maskedId].SetSuit(suitid);
             }
 
             [ServerRpc(RequireOwnership = false)]
@@ -157,8 +164,10 @@ namespace Wendigos
             public void AddToMaskedClientDictClientRpc(string maskedID, ulong clientID)
             {
                 WriteToConsole("Trying to add masked to masked_client_dict");
-                sharedMaskedClientDict[maskedID] = clientID;
-                WriteToConsole($"added masked {maskedID} to masked_client_dict");
+                if (sharedMaskedClientDict.TryAdd(maskedID, clientID))
+                    WriteToConsole($"Added masked {maskedID} to masked_client_dict"); 
+                else
+                    WriteToConsole($"Failed to add masked {maskedID} to masked_client_dict");
             }
 
             [ServerRpc(RequireOwnership = false)]
