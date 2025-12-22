@@ -49,10 +49,9 @@ namespace Wendigos
                 elevenlabsConfig.voiceId = voice_id;
                 elevenlabsConfig.modelID = "eleven_flash_v2_5";
 
-                Console.WriteLine("Before: " + (ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig)?.voiceId);
                 if (api_key.Length == 0)
                 {
-                    Console.WriteLine("No Elevenlabs API key found. Attempting to load from environment variable ELEVENLABS_API_KEY...");
+                    Console.WriteLine("[Wendigos TTS] No Elevenlabs API key found. Attempting to load from environment variable ELEVENLABS_API_KEY...");
 
                     // Configure the TTS manager with the elevenlabs config. 
                     // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
@@ -64,7 +63,6 @@ namespace Wendigos
                     // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
                     ModdingTools.InitTTSManagerObject(ttsManagerComponent, elevenlabsConfig, ttsKey: api_key);
                 }
-                Console.WriteLine("After: " + (ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig)?.voiceId);
                 VOICE_ID = voice_id;
 
 

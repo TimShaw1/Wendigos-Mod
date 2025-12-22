@@ -63,7 +63,7 @@ namespace Wendigos
             MAX_CLIP_COUNT = Plugin.max_clip_count.Value;
             if (manager == null || AIManager.Instance == null || AIManager.Instance.SpeechToTextService == null)
             {
-                Console.WriteLine("No STT Service has been created. Creating one...");
+                Console.WriteLine("[Wendigos STT] No STT Service has been created. Creating one...");
                 if (Plugin.STT_service.Value == "Azure")
                 {
                     config = ModdingTools.CreateSTTServiceConfig<AzureSTTServiceConfig>();
@@ -82,10 +82,12 @@ namespace Wendigos
                 {
                     config = ModdingTools.CreateSTTServiceConfig<ElevenlabsSTTServiceConfig>();
                     ElevenlabsSTTServiceConfig derivedConfig = config as ElevenlabsSTTServiceConfig;
-                    derivedConfig.language = language;
+                    derivedConfig.language_code = language;
                     derivedConfig.audioInputDeviceName = deviceName;
                     derivedConfig.vad_silence_threshold_secs = 0.65;
                     derivedConfig.include_timestamps = true;
+                    derivedConfig.commit_strategy = ElevenlabsSTTCommitStrategy.Vad;
+                    derivedConfig.min_silence_duration_ms = 550;
                     manager = ModdingTools.CreateAIManagerObject(
                         ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
                         config,
@@ -93,8 +95,8 @@ namespace Wendigos
                         sttKey: api_key
                     );
                 }
+                Console.WriteLine("[Wendigos STT] STT Service Created.");
 
-                
                 _sttSessionStartTime = DateTime.Now;
 
                 recorder = new RollingRecorder();
@@ -107,7 +109,7 @@ namespace Wendigos
             }
             catch (Exception ex)
             {
-                Console.WriteLine("STT BROKE");
+                Console.WriteLine("[Wendigos STT] ERROR");
                 Console.WriteLine(ex.ToString());
             }
 
@@ -204,7 +206,7 @@ namespace Wendigos
                 choicePrompt,
                 response =>
                 {
-                    Console.WriteLine(response);
+                    Console.WriteLine("[Wendigos Chat Response]: " + response);
                     int choiceIndex;
 
                     try
@@ -240,7 +242,7 @@ namespace Wendigos
                 {
                     Plugin.MainThreadInvoker.Enqueue(() =>
                     {
-                        Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
+                        Console.WriteLine($"[Wendigos STT] RECOGNIZED: {e.Result.Text}");
                         try
                         {
                             // --- CALCULATE ABSOLUTE TIMES ---
@@ -274,12 +276,12 @@ namespace Wendigos
                             }
                             else
                             {
-                                Console.WriteLine("Could not extract audio segment (buffer might be empty or timing mismatch).");
+                                Console.WriteLine("[Wendigos STT] Could not extract audio segment (buffer might be empty or timing mismatch).");
                             }
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error processing audio clip: {ex}");
+                            Console.WriteLine($"[Wendigos STT] Error processing audio clip: {ex}");
                         }
 
                         var closest_masked = Plugin.GetClosestMasked();
@@ -298,7 +300,7 @@ namespace Wendigos
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"GETRESPONSE BROKE: {ex.ToString()}");
+                                Console.WriteLine($"[Wendigos STT] Realtime response error: {ex.ToString()}");
                             }
                         }
                         else
@@ -338,7 +340,7 @@ namespace Wendigos
 
             AIManager.Instance.SpeechToTextService.OnCanceled += (s, e) =>
             {
-                Console.WriteLine("Speech to Text service cancelled: Reason=" + e.Reason + " Error: " + e.ErrorDetails);
+                Console.WriteLine("[Wendigos STT] Speech to Text service cancelled: Reason=" + e.Reason + " Error: " + e.ErrorDetails);
             };
         }
 
