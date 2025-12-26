@@ -57,12 +57,12 @@ namespace Wendigos
                 {
                     foreach (ulong connectedClient in NetworkManager.Singleton.ConnectedClientsIds)
                     {
-                        foreach (var key in clientVoiceIDLookup.Keys)
+                        foreach (var key in clientVoiceIDLookup.Keys.ToArray())
                         {
                             ShareVoiceIDClientRpc(key, clientVoiceIDLookup[key]);
                         }
 
-                        foreach (var key in clientNameLookup.Keys)
+                        foreach (var key in clientNameLookup.Keys.ToArray())
                         {
                             ShareNameClientRpc(key, clientNameLookup[key]);
                         }
@@ -521,6 +521,20 @@ namespace Wendigos
             return null;
         }
 
+        public static void TeleportMaskedToLocalPlayer(MaskedPlayerEnemy __instance)
+        {
+            Task.Run(async () => {
+                await Task.Delay(3000);
+                MainThreadInvoker.Enqueue(() =>
+                {
+                    MethodInfo dynMethod = __instance.GetType().GetMethod("TeleportMaskedEnemyAndSync",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    dynMethod.Invoke(__instance, new object[] { RoundManager.Instance.GetNavMeshPosition(StartOfRound.Instance.localPlayerController.transform.position), true });
+                }
+                );
+            });
+        }
+
 
         public static void PlayLocalAudioClipAndQueue(MaskedPlayerEnemy __instance, int clipChoice = -1)
         {
@@ -617,16 +631,17 @@ namespace Wendigos
 
                 ElevenLabs.ttsManagerComponent.CloneVoiceAndGetVoiceIDAsync(
                         STT.speakingClips.Values.ToList(),
-                        player_name.Value == "" ? "WendigosClone" : player_name.Value,
+                        player_name.Value == "" ? "WendigosClone" : player_name.Value + "WendigosClone",
                         player_voice_description.Value,
                         false
                 ).ContinueWith(
-                    (result) =>
+                    async(result) =>
                     {
                         TTS_voice_id.Value = result.Result;
-                        WendigosNetworkManager.Instance.ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, result.Result);
-                        MainThreadInvoker.Enqueue(() => { 
+                        MainThreadInvoker.Enqueue(() => {
                             // Properly init now
+                            WriteToConsole("Cloned player voice. VoiceID: " + result.Result);
+                            WendigosNetworkManager.Instance.ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, result.Result);
                             ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
                             ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataRecieved += (obj, data) =>
                             {
@@ -652,6 +667,7 @@ namespace Wendigos
         {
             // Plugin startup logic
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+
             //Logger.LogWarning(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
             #region CONFIG_BINDING
             mod_enabled = Config.Bind<bool>(
@@ -1127,6 +1143,9 @@ namespace Wendigos
 
                 if (WendigosNetworkManager.Instance.IsServer)
                 {
+                    // For testing
+                    TeleportMaskedToLocalPlayer(__instance);
+
                     List<ulong> unassignedClientIDs = new List<ulong>();
                     WriteToConsole("Number of connected clients: " + NetworkManager.Singleton.ConnectedClientsIds.Count);
 
@@ -1264,6 +1283,6 @@ namespace Wendigos
                 __instance.usernameAlpha.alpha = 0f;
             }
         }
-        #endregion
+#endregion
     }
 }
