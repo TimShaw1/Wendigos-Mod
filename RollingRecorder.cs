@@ -42,12 +42,7 @@ namespace Wendigos
         {
             StopRecording(); // Safety cleanup
 
-            Microphone.GetDeviceCaps(unityMicName, out int minFreq, out int maxFreq);
-
-            if (maxFreq == 0) maxFreq = 44100;
-            if (maxFreq > 48000) maxFreq = 48000;
-
-            waveFormat = new WaveFormat(maxFreq, 16, 1);
+            waveFormat = new WaveFormat(AudioSettings.outputSampleRate, 16, 1);
             int deviceIndex = GetDeviceIndexByName(unityMicName);
 
             // Calculate buffer size: BytesPerSecond * Seconds
