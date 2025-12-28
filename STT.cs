@@ -8,6 +8,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TimShaw.VoiceBox.Components;
 using TimShaw.VoiceBox.Core;
@@ -26,6 +27,7 @@ namespace Wendigos
         public static int num_gens = 0;
         public static bool is_init = false;
         public static bool is_recognizing = false;
+        public static int num_retries = 0;
         public static string Chat_System_Prompt = "You are playing the online game Lethal Company with friends. When someone speaks to you, reply with short and informal responses.";
         public static string player_name = "";
         public static GameObject manager;
@@ -231,6 +233,40 @@ namespace Wendigos
             );
         }
 
+        private static string CleanString(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return string.Empty;
+
+            StringBuilder sb = new StringBuilder();
+            bool insideParens = false;
+            bool insideAsterisks = false;
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                char c = input[i];
+
+                // Check for Parentheses
+                if (c == '(') { insideParens = true; continue; }
+                if (c == ')' && insideParens) { insideParens = false; continue; }
+
+                // Check for Asterisks (Treats the first * as open, second as close)
+                if (c == '*')
+                {
+                    insideAsterisks = !insideAsterisks;
+                    continue;
+                }
+
+                // Only add the character if we aren't inside either pair
+                if (!insideParens && !insideAsterisks)
+                {
+                    sb.Append(c);
+                }
+            }
+
+            return sb.ToString().Trim();
+        }
+
         public static void InitCallbacks()
         {
             NAudio.Lame.LameDLL.LoadNativeDLL(Plugin.assembly_path);
@@ -240,9 +276,13 @@ namespace Wendigos
                 
                 if (e.Result.Text.Length > 0)
                 {
+                    num_retries = 0;
+                    string cleaned_string = CleanString(e.Result.Text);
+                    if (cleaned_string == "") return;
+
                     Plugin.MainThreadInvoker.Enqueue(() =>
                     {
-                        Console.WriteLine($"[Wendigos STT] RECOGNIZED: {e.Result.Text}");
+                        Console.WriteLine($"[Wendigos STT] RECOGNIZED: {cleaned_string}");
                         try
                         {
                             // --- CALCULATE ABSOLUTE TIMES ---
@@ -269,7 +309,7 @@ namespace Wendigos
                                     speakingClips.Remove(keyToRemove);
                                 }
 
-                                speakingClips.TryAdd(e.Result.Text, clip);
+                                speakingClips.TryAdd(cleaned_string, clip);
                                 Console.WriteLine("Added clip successfully.");
 
                                 
@@ -332,7 +372,7 @@ namespace Wendigos
                                 // 3. Cut the string
                                 truncatedText = truncatedText.Substring(startIndex);
                             }
-                            Plugin.WendigosNetworkManager.Instance.RequestMaskedResponseServerRpc(closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id, player_name, e.Result.Text);
+                            Plugin.WendigosNetworkManager.Instance.RequestMaskedResponseServerRpc(closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id, player_name, cleaned_string);
                         }
                     });
                 }
@@ -340,7 +380,13 @@ namespace Wendigos
 
             AIManager.Instance.SpeechToTextService.OnCanceled += (s, e) =>
             {
-                Console.WriteLine("[Wendigos STT] Speech to Text service cancelled: Reason=" + e.Reason + " Error: " + e.ErrorDetails);
+                Plugin.MainThreadInvoker.Enqueue(() =>
+                {
+                    Console.WriteLine($"[Wendigos STT] Speech to Text service cancelled: Reason={e.Reason} Error: {e.ErrorDetails}\nAttempting to reconnect... [{num_retries + 1}/3]");
+                    num_retries++;
+                    StopSpeechTranscription();
+                    StartSpeechTranscription(Chat_System_Prompt);
+                });
             };
         }
 
