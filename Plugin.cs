@@ -469,6 +469,7 @@ namespace Wendigos
         Harmony harmonyInstance = new Harmony("wendigos-instance");
 
         private static string config_path;
+        public static string root_path = BepInEx.Paths.BepInExRootPath;
         public static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
         internal static string mic_name;
@@ -485,7 +486,7 @@ namespace Wendigos
             UnityEngine.Application.OpenURL("https://www.youtube.com/@Tim-Shaw");
         }
 
-        public static MaskedPlayerEnemy GetClosestMasked()
+        public static MaskedPlayerEnemy GetClosestRegisteredMasked()
         {
             var allPlayers = FindObjectsOfType<PlayerControllerB>();
             PlayerControllerB localPlayer = null;
@@ -503,7 +504,7 @@ namespace Wendigos
                 {
                     var dist = Vector3.Distance(masked.transform.position, localPlayer.transform.position);
                     WriteToConsole("Masked dist is: " + dist);
-                    if (dist < 20)
+                    if (masked.CheckLineOfSightForClosestPlayer(120, 50) != null)
                     {
                         var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
                         if (!sharedMaskedClientDict.Keys.Contains(id))
