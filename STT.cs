@@ -269,7 +269,8 @@ namespace Wendigos
 
         public static void InitCallbacks()
         {
-            NAudio.Lame.LameDLL.LoadNativeDLL(Plugin.assembly_path);
+            Console.WriteLine(Plugin.root_path + "\\core\\qwbarch-NAudioLame");
+            NAudio.Lame.LameDLL.LoadNativeDLL(Plugin.root_path + "\\core\\qwbarch-NAudioLame");
 
             AIManager.Instance.SpeechToTextService.OnRecognized += (s, e) =>
             {
@@ -324,7 +325,7 @@ namespace Wendigos
                             Console.WriteLine($"[Wendigos STT] Error processing audio clip: {ex}");
                         }
 
-                        var closest_masked = Plugin.GetClosestMasked();
+                        var closest_masked = Plugin.GetClosestRegisteredMasked();
                         if (closest_masked == null)
                             return;
 
