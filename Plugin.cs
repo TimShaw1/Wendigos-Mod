@@ -644,7 +644,7 @@ namespace Wendigos
                             WriteToConsole("Cloned player voice. VoiceID: " + result.Result);
                             WendigosNetworkManager.Instance.ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, result.Result);
                             ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
-                            ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataRecieved += (obj, data) =>
+                            ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataReceived += (obj, data) =>
                             {
                                 identifier.audioNetworkQueue.Enqueue(data);
                             };
@@ -655,7 +655,7 @@ namespace Wendigos
             else
             {
 
-                ElevenLabs.ttsManagerComponent?.TextToSpeechService.OnAudioDataRecieved += (obj, data) =>
+                ElevenLabs.ttsManagerComponent?.TextToSpeechService.OnAudioDataReceived += (obj, data) =>
                 {
                     identifier.audioNetworkQueue.Enqueue(data);
                 };

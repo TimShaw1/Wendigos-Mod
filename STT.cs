@@ -73,6 +73,7 @@ namespace Wendigos
                     derivedConfig.region = region;
                     derivedConfig.language = language;
                     derivedConfig.audioInputDeviceName = deviceName;
+                    derivedConfig.requestWordLevelTimestamps = true;
                     manager = ModdingTools.CreateAIManagerObject(
                         ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
                         config,
@@ -277,6 +278,10 @@ namespace Wendigos
                 
                 if (e.Result.Text.Length > 0)
                 {
+                    // Ignore duplicate events without timestamps
+                    if (Plugin.STT_service.Value == "Elevenlabs" && e.Result.Reason != STTUtils.VoiceBoxResultReason.RecognizedSpeechWithTimestamps)
+                        return;
+
                     num_retries = 0;
                     string cleaned_string = CleanString(e.Result.Text);
                     if (cleaned_string == "") return;
