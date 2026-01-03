@@ -276,11 +276,8 @@ namespace Wendigos
             AIManager.Instance.SpeechToTextService.OnRecognized += (s, e) =>
             {
                 
-                if (e.Result.Text.Length > 0)
+                if (e.Result.Text.Length > 0 && e.Result.Reason == STTUtils.VoiceBoxResultReason.RecognizedSpeechWithTimestamps)
                 {
-                    // Ignore duplicate events without timestamps
-                    if (Plugin.STT_service.Value == "Elevenlabs" && e.Result.Reason != STTUtils.VoiceBoxResultReason.RecognizedSpeechWithTimestamps)
-                        return;
 
                     num_retries = 0;
                     string cleaned_string = CleanString(e.Result.Text);
