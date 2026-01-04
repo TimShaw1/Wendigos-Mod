@@ -76,7 +76,7 @@ namespace Wendigos
                     derivedConfig.requestWordLevelTimestamps = true;
                     manager = ModdingTools.CreateAIManagerObject(
                         ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
-                        config,
+                        derivedConfig,
                         ModdingTools.CreateTTSServiceConfig<GenericTTSServiceConfig>(),
                         sttKey: api_key
                     );
@@ -93,7 +93,7 @@ namespace Wendigos
                     derivedConfig.min_silence_duration_ms = 550;
                     manager = ModdingTools.CreateAIManagerObject(
                         ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
-                        config,
+                        derivedConfig,
                         ModdingTools.CreateTTSServiceConfig<GenericTTSServiceConfig>(),
                         sttKey: api_key
                     );
