@@ -220,7 +220,7 @@ namespace Wendigos
                     }
                     catch
                     {
-                        Console.WriteLine("AI is dumb, choosing option 0");
+                        Console.WriteLine("[Wendigos Chat]: AI is dumb, choosing option 0");
                         choiceIndex = 0;
                     }
 
