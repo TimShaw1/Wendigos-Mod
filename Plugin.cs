@@ -856,9 +856,7 @@ namespace Wendigos
                     }
                 }
             }
-
-
-            if (mod_enabled.Value)
+            else
             {
 
                 harmonyInstance.PatchAll();
@@ -878,10 +876,7 @@ namespace Wendigos
                 }
 
 
-                if (Chat_api_key.Value != "")
-                    WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
-                else
-                    WriteToConsole("No Chat api key specified!");
+                WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
 
                 STT.player_name = player_name.Value;
                 try
