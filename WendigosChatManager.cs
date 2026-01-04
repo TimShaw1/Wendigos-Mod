@@ -27,12 +27,7 @@ namespace Wendigos
         {
             try
             {
-                if (api_key.Length == 0)
-                {
-                    Console.WriteLine("[Wendigos Chat] No Chat API key!");
-                    return;
-                }
-
+                Console.WriteLine($"[Wendigos Chat] Creating chat manager object. Disregard \"Service config is null\" errors.");
                 // Create a new GameObject and attach a ChatManager component to it
                 GameObject chatManager = new GameObject("wendigosChatManager");
                 chatManagerComponent = chatManager.AddComponent<ChatManager>();
@@ -60,6 +55,11 @@ namespace Wendigos
                 chatConfig.modelName = modelToUse;
                 chatConfig.useFunctionInvokation = false;
 
+                if (api_key.Length == 0)
+                {
+                    Console.WriteLine($"[Wendigos Chat] No Chat API key found. Attempting to load from environment variable {chatConfig.apiKeyJSONString} ...");
+                }
+
                 // Configure the chat manager with the gemini config. 
                 // This also creates the chat manager's ChatService via the ServiceFactory
                 ModdingTools.InitChatManagerObject(chatManagerComponent, chatConfig, chatKey: api_key);
@@ -67,6 +67,7 @@ namespace Wendigos
                 chats = new List<VoiceBoxChatMessage>();
 
                 init_success = true;
+                Console.WriteLine($"[Wendigos Chat] Created Chat manager.");
             }
             catch (Exception ex)
             {

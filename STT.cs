@@ -74,6 +74,8 @@ namespace Wendigos
                     derivedConfig.language = language;
                     derivedConfig.audioInputDeviceName = deviceName;
                     derivedConfig.requestWordLevelTimestamps = true;
+
+                    Console.WriteLine("[Wendigos STT]: Creating AI manager object for STT service. Disregard \"Service config is null\" errors.");
                     manager = ModdingTools.CreateAIManagerObject(
                         ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
                         derivedConfig,
@@ -91,6 +93,8 @@ namespace Wendigos
                     derivedConfig.include_timestamps = true;
                     derivedConfig.commit_strategy = ElevenlabsSTTCommitStrategy.Vad;
                     derivedConfig.min_silence_duration_ms = 550;
+
+                    Console.WriteLine("[Wendigos STT]: Creating AI manager object for STT service. Disregard \"Service config is null\" errors.");
                     manager = ModdingTools.CreateAIManagerObject(
                         ModdingTools.CreateChatServiceConfig<GenericChatServiceConfig>(),
                         derivedConfig,

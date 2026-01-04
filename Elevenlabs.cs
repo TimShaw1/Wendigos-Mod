@@ -40,6 +40,7 @@ namespace Wendigos
                     ttsManagerComponent = null;
                 }
 
+                Console.WriteLine($"[Wendigos TTS] Creating TTS manager object. Disregard \"Service config is null\" errors.");
                 // Create a new GameObject and attach a TTSManager component to it
                 GameObject ttsManager = new GameObject("wendigosTtsManager");
                 ttsManagerComponent = ttsManager.AddComponent<TTSManager>();
@@ -51,7 +52,7 @@ namespace Wendigos
 
                 if (api_key.Length == 0)
                 {
-                    Console.WriteLine("[Wendigos TTS] No Elevenlabs API key found. Attempting to load from environment variable ELEVENLABS_API_KEY...");
+                    Console.WriteLine($"[Wendigos TTS] No Elevenlabs API key found. Attempting to load from environment variable {elevenlabsConfig.apiKeyJSONString} ...");
 
                     // Configure the TTS manager with the elevenlabs config. 
                     // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
@@ -67,6 +68,7 @@ namespace Wendigos
 
 
                 masked_volume = volumeBoost;
+                Console.WriteLine($"[Wendigos TTS] Created TTS manager.");
             }
             catch (Exception ex) 
             {
