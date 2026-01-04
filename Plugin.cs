@@ -30,7 +30,7 @@ using UnityEngine.SceneManagement;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "1.0.11")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "2.0.0")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosNetworkManager : NetworkBehaviour
