@@ -1155,7 +1155,7 @@ namespace Wendigos
                 if (WendigosNetworkManager.Instance.IsServer)
                 {
                     // For testing
-                    TeleportMaskedToLocalPlayer(__instance);
+                    // TeleportMaskedToLocalPlayer(__instance);
 
                     List<ulong> unassignedClientIDs = new List<ulong>();
                     WriteToConsole("Number of connected clients: " + NetworkManager.Singleton.ConnectedClientsIds.Count);
