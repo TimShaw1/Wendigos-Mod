@@ -1,0 +1,109 @@
+﻿using Newtonsoft.Json;
+using OpenAI;
+using OpenAI.Chat;
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using TimShaw.VoiceBox.Components;
+using TimShaw.VoiceBox.Core;
+using TimShaw.VoiceBox.Data;
+using TimShaw.VoiceBox.Generics;
+using TimShaw.VoiceBox.Modding;
+using UnityEngine;
+using static TimShaw.VoiceBox.Core.ChatUtils;
+
+namespace Wendigos
+{
+    public static class WendigosChatManager
+    {
+        static HttpClient client;
+        public static bool init_success = false;
+        public static ChatManager chatManagerComponent;
+        public static List<ChatUtils.VoiceBoxChatMessage> chats;
+        public static void Init(string api_key, string modelToUse, string chatService = "ChatGPT")
+        {
+            try
+            {
+                Console.WriteLine($"[Wendigos Chat] Creating chat manager object. Disregard \"Service config is null\" errors.");
+                // Create a new GameObject and attach a ChatManager component to it
+                GameObject chatManager = new GameObject("wendigosChatManager");
+                chatManagerComponent = chatManager.AddComponent<ChatManager>();
+
+                // Create a ChatGPTServiceConfig object and choose a model name
+                GenericChatServiceConfig chatConfig;
+                switch (chatService)
+                {
+                    case "ChatGPT":
+                        chatConfig = ModdingTools.CreateChatServiceConfig<ChatGPTServiceConfig>();
+                        break;
+                    case "Gemini":
+                        chatConfig = ModdingTools.CreateChatServiceConfig<GeminiServiceConfig>();
+                        break;
+                    case "Claude":
+                        chatConfig = ModdingTools.CreateChatServiceConfig<ClaudeServiceConfig>();
+                        break;
+                    case "Ollama":
+                        chatConfig = ModdingTools.CreateChatServiceConfig<OllamaChatServiceConfig>();
+                        break;
+                    default:
+                        Console.WriteLine("[Wendigos Chat] Unknown chat service type");
+                        return;
+                }
+                chatConfig.modelName = modelToUse;
+                chatConfig.useFunctionInvokation = false;
+
+                if (api_key.Length == 0)
+                {
+                    Console.WriteLine($"[Wendigos Chat] No Chat API key found. Attempting to load from environment variable {chatConfig.apiKeyJSONString} ...");
+                }
+
+                // Configure the chat manager with the gemini config. 
+                // This also creates the chat manager's ChatService via the ServiceFactory
+                ModdingTools.InitChatManagerObject(chatManagerComponent, chatConfig, chatKey: api_key);
+
+                chats = new List<VoiceBoxChatMessage>();
+
+                init_success = true;
+                Console.WriteLine($"[Wendigos Chat] Created Chat manager.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[Wendigos Chat] INIT FAILED");
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        public static void SendPromptToChatService(string prompt, Action<string> onSuccess)
+        {
+            try
+            {
+                // Add a user chat to the chat history
+                var chat = new ChatUtils.VoiceBoxChatMessage(
+                    ChatUtils.VoiceBoxChatRole.User,
+                    prompt
+                );
+
+                var tokenSource = new CancellationTokenSource();
+
+                chats.Clear();      // TODO
+                chats.Add(chat);
+                chatManagerComponent.SendChatMessage(
+                    chats,
+                    msg => { onSuccess.Invoke(msg.Text); chats.Add(msg); },
+                    err => Console.WriteLine(err),
+                    token: tokenSource.Token
+                );
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[Wendigos Chat] ERROR");
+                Console.WriteLine(ex.ToString()); 
+                return; 
+            }
+        }
+    }
+}
