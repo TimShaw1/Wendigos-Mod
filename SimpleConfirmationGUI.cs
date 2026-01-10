@@ -19,18 +19,21 @@ namespace Wendigos
         private GUIStyle wrappedMessageStyle;
 
         public Action onButtonClicked;
+        private bool showNameInputBox;
 
-        public static SimpleConfirmationGUI CreateConfirmationGUI(string popup_text)
+        public static SimpleConfirmationGUI CreateConfirmationGUI(string popup_text, bool show_name_input_box)
         {
             if (Instance != null)
             {
                 Instance.popupText = popup_text;
                 Instance.showPopup = true;
+                Instance.showNameInputBox = show_name_input_box;
                 return Instance;
             }
             GameObject obj = new GameObject("WendigosConfirmationGUI");
             var component = obj.AddComponent<SimpleConfirmationGUI>();
             component.popupText = popup_text;
+            component.showNameInputBox = show_name_input_box;
 
             return component;
         }
@@ -48,63 +51,115 @@ namespace Wendigos
 
         void OnGUI()
         {
-            // 1. If the popup is hidden, do not draw anything
             if (!showPopup) return;
 
-            // 2. Define the background rectangle (Responsive to screen size)
-            // We use 10% margins on all sides (0.1f) so it covers most of the screen
+            float scale = 1.25f;
+
+            // Dimensions
+            float sButtonWidth = buttonWidth * scale;
+            float sButtonHeight = buttonHeight * scale;
+            float sCloseSize = closeButtonSize * scale;
+
+            // Window Dimensions
             float marginLeft = Screen.width * 0.1f;
             float marginTop = Screen.height * 0.1f;
             float windowWidth = Screen.width * 0.8f;
             float windowHeight = Screen.height * 0.8f;
 
             Rect backgroundRect = new Rect(marginLeft, marginTop, windowWidth, windowHeight);
+            GUI.Box(backgroundRect, "Confirm Wendigos config sync");
 
+            // ==========================================
+            // 1. INPUT SECTION (Anchored to Top)
+            // ==========================================
+            if (showNameInputBox)
+            {
+                float fieldWidth = 200f * scale;
+                float fieldHeight = 30f * scale;
+                float labelHeight = 30f * scale;
+
+                // Start position: just below the window title bar
+                float startY = marginTop + (40f * scale);
+
+                // 1a. Input Label
+                GUIStyle centeredLabel = new GUIStyle(GUI.skin.label);
+                centeredLabel.alignment = TextAnchor.MiddleCenter;
+                centeredLabel.fontSize = (int)(16 * scale);
+
+                GUI.Label(
+                    new Rect(marginLeft, startY, windowWidth, labelHeight),
+                    "Input your name so the mod knows who you are:",
+                    centeredLabel
+                );
+
+                // 1b. Text Field (Placed immediately below label)
+                float fieldY = startY + labelHeight + (5f * scale); // 5px gap
+                float fieldX = marginLeft + (windowWidth - fieldWidth) / 2;
+
+                GUIStyle inputFieldStyle = new GUIStyle(GUI.skin.textField);
+                inputFieldStyle.fontSize = (int)(16 * scale);
+                inputFieldStyle.alignment = TextAnchor.MiddleLeft;
+
+                string newName = GUI.TextField(
+                    new Rect(fieldX, fieldY, fieldWidth, fieldHeight),
+                    Plugin.player_name.Value,
+                    inputFieldStyle
+                );
+
+                if (newName != Plugin.player_name.Value)
+                    Plugin.player_name.Value = newName;
+            }
+
+            // ==========================================
+            // 2. CONFIRM SECTION (Anchored to Center)
+            // ==========================================
+
+            // Find the exact vertical center of the window
+            float windowCenterY = marginTop + (windowHeight / 2);
+
+            // Position the Button slightly below center
+            float confirmY = windowCenterY + (10f * scale);
+            float confirmX = marginLeft + (windowWidth - sButtonWidth) / 2;
+
+            // Position the Text Area ABOVE the button
             if (wrappedMessageStyle == null)
             {
-                // Copy the default label style so we don't lose standard formatting
                 wrappedMessageStyle = new GUIStyle(GUI.skin.label);
-                wrappedMessageStyle.wordWrap = true; // <--- The Key Property
-                wrappedMessageStyle.alignment = TextAnchor.MiddleCenter;
-                wrappedMessageStyle.fontSize = 16;
-                // distinct color to ensure readability
+                wrappedMessageStyle.wordWrap = true;
+                wrappedMessageStyle.alignment = TextAnchor.LowerCenter; // Text stacks from bottom up
+                wrappedMessageStyle.fontSize = (int)(16 * scale);
                 wrappedMessageStyle.normal.textColor = Color.white;
             }
 
-            // 3. Draw the background box
-            GUI.Box(backgroundRect, "Confirm sync");
+            // Increased height to 160 to comfortably fit 3 lines
+            float textHeight = 160f * scale;
+            float textGap = 15f * scale; // Increased padding between text and button
 
-            // raw the Wrapping Text
-            // We define a text area with some internal padding (e.g. 20px) inside the box
-            float textPadding = 20f;
-            float textWidth = windowWidth - (textPadding * 2);
-            // We reserve space for the text between the top of box and the confirm button
-            float availableTextHeight = windowHeight - buttonHeight - 60f;
+            float textBottomY = confirmY - textGap;
+            float textTopY = textBottomY - textHeight;
 
+            // Added extra side padding (40f) so text doesn't touch edges
             Rect textRect = new Rect(
-                marginLeft + textPadding,
-                marginTop + 1f, // Push down slightly to avoid the "Confirmation" title
-                textWidth,
-                availableTextHeight
+                marginLeft + (40f * scale),
+                textTopY,
+                windowWidth - (80f * scale), // Subtracting double the padding (left+right)
+                textHeight
             );
 
             GUI.Label(textRect, popupText, wrappedMessageStyle);
 
-            // 4. Draw the "Confirm" Action Button (Centered in the box)
-            float confirmX = marginLeft + (windowWidth - buttonWidth) / 2;
-            float confirmY = marginTop + (windowHeight - buttonHeight) / 2;
-
-            if (GUI.Button(new Rect(confirmX, confirmY, buttonWidth, buttonHeight), "CONFIRM"))
+            if (GUI.Button(new Rect(confirmX, confirmY, sButtonWidth, sButtonHeight), "CONFIRM"))
             {
                 ConfirmAction();
             }
 
-            // 5. Draw the "Cancel" Button (Top-Right of the box)
-            // We align it to the top-right corner of the backgroundRect
-            float closeX = (marginLeft + windowWidth) - closeButtonSize - 10f; // 10f is a small internal margin
-            float closeY = marginTop + 10f;
+            // ==========================================
+            // 3. CLOSE BUTTON (Top Right)
+            // ==========================================
+            float closeX = (marginLeft + windowWidth) - sCloseSize - (10f * scale);
+            float closeY = marginTop + (10f * scale);
 
-            if (GUI.Button(new Rect(closeX, closeY, closeButtonSize, closeButtonSize), "X"))
+            if (GUI.Button(new Rect(closeX, closeY, sCloseSize, sCloseSize), "X"))
             {
                 ClosePopup();
             }

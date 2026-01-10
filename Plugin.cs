@@ -236,7 +236,7 @@ namespace Wendigos
                 if (STT.manager == null)
                 {
                     STT.num_gens = 0;
-                    STT.Init(STT_api_key.Value, STT_region.Value, STT_language.Value, mic_name);
+                    STT.Init(ChooseApiKey(STT_api_key.Value, temp_STT_api_key), STT_region.Value, STT_language.Value, mic_name);
                 }
 
                 STT.StartSpeechTranscription(Chat_prompt.Value);
@@ -295,7 +295,10 @@ namespace Wendigos
 
             private void PromptToShareDataWithClients()
             {
-                var confirmationGUI = SimpleConfirmationGUI.CreateConfirmationGUI("Do you want to share your config with all clients (including API keys?). Close this window to decline.");
+                var confirmationGUI = SimpleConfirmationGUI.CreateConfirmationGUI(
+                    "Do you want to share your Wendigos config with all clients (including API keys?). Close this window to decline.",
+                    false
+                    );
 
                 confirmationGUI.onButtonClicked = () =>
                 {
@@ -366,7 +369,7 @@ namespace Wendigos
                 ClientRpcParams clientParams = default
             )
             {
-                string guiPrompt = "Host has requested to sync config with you!";
+                string guiPrompt = "Host has requested to sync Wendigos config with you!";
                 if (TTS_api_key.Value != "")
                     guiPrompt += " You already have a TTS api key set so TTS options will be skipped.";
 
@@ -377,17 +380,18 @@ namespace Wendigos
                     guiPrompt += " You already have a Chat api key set so Chat options will be skipped.";
 
                 guiPrompt += " Are you sure you want to continue?";
-                var confirmationGUI = SimpleConfirmationGUI.CreateConfirmationGUI(guiPrompt);
+                var confirmationGUI = SimpleConfirmationGUI.CreateConfirmationGUI(guiPrompt, true);
 
                 confirmationGUI.onButtonClicked = () =>
                 {
                     if (Chat_api_key.Value == "")
                     {
                         ChatServiceProvider.Value = chatServiceProvider;
-                        Chat_api_key.Value = chatApiKey;
+                        //Chat_api_key.Value = chatApiKey;
+                        temp_Chat_api_key = chatApiKey;
                         Chat_model.Value = chatModel;
                         Chat_prompt.Value = prompt;
-                        WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
+                        WendigosChatManager.Init(ChooseApiKey(Chat_api_key.Value, temp_Chat_api_key), Chat_model.Value, ChatServiceProvider.Value);
                     }
 
                     enable_realtime_responses.Value = realtimeResponses;
@@ -398,7 +402,8 @@ namespace Wendigos
                     if (STT_api_key.Value == "")
                     {
                         STT_service.Value = sttService;
-                        STT_api_key.Value = sttApiKey;
+                        //STT_api_key.Value = sttApiKey;
+                        temp_STT_api_key = sttApiKey;
                         STT_region.Value = region;
                         STT_language.Value = language;
                     }
@@ -406,13 +411,14 @@ namespace Wendigos
                     if (TTS_api_key.Value == "")
                     {
                         TTS_enabled.Value = ttsEnabled;
-                        TTS_api_key.Value = ttsApiKey;
+                        //TTS_api_key.Value = ttsApiKey;
+                        temp_TTS_api_key = ttsApiKey;
                     }
 
                     if (ElevenLabs.ttsManagerComponent == null)
                     {
                         if (TTS_enabled.Value || enable_realtime_responses.Value)
-                            ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
+                            ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
                     }
                 };
             }
@@ -473,6 +479,10 @@ namespace Wendigos
         public static string assembly_path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
         internal static string mic_name;
+
+        public static string temp_TTS_api_key = "";
+        public static string temp_Chat_api_key = "";
+        public static string temp_STT_api_key = "";
         #endregion
 
         #region UTILITY_FUNCTIONS
@@ -484,6 +494,11 @@ namespace Wendigos
         private static void Open_YT_URL()
         {
             UnityEngine.Application.OpenURL("https://www.youtube.com/@Tim-Shaw");
+        }
+
+        public static string ChooseApiKey(string configApiKey, string tempApiKey)
+        {
+            return configApiKey == "" ? tempApiKey : configApiKey;
         }
 
         public static MaskedPlayerEnemy GetClosestRegisteredMasked()
@@ -626,7 +641,7 @@ namespace Wendigos
             {
                 // Hack - init to access ttsManagerComponent to call CloneVoiceAndGetVoiceIDAsync
                 if (ElevenLabs.ttsManagerComponent == null)
-                    ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
+                    ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
 
                 TTS_voice_id.Value = "pending";
 
@@ -643,7 +658,7 @@ namespace Wendigos
                             // Properly init now
                             WriteToConsole("Cloned player voice. VoiceID: " + result.Result);
                             WendigosNetworkManager.Instance.ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, result.Result);
-                            ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
+                            ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
                             ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataReceived += (obj, data) =>
                             {
                                 identifier.audioNetworkQueue.Enqueue(data);
@@ -876,13 +891,13 @@ namespace Wendigos
                 }
 
 
-                WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
+                WendigosChatManager.Init(ChooseApiKey(Chat_api_key.Value, temp_Chat_api_key), Chat_model.Value, ChatServiceProvider.Value);
 
                 STT.player_name = player_name.Value;
                 try
                 {
                     if (TTS_enabled.Value || enable_realtime_responses.Value)
-                        ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
+                        ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
                 }
                 catch (Exception ex)
                 {
@@ -1196,11 +1211,11 @@ namespace Wendigos
                 }
                     
                 if (WendigosChatManager.chatManagerComponent == null)
-                    WendigosChatManager.Init(Chat_api_key.Value, Chat_model.Value, ChatServiceProvider.Value);
+                    WendigosChatManager.Init(ChooseApiKey(Chat_api_key.Value, temp_Chat_api_key), Chat_model.Value, ChatServiceProvider.Value);
                 try
                 {
                     if ((TTS_enabled.Value || enable_realtime_responses.Value) && ElevenLabs.ttsManagerComponent == null)
-                        ElevenLabs.Init(TTS_api_key.Value, TTS_voice_id.Value, TTS_voice_volume.Value);
+                        ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
                 }
                 catch (Exception ex)
                 {
