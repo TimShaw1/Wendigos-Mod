@@ -105,5 +105,37 @@ namespace Wendigos
                 return; 
             }
         }
+
+        public static void StreamFromChatService(string prompt, Action<string> onChunkReceived, Action<string> onSuccess)
+        {
+            try
+            {
+                // Add a user chat to the chat history
+                var chat = new ChatUtils.VoiceBoxChatMessage(
+                    ChatUtils.VoiceBoxChatRole.User,
+                    prompt
+                );
+
+                var tokenSource = new CancellationTokenSource();
+
+                chats.Clear();      // TODO
+                chats.Add(chat);
+                string completeResponse = "";
+                chatManagerComponent.StreamChatMessage(
+                    chats,
+                    chunk => { onChunkReceived.Invoke(chunk.Text); completeResponse += chunk; },
+                    () => { onSuccess.Invoke(completeResponse); },
+                    err => Console.WriteLine(err),
+                    token: tokenSource.Token
+                );
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[Wendigos Chat] ERROR");
+                Console.WriteLine(ex.ToString());
+                return;
+            }
+        }
     }
 }

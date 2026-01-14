@@ -146,22 +146,29 @@ namespace Wendigos
             var newConfig = ElevenLabs.ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig;
             newConfig.voiceId = voice_id;
             ElevenLabs.ttsManagerComponent.textToSpeechConfig = newConfig;
-            
 
-            WendigosChatManager.SendPromptToChatService(
+            string whatBotSaidSoFar = "";
+
+            WendigosChatManager.StreamFromChatService(
                 Chat_System_Prompt + " A player just spoke to you, saying the following: " + (player_name == "" ? "\n" : "\n" + playerName + ": ") + player_speech,
-                response =>
+                chunk =>
                 {
                     //Console.WriteLine("RESPONSE: " + response);
-
-                    ElevenLabs.StreamAudio(
-                        response,
-                        voice_id,
+                    ElevenLabs.StreamAudioChunk(
+                        chunk,
+                        false,
                         closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().child.GetComponent<AudioStreamer>()
                     );
 
+                    whatBotSaidSoFar += chunk;
+
                     num_gens++;
-                }
+                },
+                response => ElevenLabs.StreamAudioChunk(
+                    " ",
+                    true,
+                    closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().child.GetComponent<AudioStreamer>()
+                )
             );
         }
 
@@ -279,7 +286,11 @@ namespace Wendigos
 
             AIManager.Instance.SpeechToTextService.OnRecognized += (s, e) =>
             {
-                
+                if (StartOfRound.Instance.localPlayerController.isPlayerDead)
+                {
+                    StopSpeechTranscription();
+                    return;
+                }
                 if (e.Result.Text.Length > 0 && e.Result.Reason == STTUtils.VoiceBoxResultReason.RecognizedSpeechWithTimestamps)
                 {
 
