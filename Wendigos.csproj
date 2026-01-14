@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Wendigos</AssemblyName>
     <Description>Voice Cloning Mod for Lethal Company</Description>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -49,6 +49,9 @@
 		<Reference Include="Facepunch.Steamworks.Win64">
 			<HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
 			<HintPath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll')">C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
+		</Reference>
+		<Reference Include="Microsoft.Extensions.AI.Abstractions">
+		  <HintPath>D:\Unity Projects\VoiceBox\Builds\VoiceBox_Data\Managed\Microsoft.Extensions.AI.Abstractions.dll</HintPath>
 		</Reference>
 		<Reference Include="Unity.Collections">
 			<HintPath Condition="Exists('D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Collections.dll')">D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Collections.dll</HintPath>

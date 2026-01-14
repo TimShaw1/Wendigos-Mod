@@ -30,7 +30,7 @@ using UnityEngine.SceneManagement;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "2.0.0")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "2.0.1")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosNetworkManager : NetworkBehaviour
@@ -504,12 +504,7 @@ namespace Wendigos
         public static MaskedPlayerEnemy GetClosestRegisteredMasked()
         {
             var allPlayers = FindObjectsOfType<PlayerControllerB>();
-            PlayerControllerB localPlayer = null;
-            foreach (var player in allPlayers)
-            {
-                if (player.actualClientId == NetworkManager.Singleton.LocalClientId)
-                    localPlayer = player;
-            }
+            PlayerControllerB localPlayer = StartOfRound.Instance.localPlayerController;
 
             try
             {
@@ -517,9 +512,9 @@ namespace Wendigos
                 WriteToConsole("COUNT: " + allMasked.Length.ToString());
                 foreach (var masked in allMasked)
                 {
-                    var dist = Vector3.Distance(masked.transform.position, localPlayer.transform.position);
+                    var dist = Vector3.Distance(masked.eye.position, localPlayer.gameplayCamera.transform.position);
                     WriteToConsole("Masked dist is: " + dist);
-                    if (masked.CheckLineOfSightForClosestPlayer(120, 50) != null)
+                    if (masked.CheckLineOfSightForClosestPlayer(120, 50, 30) != null)
                     {
                         var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
                         if (!sharedMaskedClientDict.Keys.Contains(id))
@@ -959,7 +954,7 @@ namespace Wendigos
         {
             // CHANGE 1: Use ConcurrentQueue for thread safety
             // CHANGE 2: Queue individual floats, not arrays
-            public StreamingAudioDecoder audioQueue = new StreamingAudioDecoder();
+            public StreamingAudioDecoder audioQueue = new StreamingAudioDecoder(48000, 2);
 
             private AudioSource _audioSource;
             private AudioClip _streamingClip;
@@ -1155,7 +1150,7 @@ namespace Wendigos
                 if (WendigosNetworkManager.Instance.IsServer)
                 {
                     // For testing
-                    // TeleportMaskedToLocalPlayer(__instance);
+                    TeleportMaskedToLocalPlayer(__instance);
 
                     List<ulong> unassignedClientIDs = new List<ulong>();
                     WriteToConsole("Number of connected clients: " + NetworkManager.Singleton.ConnectedClientsIds.Count);
