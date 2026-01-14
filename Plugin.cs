@@ -503,7 +503,6 @@ namespace Wendigos
 
         public static MaskedPlayerEnemy GetClosestRegisteredMasked()
         {
-            var allPlayers = FindObjectsOfType<PlayerControllerB>();
             PlayerControllerB localPlayer = StartOfRound.Instance.localPlayerController;
 
             try
@@ -514,7 +513,7 @@ namespace Wendigos
                 {
                     var dist = Vector3.Distance(masked.eye.position, localPlayer.gameplayCamera.transform.position);
                     WriteToConsole("Masked dist is: " + dist);
-                    if (masked.CheckLineOfSightForClosestPlayer(120, 50, 30) != null)
+                    if (masked.CheckLineOfSightForClosestPlayer(80, 50, 30) != null)
                     {
                         var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
                         if (!sharedMaskedClientDict.Keys.Contains(id))
