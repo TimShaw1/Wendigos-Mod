@@ -342,8 +342,8 @@ namespace Wendigos
                             Console.WriteLine($"[Wendigos STT] Error processing audio clip: {ex}");
                         }
 
-                        var closest_masked = Plugin.GetClosestRegisteredMasked();
-                        if (closest_masked == null)
+                        var closest_masked = Plugin.GetAllClosestRegisteredMasked();
+                        if (closest_masked.Count == 0)
                             return;
 
                         if (!WendigosChatManager.init_success) return;
@@ -353,7 +353,8 @@ namespace Wendigos
                             
                             try
                             {
-                                SendToChatAndStreamAudioResponse(closest_masked, player_name, e.Text);
+                                foreach (var masked in closest_masked) 
+                                    SendToChatAndStreamAudioResponse(masked, player_name, e.Text);
 
                             }
                             catch (Exception ex)
@@ -390,7 +391,8 @@ namespace Wendigos
                                 // 3. Cut the string
                                 truncatedText = truncatedText.Substring(startIndex);
                             }
-                            Plugin.WendigosNetworkManager.Instance.RequestMaskedResponseServerRpc(closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id, player_name, cleaned_string);
+                            foreach (var masked in closest_masked)
+                                Plugin.WendigosNetworkManager.Instance.RequestMaskedResponseServerRpc(masked.GetComponent<Plugin.MaskedEnemyIdentifier>().id, player_name, cleaned_string);
                         }
                     });
                 }

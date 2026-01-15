@@ -501,14 +501,16 @@ namespace Wendigos
             return configApiKey == "" ? tempApiKey : configApiKey;
         }
 
-        public static MaskedPlayerEnemy GetClosestRegisteredMasked()
+        public static List<MaskedPlayerEnemy> GetAllClosestRegisteredMasked()
         {
             PlayerControllerB localPlayer = StartOfRound.Instance.localPlayerController;
+            List<MaskedPlayerEnemy> allInRangeMasked = new List<MaskedPlayerEnemy>();
 
             try
             {
                 var allMasked = FindObjectsOfType<MaskedPlayerEnemy>();
                 WriteToConsole("COUNT: " + allMasked.Length.ToString());
+
                 foreach (var masked in allMasked)
                 {
                     var dist = Vector3.Distance(masked.eye.position, localPlayer.gameplayCamera.transform.position);
@@ -520,7 +522,7 @@ namespace Wendigos
                             continue;
                         if (masked.isEnemyDead)
                             continue;
-                        return masked;
+                        allInRangeMasked.Add(masked);
                     }
                 }
             }
@@ -528,7 +530,7 @@ namespace Wendigos
             {
                 WriteToConsole(ex.ToString());
             }
-            return null;
+            return allInRangeMasked;
         }
 
         public static void TeleportMaskedToLocalPlayer(MaskedPlayerEnemy __instance)
