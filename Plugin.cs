@@ -657,6 +657,7 @@ namespace Wendigos
                             ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
                             ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataReceived += (obj, data) =>
                             {
+                                // Issue here. Every masked enqueues audio data
                                 identifier.audioNetworkQueue.Enqueue(data);
                             };
                         });
