@@ -143,9 +143,10 @@ namespace Wendigos
                 voice_id = ElevenLabs.VOICE_ID;
             }
 
-            var newConfig = ElevenLabs.ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig;
+            Console.WriteLine("TTS MANAGERS: " + ElevenLabs.ttsManagerComponents.Keys.Count);
+            var newConfig = ElevenLabs.ttsManagerComponents[voice_id].textToSpeechConfig as ElevenlabsTTSServiceConfig;
             newConfig.voiceId = voice_id;
-            ElevenLabs.ttsManagerComponent.textToSpeechConfig = newConfig;
+            ElevenLabs.ttsManagerComponents[voice_id].textToSpeechConfig = newConfig;
 
             string whatBotSaidSoFar = "";
 
@@ -156,6 +157,7 @@ namespace Wendigos
                     //Console.WriteLine("RESPONSE: " + response);
                     ElevenLabs.StreamAudioChunk(
                         chunk,
+                        voice_id,
                         false,
                         closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().child.GetComponent<AudioStreamer>()
                     );
@@ -166,6 +168,7 @@ namespace Wendigos
                 },
                 response => ElevenLabs.StreamAudioChunk(
                     " ",
+                    voice_id,
                     true,
                     closest_masked.GetComponent<Plugin.MaskedEnemyIdentifier>().child.GetComponent<AudioStreamer>()
                 )
@@ -342,7 +345,7 @@ namespace Wendigos
                             Console.WriteLine($"[Wendigos STT] Error processing audio clip: {ex}");
                         }
 
-                        var closest_masked = Plugin.GetAllClosestRegisteredMasked();
+                        var closest_masked = Plugin.GetAllClosestRegisteredMasked(StartOfRound.Instance.localPlayerController.playerEye.position);
                         if (closest_masked.Count == 0)
                             return;
 

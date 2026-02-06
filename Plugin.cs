@@ -64,7 +64,7 @@ namespace Wendigos
 
                         foreach (var key in clientNameLookup.Keys.ToArray())
                         {
-                            ShareNameClientRpc(key, clientNameLookup[key]);
+                            ShareNameClientRpc(key, clientNameLookup[key]); 
                         }
                     }
 
@@ -168,6 +168,17 @@ namespace Wendigos
                     WriteToConsole($"Added masked {maskedID} to masked_client_dict"); 
                 else
                     WriteToConsole($"Failed to add masked {maskedID} to masked_client_dict");
+
+                Task.Run(() => WaitThenInitMaskedTTS(maskedID));
+            }
+
+            private async Task WaitThenInitMaskedTTS(string maskedId)
+            {
+                int attempts = 0;
+                while (attempts < 3 && !maskedInstanceLookup.Keys.Contains(maskedId)) { await Task.Delay(100); attempts++; }
+                MainThreadInvoker.Enqueue(() =>
+                    InitMaskedTTS(maskedInstanceLookup[maskedId])
+                );
             }
 
             [ServerRpc(RequireOwnership = false)]
@@ -415,11 +426,13 @@ namespace Wendigos
                         temp_TTS_api_key = ttsApiKey;
                     }
 
-                    if (ElevenLabs.ttsManagerComponent == null)
+                    /*
+                    if (TTS_voice_id.Value != string.Empty && ElevenLabs.ttsManagerComponents[TTS_voice_id.Value] == null)
                     {
                         if (TTS_enabled.Value || enable_realtime_responses.Value)
                             ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
                     }
+                    */
                 };
             }
             #endregion
@@ -501,7 +514,7 @@ namespace Wendigos
             return configApiKey == "" ? tempApiKey : configApiKey;
         }
 
-        public static List<MaskedPlayerEnemy> GetAllClosestRegisteredMasked()
+        public static List<MaskedPlayerEnemy> GetAllClosestRegisteredMasked(Vector3 playerPosition)
         {
             PlayerControllerB localPlayer = StartOfRound.Instance.localPlayerController;
             List<MaskedPlayerEnemy> allInRangeMasked = new List<MaskedPlayerEnemy>();
@@ -515,7 +528,7 @@ namespace Wendigos
                 {
                     var dist = Vector3.Distance(masked.eye.position, localPlayer.gameplayCamera.transform.position);
                     WriteToConsole("Masked dist is: " + dist);
-                    if (masked.CheckLineOfSightForClosestPlayer(80, 50, 30) != null)
+                    if (masked.CheckLineOfSightForPosition(playerPosition, 80, 50, 30))
                     {
                         var id = masked.GetComponent<MaskedEnemyIdentifier>().id;
                         if (!sharedMaskedClientDict.Keys.Contains(id))
@@ -610,38 +623,24 @@ namespace Wendigos
             return;
         }
 
-        public static void InitMaskedAudio(MaskedPlayerEnemy __instance)
+        public static void InitMaskedTTS(MaskedPlayerEnemy __instance)
         {
-            var identifier = __instance.gameObject.AddComponent<MaskedEnemyIdentifier>();
+            var identifier = __instance.GetComponent<MaskedEnemyIdentifier>();
 
-            GameObject maskedAudioStreamer = new GameObject("MaskedAudioStreamer");
-            maskedAudioStreamer.transform.position = __instance.transform.position;
-            maskedAudioStreamer.transform.parent = __instance.transform;
-
-            identifier.child = maskedAudioStreamer;
-
-            // id is starting position since only 1 enemy can spawn per vent
-            identifier.id = __instance.transform.position.ToString();
-            string ID = identifier.id;
-            maskedInstanceLookup.TryAdd(ID, __instance);
-            WriteToConsole("Spawned Masked. ID: " + ID);
-
-            AudioStreamer streamer = maskedAudioStreamer.AddComponent<AudioStreamer>();
-
-            __instance.creatureVoice.GetComponent<OccludeAudio>().CopyOcclusion(maskedAudioStreamer);
-
-            MaskedAudioComponent audioComponent = maskedAudioStreamer.AddComponent<MaskedAudioComponent>();
+            ulong mimickingPlayerClientID = sharedMaskedClientDict[identifier.id];
+            string mimickingPlayerVoiceID = clientVoiceIDLookup.ContainsKey(mimickingPlayerClientID) ? clientVoiceIDLookup[mimickingPlayerClientID] : "";
+            WriteToConsole("MIMICKING PLAYER VOICE ID: " + mimickingPlayerVoiceID);
 
             // Autoclone
-            if (STT.speakingClips.Count >= STT.MAX_CLIP_COUNT && TTS_voice_id.Value == "")
+            if (STT.speakingClips.Count >= STT.MAX_CLIP_COUNT && TTS_voice_id.Value == "" && mimickingPlayerClientID == NetworkManager.Singleton.LocalClientId)
             {
                 // Hack - init to access ttsManagerComponent to call CloneVoiceAndGetVoiceIDAsync
-                if (ElevenLabs.ttsManagerComponent == null)
-                    ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
+                if (!ElevenLabs.ttsManagerComponents.ContainsKey("pending"))
+                    ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), "pending", TTS_voice_volume.Value);
 
                 TTS_voice_id.Value = "pending";
 
-                ElevenLabs.ttsManagerComponent.CloneVoiceAndGetVoiceIDAsync(
+                ElevenLabs.ttsManagerComponents[TTS_voice_id.Value].CloneVoiceAndGetVoiceIDAsync(
                         STT.speakingClips.Values.ToList(),
                         player_name.Value == "" ? "WendigosClone" : player_name.Value + "WendigosClone",
                         player_voice_description.Value,
@@ -655,19 +654,18 @@ namespace Wendigos
                             WriteToConsole("Cloned player voice. VoiceID: " + result.Result);
                             WendigosNetworkManager.Instance.ShareVoiceIDServerRpc(NetworkManager.Singleton.LocalClientId, result.Result);
                             ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
-                            ElevenLabs.ttsManagerComponent.TextToSpeechService.OnAudioDataReceived += (obj, data) =>
+                            ElevenLabs.ttsManagerComponents[TTS_voice_id.Value].TextToSpeechService.OnAudioDataReceived += (obj, data) =>
                             {
-                                // Issue here. Every masked enqueues audio data
                                 identifier.audioNetworkQueue.Enqueue(data);
                             };
                         });
                     }
                 );
-            }
-            else
+            } 
+            else if (mimickingPlayerVoiceID != string.Empty)
             {
-
-                ElevenLabs.ttsManagerComponent?.TextToSpeechService.OnAudioDataReceived += (obj, data) =>
+                ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), mimickingPlayerVoiceID, TTS_voice_volume.Value);
+                ElevenLabs.ttsManagerComponents[mimickingPlayerVoiceID]?.TextToSpeechService.OnAudioDataReceived += (obj, data) =>
                 {
                     identifier.audioNetworkQueue.Enqueue(data);
                 };
@@ -890,6 +888,7 @@ namespace Wendigos
 
                 WendigosChatManager.Init(ChooseApiKey(Chat_api_key.Value, temp_Chat_api_key), Chat_model.Value, ChatServiceProvider.Value);
 
+                /*
                 STT.player_name = player_name.Value;
                 try
                 {
@@ -900,6 +899,7 @@ namespace Wendigos
                 {
                     WriteToConsole(ex.ToString());
                 }
+                */
 
 
                 config_path = Config.ConfigFilePath.Replace("Wendigos.cfg", "");
@@ -954,8 +954,6 @@ namespace Wendigos
 
         public class MaskedAudioComponent : MonoBehaviour
         {
-            // CHANGE 1: Use ConcurrentQueue for thread safety
-            // CHANGE 2: Queue individual floats, not arrays
             public StreamingAudioDecoder audioQueue = new StreamingAudioDecoder(48000, 2);
 
             private AudioSource _audioSource;
@@ -985,15 +983,26 @@ namespace Wendigos
                 SampleRate = AudioSettings.outputSampleRate;
                 Channels = (AudioSettings.speakerMode == AudioSpeakerMode.Mono) ? 1 : 2;
 
+                // Create an AudioClip with the correct sample rate and
+                // channels to stream incoming audio data through
                 _streamingClip = AudioClip.Create("NetworkStream", SampleRate, Channels, SampleRate, true, OnAudioRead);
 
                 _audioSource.clip = _streamingClip;
-                _audioSource.loop = true;
+                _audioSource.loop = true;           // Loop the clip so we can stream data in indefinitely
 
+                // Sanity check
                 if (!_audioSource.isPlaying)
                     _audioSource.Play();
             }
 
+            // A pretty fancy function
+            //
+            // This is a callback function that unity calls whenever it
+            //  tries to play audio from _streamingClip. data[] is the
+            //  audio data that unity is going to play. We can overwrite
+            //  that data with our own audio (speech in this case) and
+            //  since it is playing through the audioClip, effects like 
+            //  positioning and filters are applied AFTER we modify this.
             private void OnAudioRead(float[] data)
             {
                 for (int i = 0; i < data.Length; i++)
@@ -1046,7 +1055,8 @@ namespace Wendigos
                     return;
                 }
 
-                string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>().id;
+                string thisMaskedID = __instance.gameObject.GetComponent<MaskedEnemyIdentifier>()?.id;
+                if (thisMaskedID == string.Empty) return;
                 ulong MimickingClientID = 0;
                 if (!sharedMaskedClientDict.Keys.Contains(thisMaskedID))
                 {
@@ -1147,7 +1157,26 @@ namespace Wendigos
         {
             public static void Postfix(MaskedPlayerEnemy __instance)
             {
-                InitMaskedAudio(__instance);
+                // InitMaskedAudio(__instance);
+                var identifier = __instance.gameObject.AddComponent<MaskedEnemyIdentifier>();
+
+                GameObject maskedAudioStreamer = new GameObject("MaskedAudioStreamer");
+                maskedAudioStreamer.transform.position = __instance.transform.position;
+                maskedAudioStreamer.transform.parent = __instance.transform;
+
+                identifier.child = maskedAudioStreamer;
+
+                // id is starting position since only 1 enemy can spawn per vent
+                identifier.id = __instance.transform.position.ToString();
+                string ID = identifier.id;
+                maskedInstanceLookup.TryAdd(ID, __instance);
+                WriteToConsole("Spawned Masked. ID: " + ID);
+
+                AudioStreamer streamer = maskedAudioStreamer.AddComponent<AudioStreamer>();
+
+                __instance.creatureVoice.GetComponent<OccludeAudio>().CopyOcclusion(maskedAudioStreamer);
+
+                MaskedAudioComponent audioComponent = maskedAudioStreamer.AddComponent<MaskedAudioComponent>();
 
                 if (WendigosNetworkManager.Instance.IsServer)
                 {
@@ -1209,15 +1238,18 @@ namespace Wendigos
                     
                 if (WendigosChatManager.chatManagerComponent == null)
                     WendigosChatManager.Init(ChooseApiKey(Chat_api_key.Value, temp_Chat_api_key), Chat_model.Value, ChatServiceProvider.Value);
+
+                /*
                 try
                 {
-                    if ((TTS_enabled.Value || enable_realtime_responses.Value) && ElevenLabs.ttsManagerComponent == null)
+                    if ((TTS_enabled.Value || enable_realtime_responses.Value) && ElevenLabs.ttsManagerComponents == null)
                         ElevenLabs.Init(ChooseApiKey(TTS_api_key.Value, temp_TTS_api_key), TTS_voice_id.Value, TTS_voice_volume.Value);
                 }
                 catch (Exception ex)
                 {
                     WriteToConsole(ex.ToString());
                 }
+                */
 
                 foreach (var key in clientVoiceIDLookup.Keys)
                 {

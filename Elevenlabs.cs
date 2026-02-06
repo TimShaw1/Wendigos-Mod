@@ -24,26 +24,22 @@ namespace Wendigos
         public static string VOICE_ID;
         public static float masked_volume = 0;
 
-        public static TTSManager ttsManagerComponent;
+        public static Dictionary<string, TTSManager> ttsManagerComponents = new Dictionary<string, TTSManager>();
         public static void Init(string api_key, string voice_id, float volumeBoost)
         {
             try
             {
-                if (voice_id == "pending")
-                { 
-                    return; 
-                }
+                if (voice_id == string.Empty) return;
 
-                if (ttsManagerComponent != null)
+                if (ttsManagerComponents.ContainsKey(voice_id))
                 {
-                    Object.DestroyImmediate(ttsManagerComponent.gameObject);
-                    ttsManagerComponent = null;
+                    return;
                 }
 
                 Console.WriteLine($"[Wendigos TTS] Creating TTS manager object. Disregard \"Service config is null\" errors.");
                 // Create a new GameObject and attach a TTSManager component to it
-                GameObject ttsManager = new GameObject("wendigosTtsManager");
-                ttsManagerComponent = ttsManager.AddComponent<TTSManager>();
+                GameObject ttsManager = new GameObject($"wendigosTtsManager{voice_id}");
+                ttsManagerComponents.TryAdd(voice_id, ttsManager.AddComponent<TTSManager>());
 
                 // Create an ElevenlabsServiceConfig object and choose a voiceId
                 ElevenlabsTTSServiceConfig elevenlabsConfig = ModdingTools.CreateTTSServiceConfig<ElevenlabsTTSServiceConfig>();
@@ -56,13 +52,13 @@ namespace Wendigos
 
                     // Configure the TTS manager with the elevenlabs config. 
                     // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
-                    ModdingTools.InitTTSManagerObject(ttsManagerComponent, elevenlabsConfig);
+                    ModdingTools.InitTTSManagerObject(ttsManagerComponents[voice_id], elevenlabsConfig);
                 }
                 else
                 {
                     // Configure the TTS manager with the elevenlabs config. 
                     // This also creates the TTS manager's TextToSpeechService via the ServiceFactory
-                    ModdingTools.InitTTSManagerObject(ttsManagerComponent, elevenlabsConfig, ttsKey: api_key);
+                    ModdingTools.InitTTSManagerObject(ttsManagerComponents[voice_id], elevenlabsConfig, ttsKey: api_key);
                 }
                 VOICE_ID = voice_id;
 
@@ -112,7 +108,7 @@ namespace Wendigos
         }
 
         // Requests WAV file containing AI Voice saying the prompt and outputs the directory to said file
-        public static void RequestAudio(string prompt, string voice, string fileName, string dir, int fileNum, Action<string> onSuccess)
+        public static void RequestAudio(string prompt, string voiceID, string fileName, string dir, int fileNum, Action<string> onSuccess)
         {
             while (File.Exists(Path.Combine(dir, fileName + fileNum.ToString())))
             {
@@ -120,7 +116,7 @@ namespace Wendigos
             }
             fileName = fileName + fileNum.ToString();
             string fullFilePath = null;
-            ttsManagerComponent.GenerateSpeechFileFromText(prompt, fileName, dir, result => {
+            ttsManagerComponents[voiceID].GenerateSpeechFileFromText(prompt, fileName, dir, result => {
                 onSuccess.Invoke(dir + fileName + ".mp3");
                 /*
                 try
@@ -143,20 +139,20 @@ namespace Wendigos
 
         }
 
-        public static void StreamAudio(string prompt, AudioStreamer audioStreamer)
+        public static void StreamAudio(string prompt, string voiceID, AudioStreamer audioStreamer)
         {
 
-            audioStreamer.StopStreaming(ttsManagerComponent.TextToSpeechService);
+            audioStreamer.StopStreaming(ttsManagerComponents[voiceID].TextToSpeechService);
             audioStreamer.GetComponent<AudioSource>().volume = masked_volume > 1f ? 1f : masked_volume;
-            Console.WriteLine((ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig).voiceId);
-            ttsManagerComponent.RequestAudioAndStream(prompt, audioStreamer);
+            Console.WriteLine((ttsManagerComponents[voiceID].textToSpeechConfig as ElevenlabsTTSServiceConfig).voiceId);
+            ttsManagerComponents[voiceID].RequestAudioAndStream(prompt, audioStreamer);
         }
 
-        public static void StreamAudioChunk(string promptChunk, bool isFinalSegment, AudioStreamer audioStreamer)
+        public static void StreamAudioChunk(string promptChunk, string voiceID, bool isFinalSegment, AudioStreamer audioStreamer)
         {
             audioStreamer.GetComponent<AudioSource>().volume = masked_volume > 1f ? 1f : masked_volume;
-            Console.WriteLine((ttsManagerComponent.textToSpeechConfig as ElevenlabsTTSServiceConfig).voiceId);
-            ttsManagerComponent.RequestAudioAndStream(promptChunk, isFinalSegment, audioStreamer);
+            Console.WriteLine((ttsManagerComponents[voiceID].textToSpeechConfig as ElevenlabsTTSServiceConfig).voiceId);
+            ttsManagerComponents[voiceID].RequestAudioAndStream(promptChunk, isFinalSegment, audioStreamer);
         }
 
     }
