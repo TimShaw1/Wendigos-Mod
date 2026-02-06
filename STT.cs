@@ -143,7 +143,6 @@ namespace Wendigos
                 voice_id = ElevenLabs.VOICE_ID;
             }
 
-            Console.WriteLine("TTS MANAGERS: " + ElevenLabs.ttsManagerComponents.Keys.Count);
             var newConfig = ElevenLabs.ttsManagerComponents[voice_id].textToSpeechConfig as ElevenlabsTTSServiceConfig;
             newConfig.voiceId = voice_id;
             ElevenLabs.ttsManagerComponents[voice_id].textToSpeechConfig = newConfig;
