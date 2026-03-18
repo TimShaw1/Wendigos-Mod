@@ -151,8 +151,15 @@ namespace Wendigos
         public static void StreamAudioChunk(string promptChunk, string voiceID, bool isFinalSegment, AudioStreamer audioStreamer)
         {
             audioStreamer.GetComponent<AudioSource>().volume = masked_volume > 1f ? 1f : masked_volume;
-            Console.WriteLine((ttsManagerComponents[voiceID].textToSpeechConfig as ElevenlabsTTSServiceConfig).voiceId);
-            ttsManagerComponents[voiceID].RequestAudioAndStream(promptChunk, isFinalSegment, audioStreamer);
+            try
+            {
+                ttsManagerComponents[voiceID].RequestAudioAndStream(promptChunk, isFinalSegment, audioStreamer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+            Console.WriteLine(promptChunk + " : " + (ttsManagerComponents[voiceID].textToSpeechConfig as ElevenlabsTTSServiceConfig).voiceId);
         }
 
     }

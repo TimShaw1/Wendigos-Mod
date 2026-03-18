@@ -30,7 +30,7 @@ using UnityEngine.SceneManagement;
 namespace Wendigos
 {
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "2.0.1")]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, "2.0.2")]
     public class Plugin : BaseUnityPlugin
     {
         public class WendigosNetworkManager : NetworkBehaviour
@@ -552,6 +552,7 @@ namespace Wendigos
                 await Task.Delay(3000);
                 MainThreadInvoker.Enqueue(() =>
                 {
+                    WriteToConsole("Teleporting masked to local player position");
                     MethodInfo dynMethod = __instance.GetType().GetMethod("TeleportMaskedEnemyAndSync",
                         BindingFlags.NonPublic | BindingFlags.Instance);
                     dynMethod.Invoke(__instance, new object[] { RoundManager.Instance.GetNavMeshPosition(StartOfRound.Instance.localPlayerController.transform.position), true });
@@ -1181,7 +1182,7 @@ namespace Wendigos
                 if (WendigosNetworkManager.Instance.IsServer)
                 {
                     // For testing
-                    TeleportMaskedToLocalPlayer(__instance);
+                    // TeleportMaskedToLocalPlayer(__instance);
 
                     List<ulong> unassignedClientIDs = new List<ulong>();
                     WriteToConsole("Number of connected clients: " + NetworkManager.Singleton.ConnectedClientsIds.Count);
